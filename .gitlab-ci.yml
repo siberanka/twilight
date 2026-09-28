@@ -1,5 +1,10 @@
 image: eclipse-temurin:25-jdk
 
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - when: never
+
 stages:
   - build
   - release

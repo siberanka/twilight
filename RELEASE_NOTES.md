@@ -1,36 +1,28 @@
-# Twilight 1.0.0-pre.2
+# Twilight 1.0.0-pre.3 (unreleased development)
 
-Twilight is now a server-side Java-to-Bedrock custom-content compiler for
-Geyser. This pre-release produces one `Twilight.jar` for Paper, Folia, and
-Spigot servers; players do not install a client mod.
+This development build corrects custom item rotation and texture conversion and makes
+unsupported UI conversion and Geyser restart requirements explicit.
 
-## Highlights
+- Corrected third-person model-frame conversion, left-hand mirroring, and an Euler singularity.
+- Corrected rotated cuboid axes, default face UVs, and face UV rotation.
+- Exported the first authored animation frame instead of stretching sprite sheets; full animation playback remains unsupported.
+- Rejected oversized GUI glyphs and custom spacing in strict mode. Diagnostic exports report omissions.
+- Preserved mapping restart state across configuration reload, repeated deploys, and rollback. Geyser reload cannot activate changed item mappings.
+- Added a warning for JVM locales that break Geyser mapping enum parsing.
+- Added a live item-display bridge and verified sampled BetterModel and ModelEngine poses, including stationary MythicMobs models.
+- Corrected display invisibility and zero-view-range handling; inactive ModelEngine fire layers no longer appear as stray planes.
+- Selected resource-pack overlays for the target Minecraft version and resolved explicit vanilla texture dependencies.
+- Skipped event hooks for disabled providers.
 
-- Discovers authored and generated assets from ItemsAdder, CraftEngine, Nexo,
-  Oraxen, ModelEngine, BetterModel, datapacks, and configured resource packs.
-- Uses provider APIs and lifecycle events when available, with deterministic
-  `contents`, `resources`, `data`, `cache`, and generated-pack fallbacks.
-- Preserves Bedrock's native bow, crossbow, and fishing-rod behavior for exact
-  texture-only recolours. Layered, transformed, animated, and volumetric Java
-  items retain their model states, display transforms, and runtime animation.
-- Selects handheld presentation from each resolved Java model's parent chain
-  and preserves authored hand translation, rotation, and scale without
-  implicit fitting, fixing custom axes that appeared in a guitar-like pose.
-- Keeps chat emoji at a stable Bedrock height with fixed 16-pixel Unicode
-  cells and independent bottom alignment, even beside oversized GUI glyphs.
-- Converts supported Java models, bitmap fonts, and custom sounds into bounded,
-  validated Bedrock resources and Geyser custom mappings.
-- Builds and deploys packs transactionally, retains last-known-good snapshots,
-  and rejects unsafe paths, malformed output, missing assets, and hash failures.
+The [real-content review](docs/REAL_CONTENT_REVIEW.md) includes Java references,
+Bedrock observations, and unaccepted chat/UI checks. Java source assets were
+unchanged. This checkpoint does not claim full visual parity or production GUI support.
 
-## Requirements
+The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
+65 tests across 16 suites passed. No hosted CI was run. Automatic GitHub/GitLab pipeline
+triggers are disabled.
 
-- Java 21 or newer
-- Paper, Folia, or Spigot 1.21.4 or newer
-- Geyser with custom content enabled
-
-Install `Twilight.jar` in the server's `plugins` directory. Because this is a
-pre-release, review the generated reports before enabling automatic deployment
-on a production server.
-
-`Twilight.jar.sha256` contains the checksum of the CI-built release artifact.
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom
+content enabled. The development display adapter specifically targets Geyser
+2.11.3 build 1247; other Geyser core versions require validation. Full animated
+textures, tint, billboard behavior, and UI adaptation remain open acceptance work.

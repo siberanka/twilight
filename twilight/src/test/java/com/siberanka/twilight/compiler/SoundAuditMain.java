@@ -53,15 +53,10 @@ public final class SoundAuditMain {
                 2_147_483_648L, 200_000, true, true, List.of(), "auto", false, false, 3);
         Set<Path> worlds = WorldLayout.discover(root, Set.of());
         List<ContentSource> sources = new SourceDiscovery(root, config).discover(worlds);
-        try (ResourceIndex resources = ResourceIndex.build(sources, config)) {
-            SoundCompiler.Result sounds;
-            if (minecraftVersion.isBlank()) {
-                sounds = new SoundCompiler(resources, false, null).compile(new LinkedHashMap<>());
-            } else {
-                try (VanillaAssetCache vanilla = new VanillaAssetCache(cacheDirectory, minecraftVersion, true)) {
-                    sounds = new SoundCompiler(resources, false, vanilla).compile(new LinkedHashMap<>());
-                }
-            }
+        try (VanillaAssetCache vanilla = minecraftVersion.isBlank() ? null : new VanillaAssetCache(cacheDirectory, minecraftVersion, true);
+             ResourceIndex resources = vanilla == null ? ResourceIndex.build(sources, config)
+                     : ResourceIndex.build(sources, config, vanilla::packFormat)) {
+            SoundCompiler.Result sounds = new SoundCompiler(resources, false, vanilla).compile(new LinkedHashMap<>());
             JsonObject result = new JsonObject();
             result.addProperty("root", root.toString());
             result.addProperty("sources", sources.size());

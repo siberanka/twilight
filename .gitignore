@@ -123,5 +123,11 @@ test-material/
 # Local Codex recovery notes and working context. Never publish this directory.
 /ai/
 
+# Local Minecraft client logs may contain account and server details.
+/logs/
+
 # Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
 !gradle-wrapper.jar
+
+# Deliberately published local build; private fixture archives stay ignored.
+!/artifacts/Twilight.jar

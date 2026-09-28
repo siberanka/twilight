@@ -2,6 +2,44 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.3 - unreleased
+
+- Match Java display visibility: ignore base entity invisibility and hide
+  zero-view-range displays while retaining their current item and transform.
+- Added a development Geyser item-display bridge with separate quaternion
+  interpolation, Java item-frame rotation, and correct start/duration semantics.
+- Added live BetterModel and ModelEngine bone-item registry discovery. Strict
+  conversion rejects incomplete provider discovery.
+- Select pack overlays by the target Minecraft format and declaration order;
+  inactive overlays are no longer imported as independent packs.
+- Resolve explicit vanilla model textures and their frame metadata from the
+  verified client cache while preserving authored texture overrides.
+- Require a restart for display-index changes, and validate pack ZIP data before
+  replacing deployed files.
+- Corrected custom third-person item rotation axes, signs, and model-frame
+  conversion to preserve Java display orientation, including compound angles.
+- Applied Java's left-hand mirroring to explicitly authored left-hand poses.
+- Fixed quaternion-to-Euler conversion at the positive 90-degree singularity,
+  which could reverse an item's orientation.
+- Added regressions for yaw, all three orientation axes, explicit left-hand
+  transforms, and both Euler singularities. Full in-game visual parity remains
+  unverified.
+- Corrected rotated cuboid X/Y signs, preserved face UV rotations, and derived
+  omitted face UV rectangles from Java element bounds.
+- Sampled the first authored animation frame for static texture export instead
+  of stretching a whole animation sheet; tall static PNGs are no longer cropped.
+- Rejected oversized GUI bitmap glyphs and custom spacing in strict mode instead
+  of silently shrinking menus into emoji-sized cells. Diagnostic builds report
+  these omissions; full Bedrock GUI adaptation remains unsupported.
+- Reported a required server restart when custom item mappings differ from the
+  running Geyser registry. Texture-only reloads remain available; configuration
+  reloads no longer clear the pending restart requirement.
+- Added a JVM-locale diagnostic for Geyser's Turkish/Azeri enum-parsing issue.
+- Skipped optional event registration for disabled providers, avoiding closed
+  classloader errors when an incompatible ModelEngine version fails to enable.
+- Disabled automatic GitHub and GitLab pipeline triggers. Builds are run and
+  tested locally under siberanka; pushes do not run hosted builds.
+
 ## 1.0.0-pre.2 - 2026-09-22
 
 ### Java-to-Bedrock presentation

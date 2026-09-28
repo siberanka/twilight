@@ -61,7 +61,8 @@ public final class SourceDiscovery {
                 String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
                 boolean knownArchive = Files.isRegularFile(path) && PACK_NAMES.contains(name);
                 boolean packDirectory = Files.isDirectory(path) &&
-                        (Files.isRegularFile(path.resolve("pack.mcmeta")) || Files.isDirectory(path.resolve("assets")));
+                        (Files.isRegularFile(path.resolve("pack.mcmeta")) || Files.isDirectory(path.resolve("assets")))
+                        && !insidePack(path, directory);
                 boolean modelSource = Files.isDirectory(path) && path.getParent() != null &&
                         path.getParent().equals(directory) && (name.equals("blueprints") || name.equals("models"));
                 if (knownArchive || packDirectory) {
@@ -77,6 +78,13 @@ public final class SourceDiscovery {
                 }
             }
         }
+    }
+
+    private static boolean insidePack(Path path, Path providerRoot) {
+        for (Path ancestor = path.getParent(); ancestor != null && ancestor.startsWith(providerRoot); ancestor = ancestor.getParent()) {
+            if (Files.isRegularFile(ancestor.resolve("pack.mcmeta"))) return true;
+        }
+        return false;
     }
 
     private void discoverDatapacks(Path world, List<ContentSource> found, Set<Path> seen) throws IOException {

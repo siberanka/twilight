@@ -64,6 +64,21 @@ final class VanillaAssetCache implements AutoCloseable {
         return readEntry(normalized, MAXIMUM_TEXTURE_BYTES);
     }
 
+    com.siberanka.twilight.source.ResourceIndex.PackFormat packFormat(com.siberanka.twilight.source.ContentSource.Kind kind) throws IOException {
+        byte[] bytes = readEntry("version.json", MAXIMUM_MODEL_BYTES)
+                .orElseThrow(() -> new IOException("Minecraft client lacks version.json"));
+        try {
+            JsonObject pack = JsonParser.parseString(new String(bytes, java.nio.charset.StandardCharsets.UTF_8))
+                    .getAsJsonObject().getAsJsonObject("pack_version");
+            String type = kind == com.siberanka.twilight.source.ContentSource.Kind.DATAPACK ? "data" : "resource";
+            int major = pack.has(type + "_major") ? pack.get(type + "_major").getAsInt() : pack.get(type).getAsInt();
+            int minor = pack.has(type + "_minor") ? pack.get(type + "_minor").getAsInt() : 0;
+            return new com.siberanka.twilight.source.ResourceIndex.PackFormat(major, minor);
+        } catch (RuntimeException invalid) {
+            throw new IOException("Invalid Minecraft resource-pack format", invalid);
+        }
+    }
+
     Optional<byte[]> readModel(String logicalPath) throws IOException {
         String normalized = logicalPath.replace('\\', '/');
         if (!normalized.startsWith("assets/minecraft/models/") || !normalized.endsWith(".json") ||

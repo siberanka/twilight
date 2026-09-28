@@ -47,4 +47,6 @@ Visual acceptance begins only after structural validation passes. Use a disposab
 - custom mobs/furniture with idle/move/attack/death animations;
 - biome and seasonal transitions in affected worlds.
 
-No private pack, plugin, world, credential, log, or screenshot may enter the public repository or release artifact.
+No private pack, third-party plugin binary, world, credential, or raw server log may enter the public repository or release artifact. Publish screenshots only with explicit operator authorization and after reviewing every image for private data. The [2026-09-27 review](REAL_CONTENT_REVIEW.md) contains authorized test captures, not redistributable source packs.
+
+The unreleased 1.0.0-pre.3 local build passed 65 tests across 16 suites. Regressions cover independent pose bases, left-hand mirroring, Euler singularities, rotated cuboid corners, default/rotated UVs, first animation-frame selection, tall static textures, rejected GUI/spacing providers, pack overlays, display interpolation and visibility, and restart state across repeated deployment, configuration reload, and rollback. Passing these checks does not imply full client visual parity.

@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +29,10 @@ public final class ResourceIndex implements AutoCloseable {
     }
 
     public static ResourceIndex build(List<ContentSource> sources, TwilightConfig config) throws IOException {
+        return build(sources, config, ignored -> { throw new IOException("Minecraft pack format is required to select pack overlays"); });
+    }
+
+    public static ResourceIndex build(List<ContentSource> sources, TwilightConfig config, PackFormatSupplier packFormat) throws IOException {
         Map<String, Asset> assets = new LinkedHashMap<>();
         Map<String, List<Asset>> alternatives = new LinkedHashMap<>();
         List<ZipFile> archives = new ArrayList<>();
@@ -35,11 +40,11 @@ public final class ResourceIndex implements AutoCloseable {
             for (ContentSource source : sources) {
                 if (source.kind() == ContentSource.Kind.MODEL_SOURCE) indexModelDirectory(source, assets, alternatives, config);
                 else if (source.kind() == ContentSource.Kind.PROVIDER_DATA) indexProviderData(source, assets, alternatives, config);
-                else if (Files.isDirectory(source.path())) indexDirectory(source, assets, alternatives, config);
+                else if (Files.isDirectory(source.path())) indexDirectory(source, assets, alternatives, config, packFormat);
                 else {
                     ZipFile archive = new ZipFile(source.path().toFile());
                     archives.add(archive);
-                    indexArchive(source, archive, assets, alternatives, config);
+                    indexArchive(source, archive, assets, alternatives, config, packFormat);
                 }
             }
             alternatives.replaceAll((ignored, stack) -> List.copyOf(stack.reversed()));
@@ -70,7 +75,8 @@ public final class ResourceIndex implements AutoCloseable {
     }
 
     private static void indexArchive(ContentSource source, ZipFile zip, Map<String, Asset> target,
-                                     Map<String, List<Asset>> alternatives, TwilightConfig config) throws IOException {
+                                     Map<String, List<Asset>> alternatives, TwilightConfig config, PackFormatSupplier packFormat) throws IOException {
+            Map<String, Asset> collected = new LinkedHashMap<>();
             if (zip.size() > config.maximumArchiveEntries()) throw new IOException("Archive entry limit exceeded: " + source.path());
             long expandedBytes = 0;
             var entries = zip.entries();
@@ -79,20 +85,22 @@ public final class ResourceIndex implements AutoCloseable {
                 if (entry.isDirectory()) continue;
                 String original = ContentInspector.safeEntry(entry.getName(), source.path());
                 String logical = logicalPath(original);
-                if (logical == null) continue;
+                if (logical == null && !original.endsWith("pack.mcmeta")) continue;
                 if (entry.getSize() < 0) throw new IOException("Archive entry has unknown expanded size: " + original);
                 expandedBytes = Math.addExact(expandedBytes, entry.getSize());
                 if (expandedBytes > config.maximumSourceBytes()) throw new IOException("Expanded archive exceeds size limit: " + source.path());
-                add(target, alternatives, logical, new Asset(source, logical, entry.getSize(), () -> {
+                collected.put(original, new Asset(source, logical, entry.getSize(), () -> {
                     ZipEntry selected = zip.getEntry(entry.getName());
                     if (selected == null) throw new IOException("Archive entry disappeared: " + entry.getName());
                     try (InputStream input = zip.getInputStream(selected)) { return readLimited(input, config.maximumSourceBytes(), original); }
                 }));
             }
+            selectLayers(collected, target, alternatives, packFormat, source.kind());
     }
 
     private static void indexDirectory(ContentSource source, Map<String, Asset> target,
-                                       Map<String, List<Asset>> alternatives, TwilightConfig config) throws IOException {
+                                       Map<String, List<Asset>> alternatives, TwilightConfig config, PackFormatSupplier packFormat) throws IOException {
+        Map<String, Asset> collected = new LinkedHashMap<>();
         Path root = source.path().toRealPath();
         long totalBytes = 0;
         int entries = 0;
@@ -101,14 +109,38 @@ public final class ResourceIndex implements AutoCloseable {
                 if (Files.isSymbolicLink(file)) throw new IOException("Symbolic pack entry rejected: " + file);
                 String original = root.relativize(file).toString().replace('\\', '/');
                 String logical = logicalPath(original);
-                if (logical == null) continue;
+                if (logical == null && !original.endsWith("pack.mcmeta")) continue;
                 long size = Files.size(file);
                 if (size > config.maximumSourceBytes()) throw new IOException("Oversized source entry: " + file);
                 totalBytes = Math.addExact(totalBytes, size);
                 if (totalBytes > config.maximumSourceBytes()) throw new IOException("Source directory exceeds size limit: " + root);
                 if (++entries > config.maximumArchiveEntries()) throw new IOException("Source directory entry limit exceeded: " + root);
-                add(target, alternatives, logical, new Asset(source, logical, size, () -> Files.readAllBytes(file)));
+                collected.put(original, new Asset(source, logical, size, () -> Files.readAllBytes(file)));
             }
+        }
+        selectLayers(collected, target, alternatives, packFormat, source.kind());
+    }
+
+    private static void selectLayers(Map<String, Asset> entries, Map<String, Asset> target,
+                                     Map<String, List<Asset>> alternatives, PackFormatSupplier format, ContentSource.Kind kind) throws IOException {
+        PackOverlays overlays = PackOverlays.read(entries, format, kind);
+        for (String original : entries.keySet().stream().filter(path -> overlays.order(path) >= 0)
+                .sorted(Comparator.comparingInt(overlays::order).thenComparing(String::compareTo)).toList()) {
+            Asset asset = entries.get(original);
+            if (asset.path() != null) add(target, alternatives, asset.path(), asset);
+        }
+    }
+
+    @FunctionalInterface
+    public interface PackFormatSupplier { PackFormat get(ContentSource.Kind kind) throws IOException; }
+
+    public record PackFormat(int major, int minor) implements Comparable<PackFormat> {
+        public PackFormat {
+            if (major < 0 || minor < 0) throw new IllegalArgumentException("Negative pack format");
+        }
+        @Override public int compareTo(PackFormat other) {
+            int comparison = Integer.compare(major, other.major);
+            return comparison == 0 ? Integer.compare(minor, other.minor) : comparison;
         }
     }
 

@@ -27,24 +27,35 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.zip.ZipFile;
 
 public final class GeyserDeploymentService {
     private static final DateTimeFormatter SNAPSHOT_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS");
     private final Path serverRoot;
     private final Path dataDirectory;
-    private final TwilightConfig config;
+    private TwilightConfig config;
+    private final Map<Path, Map<String, String>> startupMappings = new LinkedHashMap<>();
     private final ReentrantLock lock = new ReentrantLock();
 
     public GeyserDeploymentService(Path serverRoot, Path dataDirectory, TwilightConfig config) {
         this.serverRoot = serverRoot.toAbsolutePath().normalize();
         this.dataDirectory = dataDirectory.toAbsolutePath().normalize();
         this.config = config;
+        try { captureStartupMappings(resolveGeyserDirectory()); }
+        catch (IOException ignored) { /* Geyser may not be installed yet. Capture before the first deploy. */ }
+    }
+
+    public void reconfigure(TwilightConfig config) {
+        lock.lock();
+        try { this.config = config; }
+        finally { lock.unlock(); }
     }
 
     public DeploymentResult deploy(Path outputDirectory) throws IOException {
         lock.lock();
         try {
             Path geyser = resolveGeyserDirectory();
+            captureStartupMappings(geyser);
             Map<String, Path> artifacts = collectArtifacts(outputDirectory.toAbsolutePath().normalize());
             if (artifacts.isEmpty()) throw new IOException("No validated Twilight artifacts were found in " + outputDirectory);
 
@@ -52,17 +63,25 @@ public final class GeyserDeploymentService {
             Path snapshot = snapshot(geyser, previous);
             Path staging = geyser.resolve(".twilight-staging-" + UUID.randomUUID()).normalize();
             ensureWithin(geyser, staging);
+            boolean publicationStarted = false;
             try {
                 stageAndVerify(staging, artifacts);
+                // Read registry-bearing ZIP data before changing the deployed files.
+                mappingHashes(staging);
+                publicationStarted = true;
                 publish(geyser, staging, artifacts, previous);
                 Properties next = manifestFor(artifacts);
                 storeManifest(next);
                 retainNewestSnapshots();
+                boolean restart = !startupMappings.get(geyser).equals(mappingHashes(geyser));
                 return new DeploymentResult(true, geyser, snapshot, List.copyOf(artifacts.keySet()),
-                        "Deployed " + artifacts.size() + " Twilight files; retained " + config.backupsToKeep() + " Geyser snapshots.");
+                        "Deployed " + artifacts.size() + " Twilight files; retained " + config.backupsToKeep() + " Geyser snapshots."
+                                + (restart ? " Restart the server to activate changed Geyser item mappings or display variants; geyser reload is insufficient." : ""), restart);
             } catch (Exception failure) {
-                for (String relative : artifacts.keySet()) Files.deleteIfExists(resolveTarget(geyser, relative));
-                if (snapshot != null) restoreSnapshot(geyser, snapshot);
+                if (publicationStarted) {
+                    for (String relative : artifacts.keySet()) Files.deleteIfExists(resolveTarget(geyser, relative));
+                    if (snapshot != null) restoreSnapshot(geyser, snapshot);
+                }
                 if (failure instanceof IOException io) throw io;
                 throw new IOException("Geyser deployment failed and was rolled back", failure);
             } finally {
@@ -79,12 +98,15 @@ public final class GeyserDeploymentService {
             List<Path> snapshots = snapshots();
             if (index < 1 || index > snapshots.size()) throw new IOException("Rollback index must be between 1 and " + snapshots.size());
             Path geyser = resolveGeyserDirectory();
+            captureStartupMappings(geyser);
             Path selected = snapshots.get(index - 1);
             restoreSnapshot(geyser, selected);
             Properties restored = readProperties(selected.resolve("deployment.properties"));
             storeManifest(restored);
+            boolean restart = !startupMappings.get(geyser).equals(mappingHashes(geyser));
             return new DeploymentResult(true, geyser, selected, restored.stringPropertyNames().stream().sorted().toList(),
-                    "Restored Geyser snapshot " + selected.getFileName());
+                    "Restored Geyser snapshot " + selected.getFileName()
+                            + (restart ? "; restart the server to activate changed Geyser item mappings or display variants." : ""), restart);
         } finally {
             lock.unlock();
         }
@@ -96,6 +118,31 @@ public final class GeyserDeploymentService {
         try (var stream = Files.list(root)) {
             return stream.filter(Files::isDirectory).sorted(Comparator.comparing(Path::getFileName).reversed()).toList();
         }
+    }
+
+    private void captureStartupMappings(Path geyser) throws IOException {
+        if (!startupMappings.containsKey(geyser)) startupMappings.put(geyser, mappingHashes(geyser));
+    }
+
+    private static Map<String, String> mappingHashes(Path geyser) throws IOException {
+        Path directory = geyser.resolve("custom_mappings");
+        Map<String, String> hashes = new LinkedHashMap<>();
+        if (Files.isDirectory(directory)) try (var files = Files.list(directory)) {
+            for (Path file : files.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().startsWith("twilight_")).sorted().toList()) {
+                hashes.put(file.getFileName().toString(), sha256(file));
+            }
+        }
+        // The display translator binds variant ordinals at startup. Textures can
+        // reload, but changing that table requires rebuilding the runtime registry.
+        Path pack = geyser.resolve("packs/twilight.zip");
+        if (Files.isRegularFile(pack)) try (ZipFile zip = new ZipFile(pack.toFile())) {
+            var entry = zip.getEntry("twilight/display-index.json");
+            if (entry != null) try (InputStream input = zip.getInputStream(entry)) {
+                hashes.put("packs/twilight.zip!twilight/display-index.json", sha256(input));
+            }
+        }
+        return Map.copyOf(hashes);
     }
 
     public Path resolveGeyserDirectory() throws IOException {
@@ -261,12 +308,16 @@ public final class GeyserDeploymentService {
     }
 
     private static String sha256(Path path) throws IOException {
+        try (InputStream input = Files.newInputStream(path)) {
+            return sha256(input);
+        }
+    }
+
+    private static String sha256(InputStream input) throws IOException {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            try (InputStream input = Files.newInputStream(path)) {
-                byte[] buffer = new byte[65_536];
-                for (int read; (read = input.read(buffer)) >= 0;) if (read > 0) digest.update(buffer, 0, read);
-            }
+            byte[] buffer = new byte[65_536];
+            for (int read; (read = input.read(buffer)) >= 0;) if (read > 0) digest.update(buffer, 0, read);
             return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException impossible) {
             throw new IllegalStateException(impossible);

@@ -63,6 +63,7 @@ public final class TwilightPlugin extends JavaPlugin {
     private TwilightConfig config;
     private GeyserDeploymentService deployment;
     private ProviderHookManager providerHooks;
+    private AutoCloseable displayBridge;
 
     @Override
     public void onEnable() {
@@ -75,6 +76,14 @@ public final class TwilightPlugin extends JavaPlugin {
             return thread;
         });
         loadServices();
+        if (getServer().getPluginManager().getPlugin("Geyser-Spigot") != null) {
+            try {
+                displayBridge = new com.siberanka.twilight.integration.display.GeyserDisplayBridge(this,
+                        deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger());
+            } catch (Exception | LinkageError failure) {
+                getLogger().log(Level.SEVERE, "Live item-display bridge is unavailable; model animation parity is not supported.", failure);
+            }
+        }
 
         TwilightCommand command = new TwilightCommand(this);
         var registered = getCommand("twilight");
@@ -87,6 +96,10 @@ public final class TwilightPlugin extends JavaPlugin {
         for (org.bukkit.plugin.Plugin installed : getServer().getPluginManager().getPlugins()) providerHooks.register(installed);
 
         getLogger().info("Twilight server-side content compiler enabled. Vanilla overrides: " + config.vanillaOverride());
+        if (!"DEFINITION".toLowerCase(java.util.Locale.getDefault()).equals("definition")) {
+            getLogger().warning("This JVM locale can break Geyser custom-item enum parsing. If Geyser rejects definition mappings, "
+                    + "restart with -Duser.language=en -Duser.country=US; keep the generated mapping names unchanged.");
+        }
         if (config.autoBuildOnStartup()) {
             scheduleBuild("startup", config.startupDelayTicks());
         }
@@ -94,6 +107,10 @@ public final class TwilightPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (displayBridge != null) {
+            try { displayBridge.close(); }
+            catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close display bridge", failure); }
+        }
         getServer().getServicesManager().unregisterAll(this);
         if (worker != null) worker.shutdownNow();
     }
@@ -101,7 +118,8 @@ public final class TwilightPlugin extends JavaPlugin {
     private void loadServices() {
         reloadConfig();
         config = TwilightConfig.read(getConfig(), serverRoot);
-        deployment = new GeyserDeploymentService(serverRoot, getDataFolder().toPath(), config);
+        if (deployment == null) deployment = new GeyserDeploymentService(serverRoot, getDataFolder().toPath(), config);
+        else deployment.reconfigure(config);
     }
 
     void scan(CommandSender sender, boolean buildRequested) {
@@ -133,6 +151,10 @@ public final class TwilightPlugin extends JavaPlugin {
         send(sender, (buildRequested ? "Build" : "Scan") + " started off the server thread.");
         CompletableFuture.supplyAsync(() -> {
             try {
+                if (buildRequested && config.strict() && !runtimeCollection.issues().isEmpty()) {
+                    throw new ConversionException("Strict conversion rejected incomplete provider item discovery: "
+                            + runtimeCollection.issues().getFirst(), runtimeCollection.issues());
+                }
                 Set<Path> worlds = WorldLayout.discover(serverRoot, runtimeWorlds);
                 operationLog.info("world-discovery", worlds);
                 List<ContentSource> sources = new SourceDiscovery(serverRoot, config).discover(worlds);
@@ -154,7 +176,7 @@ public final class TwilightPlugin extends JavaPlugin {
                         ? deployment.deploy(build.outputDirectory()) : null;
                 if (deployed != null) {
                     operationLog.info("deploy-result", deployed);
-                    reloadGeyser(operationLog);
+                    reloadGeyser(operationLog, deployed);
                 }
                 return new ScanOutcome(report, build, deployed, inputFingerprint, unchanged);
             } catch (Exception exception) {
@@ -204,7 +226,7 @@ public final class TwilightPlugin extends JavaPlugin {
     void deploy(CommandSender sender) {
         runExclusive(sender, "Geyser deployment", log -> {
             DeploymentResult result = deployment.deploy(getDataFolder().toPath().resolve("build/current"));
-            reloadGeyser(log);
+            reloadGeyser(log, result);
             return result;
         });
     }
@@ -212,7 +234,7 @@ public final class TwilightPlugin extends JavaPlugin {
     void rollback(CommandSender sender, int index) {
         runExclusive(sender, "Geyser rollback", log -> {
             DeploymentResult result = deployment.rollback(index);
-            reloadGeyser(log);
+            reloadGeyser(log, result);
             return result;
         });
     }
@@ -289,7 +311,11 @@ public final class TwilightPlugin extends JavaPlugin {
         scheduler.execute(() -> sender.sendMessage("§5[Twilight] §f" + message));
     }
 
-    private void reloadGeyser(OperationLog operationLog) throws Exception {
+    private void reloadGeyser(OperationLog operationLog, DeploymentResult deploymentResult) throws Exception {
+        if (deploymentResult.restartRequired()) {
+            operationLog.warn("geyser-restart-required", deploymentResult.message());
+            return;
+        }
         if (!config.reloadAfterDeploy()) {
             operationLog.info("geyser-reload", "disabled by configuration");
             return;

@@ -58,9 +58,10 @@ public final class BedrockPackCompiler {
     }
 
     public BuildResult build(List<ContentSource> sources, List<CustomItemDescriptor> liveItems) throws IOException {
-        try (ResourceIndex resources = ResourceIndex.build(sources, config);
-             VanillaAssetCache vanillaAssets = minecraftVersion == null ? null : new VanillaAssetCache(
-                     dataDirectory, minecraftVersion, config.downloadVanillaAssets())) {
+        try (VanillaAssetCache vanillaAssets = minecraftVersion == null ? null : new VanillaAssetCache(
+                     dataDirectory, minecraftVersion, config.downloadVanillaAssets());
+             ResourceIndex resources = vanillaAssets == null ? ResourceIndex.build(sources, config)
+                     : ResourceIndex.build(sources, config, vanillaAssets::packFormat)) {
             return build(resources, liveItems, vanillaAssets);
         }
     }
@@ -74,6 +75,7 @@ public final class BedrockPackCompiler {
         JsonObject textureData = new JsonObject();
         JsonObject mappedItems = new JsonObject();
         List<String> problems = new ArrayList<>();
+        DisplayEntityResources displays = new DisplayEntityResources();
         int converted = 0, threeDimensional = 0;
 
         for (ItemCandidate candidate : candidates) {
@@ -84,7 +86,7 @@ public final class BedrockPackCompiler {
                 String texturePath = "textures/twilight/" + safe;
                 String iconKey = "twilight." + safe;
                 List<String> layers = flatLayers(model);
-                NativeWeapon nativeWeapon = nativeWeapon(candidate, model, resolver, resources, vanillaItems);
+                NativeWeapon nativeWeapon = nativeWeapon(candidate, model, resolver, resources, vanillaItems, vanillaAssets);
                 DynamicWeapon dynamicWeapon = nativeWeapon == null ? dynamicWeapon(candidate, resolver) : null;
                 boolean customFlat = !model.isThreeDimensional() && nativeWeapon == null &&
                         requiresCustomFlat(candidate, model, vanillaItems);
@@ -92,10 +94,10 @@ public final class BedrockPackCompiler {
                 if (dynamicWeapon != null) {
                     Set<String> stateTextures = new LinkedHashSet<>();
                     for (ResolvedJavaModel state : dynamicWeapon.states()) stateTextures.addAll(usedTextures(state));
-                    TextureSet atlas = TextureSet.atlas(resources, List.copyOf(stateTextures));
+                    TextureSet atlas = TextureSet.atlas(resources, List.copyOf(stateTextures), vanillaAssets);
                     packFiles.put(texturePath + ".png", atlas.png());
                     icon = TextureSet.png(TextureSet.layeredIcon(resources,
-                            layers.isEmpty() ? List.of(usedTextures(model).iterator().next()) : layers));
+                            layers.isEmpty() ? List.of(usedTextures(model).iterator().next()) : layers, vanillaAssets));
                     packFiles.put("textures/twilight/" + safe + "_icon.png", icon);
                     for (int state = 0; state < dynamicWeapon.states().size(); state++) {
                         String stateSafe = safe + "_state_" + state;
@@ -114,11 +116,11 @@ public final class BedrockPackCompiler {
                     if (dynamicWeapon.states().stream().anyMatch(ResolvedJavaModel::isThreeDimensional)) threeDimensional++;
                 } else if (model.isThreeDimensional() || customFlat) {
                     Set<String> usedTextures = usedTextures(model);
-                    TextureSet atlas = TextureSet.atlas(resources, List.copyOf(usedTextures));
+                    TextureSet atlas = TextureSet.atlas(resources, List.copyOf(usedTextures), vanillaAssets);
                     GeometryBounds bounds = geometryBounds(model);
                     packFiles.put(texturePath + ".png", atlas.png());
                     icon = TextureSet.png(TextureSet.layeredIcon(resources,
-                            layers.isEmpty() ? List.of(usedTextures.iterator().next()) : layers));
+                            layers.isEmpty() ? List.of(usedTextures.iterator().next()) : layers, vanillaAssets));
                     packFiles.put("textures/twilight/" + safe + "_icon.png", icon);
                     packFiles.put("models/entity/geometry." + safe + ".geo.json",
                             jsonBytes(geometry(safe, model, atlas, bounds)));
@@ -126,9 +128,10 @@ public final class BedrockPackCompiler {
                             jsonBytes(animations(safe, model.display())));
                     packFiles.put("attachables/" + safe + ".json",
                             jsonBytes(attachable(identifier, safe, texturePath)));
+                    displays.add(packFiles, identifier, safe, geometry(safe, model, atlas, bounds), model.display());
                     if (model.isThreeDimensional()) threeDimensional++;
                 } else {
-                    icon = TextureSet.png(TextureSet.layeredIcon(resources, layers));
+                    icon = TextureSet.png(TextureSet.layeredIcon(resources, layers, vanillaAssets));
                     packFiles.put(texturePath + ".png", icon);
                     if (nativeWeapon != null) {
                         List<String> framePaths = new ArrayList<>();
@@ -153,6 +156,7 @@ public final class BedrockPackCompiler {
             }
         }
 
+        displays.finish(packFiles);
         BitmapFontCompiler.Result fonts;
         SoundCompiler.Result sounds;
         if (vanillaAssets == null) {
@@ -286,7 +290,7 @@ public final class BedrockPackCompiler {
 
     private static NativeWeapon nativeWeapon(ItemCandidate candidate, ResolvedJavaModel model,
                                              JavaModelResolver resolver, ResourceIndex resources,
-                                             VanillaItemReference vanillaItems) throws IOException {
+                                             VanillaItemReference vanillaItems, VanillaAssetCache vanillaAssets) throws IOException {
         String type;
         int expected;
         if (candidate.baseItem().equals("minecraft:bow")) {
@@ -323,7 +327,7 @@ public final class BedrockPackCompiler {
             } catch (IOException unavailableReference) {
                 return null;
             }
-            frames.add(TextureSet.png(TextureSet.layeredIcon(resources, stateLayers)));
+            frames.add(TextureSet.png(TextureSet.layeredIcon(resources, stateLayers, vanillaAssets)));
         }
         if (chargedCrossbow) while (frames.size() < expected) frames.add(frames.getFirst());
         return frames.size() == expected ? new NativeWeapon(type, List.copyOf(frames)) : null;
@@ -415,9 +419,9 @@ public final class BedrockPackCompiler {
                 String axis = rotation.has("axis") ? rotation.get("axis").getAsString() : "y";
                 cube.add("pivot", numberArray(pivot[0] - 8, pivot[1], 8 - pivot[2]));
                 cube.add("rotation", switch (axis) {
-                    case "x" -> numberArray(-angle, 0, 0);
+                    case "x" -> numberArray(angle, 0, 0);
                     case "z" -> numberArray(0, 0, -angle);
-                    default -> numberArray(0, angle, 0);
+                    default -> numberArray(0, -angle, 0);
                 });
             }
             JsonObject uv = new JsonObject();
@@ -430,12 +434,14 @@ public final class BedrockPackCompiler {
                         : JavaModelResolver.qualified(reference, "minecraft");
                 if (texture == null) throw new IOException("Unresolved face texture " + reference);
                 TextureSet.Region region = atlas.region(texture);
-                double[] faceUv = face.has("uv") ? vector4(face.getAsJsonArray("uv")) : new double[]{0, 0, 16, 16};
+                double[] faceUv = face.has("uv") ? vector4(face.getAsJsonArray("uv"))
+                        : defaultFaceUv(faceEntry.getKey(), from, to);
                 JsonObject mapped = new JsonObject();
                 mapped.add("uv", numberArray(region.x() + faceUv[0] * region.width() / 16.0,
                         region.y() + faceUv[1] * region.height() / 16.0));
                 mapped.add("uv_size", numberArray((faceUv[2] - faceUv[0]) * region.width() / 16.0,
                         (faceUv[3] - faceUv[1]) * region.height() / 16.0));
+                if (face.has("rotation")) mapped.addProperty("uv_rotation", face.get("rotation").getAsInt());
                 uv.add(mapFace(faceEntry.getKey()), mapped);
             }
             cube.add("uv", uv);
@@ -460,6 +466,18 @@ public final class BedrockPackCompiler {
         JsonArray geometries = new JsonArray(); geometries.add(geometry);
         JsonObject root = new JsonObject(); root.addProperty("format_version", "1.21.0"); root.add("minecraft:geometry", geometries);
         return root;
+    }
+
+    private static double[] defaultFaceUv(String face, double[] from, double[] to) {
+        return switch (face) {
+            case "down" -> new double[]{from[0], 16 - to[2], to[0], 16 - from[2]};
+            case "up" -> new double[]{from[0], from[2], to[0], to[2]};
+            case "north" -> new double[]{16 - to[0], 16 - to[1], 16 - from[0], 16 - from[1]};
+            case "south" -> new double[]{from[0], 16 - to[1], to[0], 16 - from[1]};
+            case "west" -> new double[]{from[2], 16 - to[1], to[2], 16 - from[1]};
+            case "east" -> new double[]{16 - to[2], 16 - to[1], 16 - from[2], 16 - from[1]};
+            default -> throw new IllegalArgumentException("Unknown Java face " + face);
+        };
     }
 
     private static JsonObject attachable(String identifier, String safe, String texturePath) {
@@ -623,10 +641,10 @@ public final class BedrockPackCompiler {
         JsonObject thirdLeft = transform(display, "thirdperson_lefthand", thirdRight);
         definitions.add("animation.twilight." + safe + ".first_person_right", animation(mapFirst(firstRight)));
         definitions.add("animation.twilight." + safe + ".first_person_left", animation(mapFirst(
-                mirror(firstLeft, display.has("firstperson_lefthand")))));
+                mirror(firstLeft))));
         definitions.add("animation.twilight." + safe + ".third_person_right", animation(mapThird(thirdRight)));
         definitions.add("animation.twilight." + safe + ".third_person_left", animation(mapThird(
-                mirror(thirdLeft, display.has("thirdperson_lefthand")))));
+                mirror(thirdLeft))));
         definitions.add("animation.twilight." + safe + ".head", animation(mapHead(transform(display, "head", null))));
         JsonObject root = new JsonObject(); root.addProperty("format_version", "1.8.0"); root.add("animations", definitions); return root;
     }
@@ -645,7 +663,14 @@ public final class BedrockPackCompiler {
 
     private static MappedTransform mapThird(JsonObject transform) {
         double[] t = vector(transform.getAsJsonArray("translation"), 0, 0, 0), r = vector(transform.getAsJsonArray("rotation"), 0, 0, 0), s = vector(transform.getAsJsonArray("scale"), 1, 1, 1);
-        Quaternion q = Quaternion.axis(90, 1, 0, 0).mul(Quaternion.axis(-r[0], 1, 0, 0)).mul(Quaternion.axis(-r[1], 0, 0, 1)).mul(Quaternion.axis(-r[2], 0, 1, 0));
+        // Java display is intrinsic XYZ. Bedrock reverses X/Y rotation signs,
+        // while Z keeps its sign. Bridge our Z-reflected geometry to Bedrock's
+        // X-reflected model frame before applying the authored display pose.
+        Quaternion q = Quaternion.axis(90, 1, 0, 0)
+                .mul(Quaternion.axis(-r[0], 1, 0, 0))
+                .mul(Quaternion.axis(-r[1], 0, 1, 0))
+                .mul(Quaternion.axis(r[2], 0, 0, 1))
+                .mul(Quaternion.axis(180, 0, 1, 0));
         return new MappedTransform(new double[]{-t[0], 12.5 + t[2], -t[1]}, q.eulerXYZ(), s);
     }
 
@@ -663,8 +688,9 @@ public final class BedrockPackCompiler {
         return result;
     }
 
-    private static JsonObject mirror(JsonObject input, boolean explicit) {
-        if (explicit) return input;
+    private static JsonObject mirror(JsonObject input) {
+        // Java ItemTransform.apply mirrors every left-hand context, including
+        // explicitly authored ones; the fallback only selects the source pose.
         JsonObject result = input.deepCopy();
         double[] r = vector(result.getAsJsonArray("rotation"), 0, 0, 0), t = vector(result.getAsJsonArray("translation"), 0, 0, 0);
         result.add("rotation", numberArray(r[0], -r[1], -r[2])); result.add("translation", numberArray(-t[0], t[1], t[2])); return result;
@@ -805,6 +831,24 @@ public final class BedrockPackCompiler {
     private record Quaternion(double x,double y,double z,double w) {
         static Quaternion axis(double degrees,double ax,double ay,double az){double h=Math.toRadians(degrees)/2,s=Math.sin(h);return new Quaternion(ax*s,ay*s,az*s,Math.cos(h));}
         Quaternion mul(Quaternion b){return new Quaternion(w*b.x+x*b.w+y*b.z-z*b.y,w*b.y-x*b.z+y*b.w+z*b.x,w*b.z+x*b.y-y*b.x+z*b.w,w*b.w-x*b.x-y*b.y-z*b.z);}
-        double[] eulerXYZ(){double xx=x*x,yy=y*y,zz=z*z; double m00=1-2*(yy+zz),m01=2*(x*y-z*w),m10=2*(x*y+z*w),m11=1-2*(xx+zz),m20=2*(x*z-y*w),m21=2*(y*z+x*w),m22=1-2*(xx+yy); double sy=Math.max(-1,Math.min(1,-m20)), yv=Math.asin(sy),xv,zv; if(Math.abs(Math.cos(yv))>1e-7){xv=Math.atan2(m21,m22);zv=Math.atan2(m10,m00);}else{xv=Math.atan2(-m01,m11);zv=0;} return new double[]{Math.toDegrees(xv),Math.toDegrees(yv),Math.toDegrees(zv)};}
+        double[] eulerXYZ() {
+            double xx = x * x, yy = y * y, zz = z * z;
+            double m00 = 1 - 2 * (yy + zz), m01 = 2 * (x * y - z * w);
+            double m10 = 2 * (x * y + z * w), m11 = 1 - 2 * (xx + zz);
+            double m20 = 2 * (x * z - y * w), m21 = 2 * (y * z + x * w);
+            double m22 = 1 - 2 * (xx + yy);
+            double sy = Math.max(-1, Math.min(1, -m20));
+            double yAngle = Math.asin(sy), xAngle, zAngle;
+            if (Math.abs(Math.cos(yAngle)) > 1.0e-7) {
+                xAngle = Math.atan2(m21, m22);
+                zAngle = Math.atan2(m10, m00);
+            } else {
+                // At +90 degrees m01 = sin(x-z); at -90 it is -sin(x+z).
+                // Choose z=0 without changing the represented orientation.
+                xAngle = Math.atan2(sy * m01, m11);
+                zAngle = 0;
+            }
+            return new double[]{Math.toDegrees(xAngle), Math.toDegrees(yAngle), Math.toDegrees(zAngle)};
+        }
     }
 }

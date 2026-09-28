@@ -20,9 +20,11 @@ Java 21 is the minimum bytecode level. Local builds use Java 25.
 | ItemsAdder contents/data/cache/generated packs/API | Implemented | Authored roots override data/cache; generated ZIP is fallback. First-load, load-data, and pack-compressed events are observed. |
 | CraftEngine resources/cache/generated packs/API | Implemented | `loadedItems`, reload, and pack-generation events are supported; richer component mapping remains in progress. |
 | Nexo/Oraxen packs/API | Implemented | Standard item assets implemented; Oraxen array registries and item-load/pack events are supported, while version-specific API failures fall back to files and are logged. |
-| BetterModel/ModelEngine packs and `.bbmodel` sources | Implemented | Static Java composite item geometry implemented; entity rigs and full animations remain in progress. |
+| BetterModel/ModelEngine generated packs | Partial | Static geometry and a development live item-display bridge are implemented. Sampled BetterModel/ModelEngine poses and stationary MythicMobs models verified; full animations remain in progress. |
+| Standalone `.bbmodel` sources | Discovered | Source discovery does not imply independent rig/animation conversion; generated Java item assets are currently required. |
 | RealisticSeasons pack layers | Implemented | Pack is indexed as a seasonal layer; live season/biome presentation conversion remains in progress. |
 | World datapacks | Implemented | `server.properties` `level-name`, Bukkit worlds, dimensions, ZIP/folder datapacks. |
+| MythicMobs runtime mobs | Not implemented by Twilight | Provider can spawn Java mobs; cross-client custom entity rendering requires a runtime entity bridge. See the real-content review. |
 | Additional configured sources | Implemented | Path containment, link, size, entry, and archive safety checks apply. |
 
 Twilight does not extract protected assets or reproduce paid plugin internals. Integrations use public APIs, documented file formats, and assets available to the server operator.
@@ -36,7 +38,7 @@ Implemented:
 - Static composite model merging without flattening 3D parts.
 - Legacy numeric custom model data.
 - Layered 2D PNG composition and deterministic item atlas entries.
-- Java cuboids, per-face UVs, element rotations, texture atlases, Bedrock geometry and attachables.
+- Java cuboids, default and explicit per-face UVs, face UV rotations, element rotations, texture atlases, Bedrock geometry and attachables.
 - First-person right/left, third-person right/left, and head display transforms; authored hand translation, rotation, and scale are preserved without implicit fitting.
 - Model-parent-derived handheld presentation, independent of the mapping's vanilla base item.
 - Native Bedrock bow/crossbow pose and pull controllers for single-layer texture-only replacements.
@@ -49,13 +51,14 @@ Open release gates:
 
 - Full current Java item node/property matrix, including nested dynamic composites and native special renderers.
 - Exact GUI rendering for complex 3D models rather than source-texture fallback icons.
-- Animated `.mcmeta` to Bedrock flipbook conversion.
+- Animated `.mcmeta` to Bedrock flipbook conversion (only the first authored frame currently exports).
+- Full visual hand-pose parity, especially first-person framing and complex provider models; see the [real-content review](REAL_CONTENT_REVIEW.md).
 - Live acceptance of every provider/version state matrix, including fishing lines, 3D bow/crossbow state transitions, shields, tridents/spears, armor, and elytra.
 - Component-rich runtime definitions and creative/recipe presentation for every provider version.
 
 ## Other custom content
 
-Bitmap providers reachable from `minecraft:default` are converted to Bedrock Unicode BMP pages. Every page uses fixed 16-pixel cells, and each glyph is scaled and bottom-aligned independently so oversized GUI providers cannot change normal emoji height or move them off the chat baseline. Unreadable generated layers can fall back to a valid lower-priority source asset. Named font definitions are also inspected automatically; collision-free BMP private-use glyphs can join the global Bedrock atlas without losing their Java font context.
+Supported bitmap providers reachable from `minecraft:default` are converted to Bedrock Unicode BMP pages with fixed 16-pixel cells and independent bottom alignment. Glyphs whose declared display height or width exceeds 16 pixels require a Bedrock UI adapter: strict builds reject them, and diagnostic builds report and omit them. Custom space advances also fail strict conversion. Actual inline emoji alignment still needs successful client acceptance. Unreadable generated layers can fall back to a valid lower-priority source asset. Collision-free BMP private-use glyphs from named fonts can join the global Bedrock atlas.
 
 When `vanilla-override` is disabled, normal Unicode cells from the Java default font are rejected rather than replacing Bedrock's vanilla glyphs. Differing named-font images that reuse one code point and named glyphs outside the private-use range require an outbound component-remapping bridge, so strict publication currently rejects them.
 
@@ -79,6 +82,6 @@ Discovery counters also cover sounds, blockstates, `.bbmodel` files, and datapac
 
 ## Geyser deployment
 
-Twilight owns only `packs/twilight.zip`, `custom_mappings/twilight_*`, and explicitly generated locale override files recorded in its deployment manifest. Deployment stages and hashes all files, snapshots the previous owned set, publishes with atomic replacement where supported, rolls back on failure, and retains three snapshots by default. A successful deploy or rollback requests a controlled Geyser reload. Unrelated Geyser files are never removed.
+Twilight owns only `packs/twilight.zip`, `custom_mappings/twilight_*`, and explicitly generated locale override files recorded in its deployment manifest. Deployment stages and hashes all files, snapshots the previous owned set, publishes with atomic replacement where supported, rolls back on failure, and retains three snapshots by default. Deploy and rollback compare mappings with the startup snapshot: a difference reports a required server restart and suppresses the ineffective Geyser reload. Configuration reload preserves that state. Unchanged mappings permit a controlled resource reload. Unrelated Geyser files are never removed.
 
 Provider reload/pack commands and supported completion events are debounced. Twilight hashes the actual source bytes and live item descriptors before rebuilding, skips duplicate deploys when content is unchanged, and performs a delayed settle check for providers that finish writing after their command returns.

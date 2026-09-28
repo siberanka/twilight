@@ -41,7 +41,58 @@ public final class BukkitItemCollector {
             for (ItemStack stack : player.getInventory().getContents()) add("inventory", stack, descriptors);
         });
         for (ProviderProbe probe : PROVIDERS) probe.collect(descriptors, issues);
+        collectBetterModel(descriptors, issues);
+        collectModelEngine(descriptors, issues);
         return new CollectionResult(List.copyOf(descriptors.values()), List.copyOf(issues));
+    }
+
+    private static void collectModelEngine(Map<String, CustomItemDescriptor> output, Set<String> issues) {
+        Plugin provider = Bukkit.getPluginManager().getPlugin("ModelEngine");
+        if (provider == null || !provider.isEnabled()) return;
+        try {
+            Class<?> api = Class.forName("com.ticxo.modelengine.api.ModelEngineAPI", false, provider.getClass().getClassLoader());
+            Object instance = api.getMethod("getAPI").invoke(null);
+            Object registry = api.getMethod("getModelRegistry").invoke(instance);
+            Object values = registry.getClass().getMethod("getValues").invoke(registry);
+            if (!(values instanceof Iterable<?> models)) throw new IllegalStateException("Unsupported model registry");
+            for (Object model : models) {
+                Object flatMap = model.getClass().getMethod("getFlatMap").invoke(model);
+                if (!(flatMap instanceof Map<?, ?> bones)) throw new IllegalStateException("Unsupported bone registry");
+                for (Object bone : bones.values()) {
+                    if (!Boolean.TRUE.equals(bone.getClass().getMethod("isRenderer").invoke(bone))) continue;
+                    Object modelData = bone.getClass().getMethod("getModelData").invoke(bone);
+                    if (modelData == null) continue;
+                    Object stacks = modelData.getClass().getMethod("createItemStack").invoke(modelData);
+                    if (!(stacks instanceof Iterable<?> items)) throw new IllegalStateException("Unsupported bone item collection");
+                    for (Object stack : items) add("ModelEngine", stack, output);
+                }
+            }
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+            issue(issues, "ModelEngine model registry could not be read: " + describe(failure));
+        }
+    }
+
+    private static void collectBetterModel(Map<String, CustomItemDescriptor> output, Set<String> issues) {
+        Plugin provider = Bukkit.getPluginManager().getPlugin("BetterModel");
+        if (provider == null || !provider.isEnabled()) return;
+        try {
+            ClassLoader loader = provider.getClass().getClassLoader();
+            Class<?> api = Class.forName("kr.toxicity.model.api.BetterModel", false, loader);
+            Object registry = api.getMethod("models").invoke(null);
+            if (!(registry instanceof Iterable<?> models)) throw new IllegalStateException("Unsupported model registry");
+            for (Object model : models) {
+                try (var groups = (java.util.stream.Stream<?>) model.getClass().getMethod("flatten").invoke(model)) {
+                    for (Object group : groups.toList()) {
+                        Object transformed = group.getClass().getMethod("getItemStack").invoke(group);
+                        Object platformItem = transformed.getClass().getMethod("itemStack").invoke(transformed);
+                        Object stack = platformItem.getClass().getMethod("source").invoke(platformItem);
+                        add("BetterModel", stack, output);
+                    }
+                }
+            }
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+            issue(issues, "BetterModel model registry could not be read: " + describe(failure));
+        }
     }
 
     private static void add(String provider, Object possibleStack, Map<String, CustomItemDescriptor> output) {

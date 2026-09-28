@@ -13,6 +13,9 @@ base {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     compileOnly("org.geysermc.geyser:api:2.11.2-SNAPSHOT")
+    // Item-display translation is not exposed by Geyser's public API yet.
+    // Pin the adapter to a reviewed core build; never bundle Geyser classes.
+    compileOnly("org.geysermc.geyser:core:2.11.3-20260925.135253-13")
     testCompileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
 
     testImplementation(platform("org.junit:junit-bom:5.14.1"))

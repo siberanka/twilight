@@ -54,6 +54,7 @@ public final class ProviderHookManager {
     }
 
     public synchronized int register(Plugin provider) {
+        if (!provider.isEnabled()) return 0;
         String key = provider.getName().toLowerCase(Locale.ROOT);
         if (!EVENTS.containsKey(key) || registered.containsKey(key)) return 0;
         int count = 0;

@@ -6,7 +6,7 @@ import java.util.List;
 public final class ConversionException extends IOException {
     private final List<String> problems;
 
-    ConversionException(String message, List<String> problems) {
+    public ConversionException(String message, List<String> problems) {
         super(message);
         this.problems = List.copyOf(problems);
     }

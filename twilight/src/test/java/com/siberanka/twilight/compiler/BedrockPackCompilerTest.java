@@ -88,15 +88,15 @@ class BedrockPackCompilerTest {
             assertTrue(headerVersion.get(2).getAsInt() >= 1);
             assertTrue(headerVersion.get(2).getAsInt() <= 65_535,
                     "pack version must remain in the Bedrock client-safe component range");
-            long geometries = zip.stream().filter(entry -> entry.getName().startsWith("models/entity/")).count();
+            long geometries = zip.stream().filter(entry -> entry.getName().startsWith("models/entity/geometry.")).count();
             assertEquals(3, geometries);
-            assertTrue(zip.stream().filter(entry -> entry.getName().startsWith("models/entity/"))
+            assertTrue(zip.stream().filter(entry -> entry.getName().startsWith("models/entity/geometry."))
                     .map(entry -> {
                         try { return read(zip, entry.getName()); } catch (Exception failure) { throw new RuntimeException(failure); }
                     }).anyMatch(value -> value.getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject()
                             .getAsJsonArray("bones").get(0).getAsJsonObject().getAsJsonArray("cubes").size() == 2),
                     "static composite parts must be merged into one Bedrock geometry");
-            String geometryName = zip.stream().filter(entry -> entry.getName().startsWith("models/entity/"))
+            String geometryName = zip.stream().filter(entry -> entry.getName().startsWith("models/entity/geometry."))
                     .findFirst().orElseThrow().getName();
             JsonObject geometry = read(zip, geometryName);
             JsonArray size = geometry.getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject()
@@ -216,6 +216,113 @@ class BedrockPackCompilerTest {
     }
 
     @Test
+    void thirdPersonYawDoesNotTurnTheModelHeightAxisSideways() throws Exception {
+        Path source = root.resolve("third-person-axis-source");
+        List<CustomItemDescriptor> items = new java.util.ArrayList<>();
+        // Yaw turns the faces around the handle, never the handle itself.
+        // Exercise both quarter turns and intermediate angles, including the
+        // inherited handheld yaw that previously made an upright tool horizontal.
+        for (int yaw : new int[]{-180, -90, -45, 0, 45, 90, 180}) {
+            String model = "demo:item/yaw_" + (yaw + 180);
+            write(source, "assets/demo/models/item/yaw_" + (yaw + 180) + ".json", """
+                    {"textures":{"all":"demo:item/axis"},
+                     "display":{"thirdperson_righthand":{"rotation":[0,%d,0]}},
+                     "elements":[{"from":[7,0,7],"to":[9,16,9],"faces":{
+                       "north":{"texture":"#all"},"south":{"texture":"#all"}}}]}
+                    """.formatted(yaw));
+            items.add(new CustomItemDescriptor("test", "minecraft:paper", Optional.of(model),
+                    OptionalInt.empty(), "Axis test"));
+        }
+        png(source.resolve("assets/demo/textures/item/axis.png"), Color.ORANGE);
+        BuildResult result = new BedrockPackCompiler(root.resolve("third-person-axis-data"), config()).build(
+                List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), items);
+        assertEquals(items.size(), result.converted());
+        try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
+            for (ZipEntry entry : zip.stream().filter(e -> e.getName().startsWith("animations/")).toList()) {
+                JsonObject definitions = read(zip, entry.getName()).getAsJsonObject("animations");
+                for (var definition : definitions.entrySet()) {
+                    if (!definition.getKey().endsWith(".third_person_right")) continue;
+                    JsonArray rotation = definition.getValue().getAsJsonObject().getAsJsonObject("bones")
+                            .getAsJsonObject("bone").getAsJsonArray("rotation");
+                    double x = Math.toRadians(rotation.get(0).getAsDouble());
+                    double y = Math.toRadians(rotation.get(1).getAsDouble());
+                    double z = Math.toRadians(rotation.get(2).getAsDouble());
+                    // Transform the unit-height vector by the exported Euler
+                    // rotation. Hand-space height points along Z at neutral roll.
+                    double heightX = Math.cos(z) * Math.sin(y) * Math.sin(x) - Math.sin(z) * Math.cos(x);
+                    double heightY = Math.sin(z) * Math.sin(y) * Math.sin(x) + Math.cos(z) * Math.cos(x);
+                    double heightZ = Math.cos(y) * Math.sin(x);
+                    assertEquals(0, heightX, 1.0e-9, definition.getKey());
+                    assertEquals(0, heightY, 1.0e-9, definition.getKey());
+                    assertEquals(1, heightZ, 1.0e-9, definition.getKey());
+                }
+            }
+        }
+    }
+
+    @Test
+    void thirdPersonOrientationMatchesJavaForAsymmetricAndCompoundPoses() throws Exception {
+        int[][] poses = {{0, 0, 0}, {0, -90, 55}, {25, -50, 35}, {20, 90, 30}};
+        for (int i = 0; i < poses.length; i++) {
+            int[] pose = poses[i];
+            JsonObject animations = compilePoseAnimations("java_basis_" + i, """
+                    {"thirdperson_righthand":{"rotation":[%d,%d,%d]}}
+                    """.formatted(pose[0], pose[1], pose[2]));
+            JsonArray exported = poseBone(animations, "third_person_right").getAsJsonArray("rotation");
+            for (double[] axis : new double[][]{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}) {
+                // Java display applies intrinsic XYZ, after the held-item -90 X frame.
+                double[] expected = rotateAxis(axis, 2, pose[2]);
+                expected = rotateAxis(expected, 1, pose[1]);
+                expected = rotateAxis(expected, 0, pose[0] - 90);
+                // Our geometry reflects Z. Bedrock's rendered coordinates reflect
+                // X, so the source model enters the bone with X/Z both reversed.
+                double[] actual = {-axis[0], axis[1], -axis[2]};
+                actual = rotateAxis(actual, 0, -exported.get(0).getAsDouble());
+                actual = rotateAxis(actual, 1, -exported.get(1).getAsDouble());
+                actual = rotateAxis(actual, 2, exported.get(2).getAsDouble());
+                assertArrayEquals(expected, actual, 1.0e-9, "pose " + i);
+            }
+        }
+    }
+
+    @Test
+    void mirrorsExplicitLeftHandTransformsLikeTheJavaRenderer() throws Exception {
+        JsonObject animations = compilePoseAnimations("explicit_left", """
+                {"firstperson_righthand":{"rotation":[17,-32,-21],"translation":[-2,3,4]},
+                 "firstperson_lefthand":{"rotation":[17,32,21],"translation":[2,3,4]},
+                 "thirdperson_righthand":{"rotation":[17,-32,-21],"translation":[-2,3,4]},
+                 "thirdperson_lefthand":{"rotation":[17,32,21],"translation":[2,3,4]}}
+                """);
+        // Java applies the left-hand X-translation/YZ-rotation sign change
+        // even when a pack explicitly supplies a left-hand display context.
+        for (String perspective : List.of("first_person", "third_person")) {
+            assertEquals(poseBone(animations, perspective + "_right"),
+                    poseBone(animations, perspective + "_left"), perspective);
+        }
+    }
+
+    @Test
+    void preservesHandleDirectionAtBothEulerSingularities() throws Exception {
+        for (int pitch : new int[]{-90, 90}) {
+            JsonObject animations = compilePoseAnimations("singular_" + (pitch + 90), """
+                    {"firstperson_righthand":{"rotation":[%d,0,0]}}
+                    """.formatted(pitch));
+            JsonArray rotation = poseBone(animations, "first_person_right").getAsJsonArray("rotation");
+            double x = Math.toRadians(rotation.get(0).getAsDouble());
+            double y = Math.toRadians(rotation.get(1).getAsDouble());
+            double z = Math.toRadians(rotation.get(2).getAsDouble());
+            double heightX = Math.cos(z) * Math.sin(y) * Math.sin(x) - Math.sin(z) * Math.cos(x);
+            double heightY = Math.sin(z) * Math.sin(y) * Math.sin(x) + Math.cos(z) * Math.cos(x);
+            double heightZ = Math.cos(y) * Math.sin(x);
+            // A positive/negative quarter-turn sends model Y to -X/+X;
+            // the fixed hand X rotation cannot change that X direction.
+            assertEquals(-Math.signum(pitch), heightX, 1.0e-9, "pitch " + pitch);
+            assertEquals(0, heightY, 1.0e-9);
+            assertEquals(0, heightZ, 1.0e-9);
+        }
+    }
+
+    @Test
     void givesChangedFlatWeaponsJavaTransformsAndRuntimeStates() throws Exception {
         Path source = root.resolve("native-flat-source");
         write(source, "assets/minecraft/models/item/bow.json", """
@@ -248,7 +355,7 @@ class BedrockPackCompilerTest {
         assertEquals(0, result.threeDimensional());
         try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
             assertEquals(6, zip.stream().map(ZipEntry::getName)
-                    .filter(name -> name.startsWith("models/entity/")).count());
+                    .filter(name -> name.startsWith("models/entity/geometry.")).count());
             assertEquals(3, zip.stream().map(ZipEntry::getName)
                     .filter(name -> name.startsWith("attachables/")).count());
             String bowAttachable = zip.stream().map(ZipEntry::getName).filter(name -> name.startsWith("attachables/"))
@@ -367,7 +474,7 @@ class BedrockPackCompilerTest {
                 new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
         assertEquals(6, recolour.converted());
         try (ZipFile zip = new ZipFile(recolour.outputDirectory().resolve("pack.zip").toFile())) {
-            assertEquals(0, zip.stream().filter(entry -> entry.getName().startsWith("models/entity/")).count());
+            assertEquals(0, zip.stream().filter(entry -> entry.getName().startsWith("models/entity/geometry.")).count());
             assertEquals(4, zip.stream().filter(entry -> entry.getName().startsWith("attachables/")).count());
             String attachable = zip.stream().map(ZipEntry::getName)
                     .filter(name -> name.startsWith("attachables/"))
@@ -391,7 +498,7 @@ class BedrockPackCompilerTest {
         BuildResult animated = new BedrockPackCompiler(animatedData, config(), "26.2").build(List.of(
                 new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
         try (ZipFile zip = new ZipFile(animated.outputDirectory().resolve("pack.zip").toFile())) {
-            assertEquals(4, zip.stream().filter(entry -> entry.getName().startsWith("models/entity/")).count());
+            assertEquals(4, zip.stream().filter(entry -> entry.getName().startsWith("models/entity/geometry.")).count());
         }
         Files.delete(animationMetadata);
 
@@ -404,7 +511,7 @@ class BedrockPackCompilerTest {
         BuildResult changedShape = new BedrockPackCompiler(changedData, config(), "26.2").build(List.of(
                 new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
         try (ZipFile zip = new ZipFile(changedShape.outputDirectory().resolve("pack.zip").toFile())) {
-            assertEquals(4, zip.stream().filter(entry -> entry.getName().startsWith("models/entity/")).count());
+            assertEquals(4, zip.stream().filter(entry -> entry.getName().startsWith("models/entity/geometry.")).count());
         }
     }
 
@@ -433,7 +540,7 @@ class BedrockPackCompilerTest {
         assertEquals(1, result.threeDimensional());
         try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
             assertEquals(4, zip.stream().map(ZipEntry::getName)
-                    .filter(name -> name.startsWith("models/entity/") && name.endsWith(".geo.json")).count());
+                    .filter(name -> name.startsWith("models/entity/geometry.") && name.endsWith(".geo.json")).count());
             assertEquals(4, zip.stream().map(ZipEntry::getName)
                     .filter(name -> name.startsWith("animations/") && name.endsWith(".animation.json")).count());
             assertTrue(zip.stream().map(ZipEntry::getName).allMatch(name -> name.length() < 80),
@@ -549,7 +656,7 @@ class BedrockPackCompilerTest {
     }
 
     @Test
-    void keepsChatEmojiHeightStableWhenTheSamePageContainsAnOversizedGuiGlyph() throws Exception {
+    void rejectsShrinkingGuiIntoAnEmojiAndPreservesNormalGlyphsInDiagnosticMode() throws Exception {
         Path source = root.resolve("mixed-font-height-source");
         String emoji = Character.toString(0xE000);
         String gui = Character.toString(0xE00F);
@@ -572,8 +679,14 @@ class BedrockPackCompilerTest {
         }
         ImageIO.write(guiImage, "PNG", source.resolve("assets/demo/textures/font/gui.png").toFile());
 
-        BuildResult result = new BedrockPackCompiler(root.resolve("mixed-font-height-data"), config()).build(
+        assertThrows(ConversionException.class, () -> new BedrockPackCompiler(root.resolve("mixed-font-strict"), config()).build(
+                List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of()));
+        TwilightConfig diagnostic = new TwilightConfig(false, false, false, false, 40, 100, 10_000_000, 10_000,
+                false, false, List.of(), "auto", false, false, 3);
+        BuildResult result = new BedrockPackCompiler(root.resolve("mixed-font-height-data"), diagnostic).build(
                 List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
+        assertEquals(1, result.glyphs());
+        assertTrue(result.problems().stream().anyMatch(p -> p.contains("Bedrock UI adapter")));
 
         try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
             BufferedImage page = ImageIO.read(zip.getInputStream(zip.getEntry("font/glyph_E0.png")));
@@ -581,9 +694,21 @@ class BedrockPackCompilerTest {
             assertEquals(0, page.getRGB(3, 6));
             assertEquals(Color.MAGENTA.getRGB(), page.getRGB(3, 7));
             assertEquals(Color.MAGENTA.getRGB(), page.getRGB(3, 15));
-            assertEquals(Color.CYAN.getRGB(), page.getRGB(240, 0));
-            assertEquals(Color.CYAN.getRGB(), page.getRGB(255, 15));
+            assertEquals(0, page.getRGB(240, 0));
+            assertEquals(0, page.getRGB(255, 15));
         }
+    }
+
+    @Test
+    void doesNotSilentlyDiscardCustomMenuSpacing() throws Exception {
+        Path source = root.resolve("custom-space-source");
+        write(source, "assets/minecraft/font/default.json", """
+                {"providers":[{"type":"space","advances":{"\\ue000":-8}}]}
+                """);
+        ConversionException failure = assertThrows(ConversionException.class,
+                () -> new BedrockPackCompiler(root.resolve("custom-space-data"), config()).build(
+                        List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of()));
+        assertTrue(failure.problems().stream().anyMatch(p -> p.contains("custom font advances")));
     }
 
     @Test
@@ -848,10 +973,89 @@ class BedrockPackCompilerTest {
         }
     }
 
+    private static double[] rotateAxis(double[] point, int axis, double degrees) {
+        double[] result = point.clone();
+        int first = (axis + 1) % 3, second = (axis + 2) % 3;
+        double cosine = Math.cos(Math.toRadians(degrees)), sine = Math.sin(Math.toRadians(degrees));
+        result[first] = cosine * point[first] - sine * point[second];
+        result[second] = sine * point[first] + cosine * point[second];
+        return result;
+    }
+
+    private JsonObject compilePoseAnimations(String name, String display) throws Exception {
+        Path source = root.resolve(name + "-source");
+        JsonObject model = JsonParser.parseString(cube("demo:item/pose")).getAsJsonObject();
+        model.add("display", JsonParser.parseString(display));
+        write(source, "assets/demo/models/item/pose.json", model.toString());
+        png(source.resolve("assets/demo/textures/item/pose.png"), Color.ORANGE);
+        BuildResult result = new BedrockPackCompiler(root.resolve(name + "-data"), config()).build(
+                List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)),
+                List.of(new CustomItemDescriptor("test", "minecraft:paper", Optional.of("demo:item/pose"),
+                        OptionalInt.empty(), "Pose test")));
+        assertEquals(1, result.converted());
+        try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
+            String path = zip.stream().map(ZipEntry::getName)
+                    .filter(n -> n.startsWith("animations/")).findFirst().orElseThrow();
+            return read(zip, path).getAsJsonObject("animations");
+        }
+    }
+
+    private static JsonObject poseBone(JsonObject animations, String context) {
+        return animations.entrySet().stream().filter(e -> e.getKey().endsWith("." + context))
+                .findFirst().orElseThrow().getValue().getAsJsonObject()
+                .getAsJsonObject("bones").getAsJsonObject("bone");
+    }
+
     private static void assertVector(JsonArray actual, double x, double y, double z) {
         assertEquals(x, actual.get(0).getAsDouble(), 1.0e-9);
         assertEquals(y, actual.get(1).getAsDouble(), 1.0e-9);
         assertEquals(z, actual.get(2).getAsDouble(), 1.0e-9);
+    }
+
+    @Test
+    void preservesElementRotationsAndFaceUvInTheReflectedModelFrame() throws Exception {
+        Path source = root.resolve("element-rotation-source");
+        JsonObject model = JsonParser.parseString(cube("demo:item/rotated")).getAsJsonObject();
+        JsonArray elements = new JsonArray();
+        for (String axis : List.of("x", "y", "z")) {
+            elements.add(JsonParser.parseString("""
+                    {"from":[2,3,4],"to":[10,12,14],
+                     "rotation":{"origin":[7,6,5],"axis":"%s","angle":45},
+                     "faces":{"north":{"texture":"#all","rotation":90}}}
+                    """.formatted(axis)));
+        }
+        model.add("elements", elements);
+        write(source, "assets/demo/models/item/rotated.json", model.toString());
+        png(source.resolve("assets/demo/textures/item/rotated.png"), Color.ORANGE);
+        BuildResult result = new BedrockPackCompiler(root.resolve("element-rotation-data"), config()).build(
+                List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)),
+                List.of(new CustomItemDescriptor("test", "minecraft:paper", Optional.of("demo:item/rotated"),
+                        OptionalInt.empty(), "Rotated cube")));
+        try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
+            String path = zip.stream().map(ZipEntry::getName).filter(n -> n.startsWith("models/entity/geometry.")).findFirst().orElseThrow();
+            JsonArray cubes = read(zip, path).getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject()
+                    .getAsJsonArray("bones").get(0).getAsJsonObject().getAsJsonArray("cubes");
+            for (int axis = 0; axis < 3; axis++) {
+                JsonObject cube = cubes.get(axis).getAsJsonObject();
+                assertVector(cube.getAsJsonArray("pivot"), -1, 6, 3);
+                // Java corner relative to its authored pivot, then independent
+                // Bedrock X/Y angle signs and the model's X/Z reflection.
+                double[] corner = {-5, -3, -1};
+                double[] actual = {-corner[0], corner[1], -corner[2]};
+                JsonArray rotation = cube.getAsJsonArray("rotation");
+                actual = rotateAxis(actual, 0, -rotation.get(0).getAsDouble());
+                actual = rotateAxis(actual, 1, -rotation.get(1).getAsDouble());
+                actual = rotateAxis(actual, 2, rotation.get(2).getAsDouble());
+                actual = new double[]{-actual[0], actual[1], -actual[2]};
+                assertArrayEquals(rotateAxis(corner, axis, 45), actual, 1.0e-9);
+                JsonObject uv = cube.getAsJsonObject("uv").getAsJsonObject("south");
+                assertEquals(90, uv.get("uv_rotation").getAsInt());
+                assertEquals(6, uv.getAsJsonArray("uv").get(0).getAsInt());
+                assertEquals(4, uv.getAsJsonArray("uv").get(1).getAsInt());
+                assertEquals(8, uv.getAsJsonArray("uv_size").get(0).getAsInt());
+                assertEquals(9, uv.getAsJsonArray("uv_size").get(1).getAsInt());
+            }
+        }
     }
 
     private TwilightConfig config() {

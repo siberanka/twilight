@@ -122,7 +122,16 @@ final class BitmapFontCompiler {
                     String reference = string(provider, "id");
                     if (!reference.isBlank()) readFont(reference, active, closure, target);
                 }
-                // Space and built-in providers retain Bedrock's native metrics.
+                else if (type.equals("space") && provider.has("advances")) {
+                    for (var advance : provider.getAsJsonObject("advances").entrySet()) {
+                        if (!(advance.getKey().equals(" ") || advance.getKey().equals("\u00a0"))
+                                || advance.getValue().getAsDouble() != 4.0) {
+                            problem("custom font advances require a Bedrock layout adapter", normalized + '|' + provider, normalized);
+                            break;
+                        }
+                    }
+                }
+                // Built-in providers retain Bedrock's native metrics.
             }
         } catch (IOException | RuntimeException failure) {
             problem("font definitions could not be parsed", normalized + " -> " + message(failure));
@@ -197,6 +206,12 @@ final class BitmapFontCompiler {
         }
         int cellWidth = image.getWidth() / columns;
         int cellHeight = image.getHeight() / rows.size();
+        double displayWidth = cellWidth * (declaredHeight / (double) cellHeight);
+        if (declaredHeight > BEDROCK_CELL_SIZE || displayWidth > BEDROCK_CELL_SIZE) {
+            problem("oversized bitmap glyphs require a Bedrock UI adapter", providerKey,
+                    font + " -> " + textureIdentifier + " (" + displayWidth + "x" + declaredHeight + ")");
+            return;
+        }
         for (int row = 0; row < rows.size(); row++) {
             int[] codePoints = rows.get(row).codePoints().toArray();
             for (int column = 0; column < codePoints.length; column++) {

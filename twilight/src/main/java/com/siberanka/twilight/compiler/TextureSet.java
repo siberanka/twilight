@@ -1,5 +1,6 @@
 package com.siberanka.twilight.compiler;
 
+import com.google.gson.JsonParser;
 import com.siberanka.twilight.source.ResourceIndex;
 
 import javax.imageio.ImageIO;
@@ -25,14 +26,14 @@ final class TextureSet {
     }
 
     static TextureSet atlas(ResourceIndex resources, List<String> identifiers) throws IOException {
+        return atlas(resources, identifiers, null);
+    }
+
+    static TextureSet atlas(ResourceIndex resources, List<String> identifiers, VanillaAssetCache vanillaAssets) throws IOException {
         Map<String, BufferedImage> images = new LinkedHashMap<>();
         for (String identifier : identifiers) {
             if (images.containsKey(identifier)) continue;
-            ResourceIndex.Asset asset = resources.find(JavaModelResolver.texturePath(identifier))
-                    .orElseThrow(() -> new IOException("Missing texture " + identifier));
-            BufferedImage image = ImageIO.read(new ByteArrayInputStream(asset.readBytes()));
-            if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) throw new IOException("Invalid PNG " + identifier);
-            images.put(identifier, image);
+            images.put(identifier, loadFrame(resources, identifier, vanillaAssets));
         }
         if (images.isEmpty()) throw new IOException("Model has no resolved textures");
         int width = images.values().stream().mapToInt(BufferedImage::getWidth).sum();
@@ -54,16 +55,14 @@ final class TextureSet {
     }
 
     static BufferedImage layeredIcon(ResourceIndex resources, List<String> identifiers) throws IOException {
+        return layeredIcon(resources, identifiers, null);
+    }
+
+    static BufferedImage layeredIcon(ResourceIndex resources, List<String> identifiers, VanillaAssetCache vanillaAssets) throws IOException {
         List<BufferedImage> layers = new ArrayList<>();
         int width = 0, height = 0;
         for (String identifier : identifiers) {
-            ResourceIndex.Asset asset = resources.find(JavaModelResolver.texturePath(identifier))
-                    .orElseThrow(() -> new IOException("Missing texture " + identifier));
-            BufferedImage original = ImageIO.read(new ByteArrayInputStream(asset.readBytes()));
-            if (original == null) throw new IOException("Invalid PNG " + identifier);
-            int frameHeight = original.getHeight() > original.getWidth() && original.getHeight() % original.getWidth() == 0
-                    ? original.getWidth() : original.getHeight();
-            BufferedImage frame = original.getSubimage(0, 0, original.getWidth(), frameHeight);
+            BufferedImage frame = loadFrame(resources, identifier, vanillaAssets);
             layers.add(frame);
             width = Math.max(width, frame.getWidth());
             height = Math.max(height, frame.getHeight());
@@ -79,6 +78,56 @@ final class TextureSet {
     }
 
     byte[] png() throws IOException { return png(image); }
+
+    private static BufferedImage loadFrame(ResourceIndex resources, String identifier, VanillaAssetCache vanillaAssets) throws IOException {
+        String path = JavaModelResolver.texturePath(identifier);
+        var custom = resources.find(path);
+        byte[] bytes;
+        if (custom.isPresent()) bytes = custom.get().readBytes();
+        else if (path.startsWith("assets/minecraft/textures/") && vanillaAssets != null) {
+            bytes = vanillaAssets.readTexture(path).orElseThrow(() -> new IOException("Missing vanilla texture " + identifier));
+        } else throw new IOException("Missing texture " + identifier);
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
+        if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) throw new IOException("Invalid PNG " + identifier);
+        var metadata = resources.find(path + ".mcmeta");
+        String animation = metadata.isPresent() ? metadata.get().readUtf8() : null;
+        if (animation == null && custom.isEmpty() && vanillaAssets != null) {
+            var vanillaMetadata = vanillaAssets.readTexture(path + ".mcmeta");
+            if (vanillaMetadata.isPresent()) animation = new String(vanillaMetadata.get(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        return firstFrame(identifier, image, animation);
+    }
+
+    // Static item export samples the authored first frame. Never map an entire
+    // animation sheet onto one face or guess animation from a PNG's aspect ratio.
+    private static BufferedImage firstFrame(String identifier, BufferedImage image, String metadata) throws IOException {
+        if (metadata == null) return image;
+        try {
+            var root = JsonParser.parseString(metadata).getAsJsonObject();
+            if (!root.has("animation")) return image;
+            var animation = root.getAsJsonObject("animation");
+            int width = animation.has("width") ? animation.get("width").getAsInt() : -1;
+            int height = animation.has("height") ? animation.get("height").getAsInt() : -1;
+            if (width == -1 && height == -1) width = height = Math.min(image.getWidth(), image.getHeight());
+            else {
+                if (width == -1) width = image.getWidth();
+                if (height == -1) height = image.getHeight();
+            }
+            if (width < 1 || height < 1 || image.getWidth() % width != 0 || image.getHeight() % height != 0)
+                throw new IOException("Invalid animation frame dimensions for " + identifier);
+            int frame = 0;
+            if (animation.has("frames") && !animation.getAsJsonArray("frames").isEmpty()) {
+                var first = animation.getAsJsonArray("frames").get(0);
+                frame = first.isJsonObject() ? first.getAsJsonObject().get("index").getAsInt() : first.getAsInt();
+            }
+            int columns = image.getWidth() / width;
+            if (frame < 0 || frame >= (long) columns * (image.getHeight() / height))
+                throw new IOException("Invalid first animation frame for " + identifier);
+            return image.getSubimage((frame % columns) * width, (frame / columns) * height, width, height);
+        } catch (RuntimeException invalid) {
+            throw new IOException("Invalid animation metadata for " + identifier, invalid);
+        }
+    }
     int width() { return image.getWidth(); }
     int height() { return image.getHeight(); }
     Region region(String identifier) throws IOException {
