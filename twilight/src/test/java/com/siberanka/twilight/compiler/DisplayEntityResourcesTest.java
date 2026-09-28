@@ -75,6 +75,8 @@ class DisplayEntityResourcesTest {
         JsonObject pose = json(files, "animations/twilight_display.json").getAsJsonObject("animations")
                 .getAsJsonObject("animation.twilight.display_pose").getAsJsonObject("bones");
         assertEquals(180, pose.getAsJsonObject("item_flip").getAsJsonArray("rotation").get(1).getAsInt());
+        assertEquals(0, pose.getAsJsonObject("yaw").getAsJsonArray("rotation").get(1).getAsInt(),
+                "The actor already applies body yaw; the mesh must not apply it a second time");
         JsonObject flip = java.util.stream.StreamSupport.stream(bones.spliterator(), false)
                 .map(JsonElement::getAsJsonObject).filter(b -> b.get("name").getAsString().equals("item_flip")).findFirst().orElseThrow();
         assertEquals("rx", flip.get("parent").getAsString(), "Java adds the item frame after both display rotations");

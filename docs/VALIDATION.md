@@ -2,6 +2,9 @@
 
 Twilight uses repeatable machine checks before any visual acceptance pass.
 
+The [additional model matrix](MODEL_MATRIX_2026-09-28.md) records seven real
+models, paired client captures, and the defects that prevent visual acceptance.
+
 ## Local build
 
 ```powershell

@@ -133,7 +133,9 @@ final class DisplayEntityResources {
         controller.add("part_visibility", visibility);
         put(files, "render_controllers/twilight_display.json", property("render_controllers", property("controller.render.twilight.display", controller), "1.10.0"));
         JsonObject bones = new JsonObject();
-        bones.add("yaw", property("rotation", strings("0", "q.body_y_rotation", "0")));
+        // Bedrock already rotates the actor by its body yaw. Applying it again
+        // here rotates the entire display twice (hidden by zero-yaw fixtures).
+        bones.add("yaw", property("rotation", array(0, 0, 0)));
         bones.add("pitch", property("rotation", strings("q.target_x_rotation", "0", "0")));
         bones.add("translation", property("position", strings("v.t0*16", "v.t1*16", "-v.t2*16")));
         // Java's ItemDisplayRenderer adds Y=180 AFTER the display TRSR and BEFORE ItemTransform.

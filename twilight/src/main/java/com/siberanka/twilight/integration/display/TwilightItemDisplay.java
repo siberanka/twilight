@@ -21,6 +21,23 @@ final class TwilightItemDisplay extends Entity {
     TwilightItemDisplay(EntitySpawnContext spawn, GeyserDisplayBridge bridge) {
         super(spawn);
         this.bridge = bridge;
+        // Java displays have one entity rotation, not an independent living head.
+        // A zero head yaw makes Bedrock turn mounted meshes toward that heading.
+        setHeadYaw(getYaw());
+    }
+
+    @Override public void moveRelativeRaw(double x, double y, double z, float yaw, float pitch,
+                                          float headYaw, boolean onGround) {
+        super.moveRelativeRaw(x, y, z, yaw, pitch, yaw, onGround);
+    }
+
+    @Override public void moveAbsoluteRaw(Vector3f position, float yaw, float pitch, float headYaw,
+                                          boolean onGround, boolean teleported) {
+        super.moveAbsoluteRaw(position, yaw, pitch, yaw, onGround, teleported);
+    }
+
+    @Override public void updateHeadLookRotation(float headYaw) {
+        // A display has no independently rotatable head.
     }
 
     void delay(int ticks) { delayTicks = Math.clamp(ticks, -72_000, 72_000); }

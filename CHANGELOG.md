@@ -4,6 +4,10 @@ All notable changes in Twilight are documented here.
 
 ## 1.0.0-pre.3 - unreleased
 
+- Keep item-display head yaw aligned with body yaw and apply entity yaw once,
+  correcting mounted BetterModel models that faced away from their Java reference.
+- Add a seven-model Java/Bedrock comparison with captured failures and follow-up
+  evidence; lighting and unwanted ModelEngine particles remain acceptance gaps.
 - Match Java display visibility: ignore base entity invisibility and hide
   zero-view-range displays while retaining their current item and transform.
 - Added a development Geyser item-display bridge with separate quaternion

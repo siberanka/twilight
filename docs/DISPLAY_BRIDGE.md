@@ -23,6 +23,10 @@ fallback for nearly identical rotations. Left and right rotations remain
 separate around nonuniform scale. A packed item/context property keeps the
 protocol within Bedrock's 32-property limit, including timing and revision.
 The rig includes Java's extra Y=180 item frame after the display transformation.
+Entity yaw is applied once by the Bedrock actor. Spawn and movement packets keep
+head yaw equal to body yaw because Java displays have no independent head.
+This prevents Bedrock's living-body rotation from turning mounted meshes toward
+a default head heading. The generated rig does not reapply body yaw.
 Explicit and fallback left-hand item contexts both receive Java mirroring.
 The display mesh ignores the base entity invisibility flag, as Java does.
 Zero view range hides a display without losing its selected item or transform;

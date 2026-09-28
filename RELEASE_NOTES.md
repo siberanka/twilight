@@ -11,12 +11,15 @@ unsupported UI conversion and Geyser restart requirements explicit.
 - Added a warning for JVM locales that break Geyser mapping enum parsing.
 - Added a live item-display bridge and verified sampled BetterModel and ModelEngine poses, including stationary MythicMobs models.
 - Corrected display invisibility and zero-view-range handling; inactive ModelEngine fire layers no longer appear as stray planes.
+- Corrected mounted display facing by aligning head and body yaw and removing duplicate mesh yaw.
 - Selected resource-pack overlays for the target Minecraft version and resolved explicit vanilla texture dependencies.
 - Skipped event hooks for disabled providers.
 
 The [real-content review](docs/REAL_CONTENT_REVIEW.md) includes Java references,
 Bedrock observations, and unaccepted chat/UI checks. Java source assets were
 unchanged. This checkpoint does not claim full visual parity or production GUI support.
+The [additional seven-model matrix](docs/MODEL_MATRIX_2026-09-28.md) records
+orientation, lighting and particle defects, with follow-up evidence for corrections.
 
 The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
 65 tests across 16 suites passed. No hosted CI was run. Automatic GitHub/GitLab pipeline
