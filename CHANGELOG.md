@@ -4,10 +4,14 @@ All notable changes in Twilight are documented here.
 
 ## 1.0.0-pre.3 - unreleased
 
+- Automatically represent invisible, zero-radius Java cloud anchors with inert
+  Bedrock actors. Preserve cloud metadata and mounted passengers across changes;
+  ordinary clouds retain Geyser translation. This removes the unwanted particles
+  observed around ModelEngine models without editing provider assets.
 - Keep item-display head yaw aligned with body yaw and apply entity yaw once,
   correcting mounted BetterModel models that faced away from their Java reference.
 - Add a seven-model Java/Bedrock comparison with captured failures and follow-up
-  evidence; lighting and unwanted ModelEngine particles remain acceptance gaps.
+  evidence; lighting and full pose parity remain acceptance gaps.
 - Match Java display visibility: ignore base entity invisibility and hide
   zero-view-range displays while retaining their current item and transform.
 - Added a development Geyser item-display bridge with separate quaternion

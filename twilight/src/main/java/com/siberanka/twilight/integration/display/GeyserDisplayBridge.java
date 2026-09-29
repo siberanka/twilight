@@ -13,6 +13,7 @@ import org.geysermc.geyser.api.util.Identifier;
 import org.geysermc.geyser.entity.BedrockEntityDefinition;
 import org.geysermc.geyser.entity.GeyserEntityType;
 import org.geysermc.geyser.entity.VanillaEntityType;
+import org.geysermc.geyser.entity.VanillaEntities;
 import org.geysermc.geyser.registry.Registries;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.metadata.MetadataTypes;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.type.EntityType;
@@ -34,6 +35,7 @@ public final class GeyserDisplayBridge implements AutoCloseable {
     GeyserIntEntityProperty revision, appearance;
     private final EventRegistrar registrar;
     private VanillaEntityType<TwilightItemDisplay> definition;
+    private VanillaEntityType<TwilightAreaEffectCloud> cloudDefinition;
 
     public GeyserDisplayBridge(Object owner, Path deployedPack, Logger logger) throws IOException {
         variants = readIndex(deployedPack);
@@ -69,6 +71,7 @@ public final class GeyserDisplayBridge implements AutoCloseable {
             builder.addTranslator(MetadataTypes.ITEM_STACK, (entity, data) -> entity.item(data.getValue()));
             builder.addTranslator(MetadataTypes.BYTE, (entity, data) -> entity.context(data.getValue()));
             definition = builder.build();
+            registerCloudAnchors(logger);
             logger.info("Registered live item-display bridge for " + variants.size() + " converted models.");
         });
         GeyserApi.api().eventBus().subscribe(registrar, GeyserDefineEntityPropertiesEvent.class, event -> {
@@ -83,6 +86,26 @@ public final class GeyserDisplayBridge implements AutoCloseable {
             appearance = event.registerIntegerProperty(ID, Identifier.of("twilight:appearance"), -9, variants.size() * 9 - 1, -9);
             delay = event.registerFloatProperty(ID, Identifier.of("twilight:delay"), -3600, 3600, 0f);
         });
+    }
+
+    private void registerCloudAnchors(Logger logger) {
+        var original = VanillaEntities.AREA_EFFECT_CLOUD;
+        var type = GeyserEntityType.ofVanilla(EntityType.AREA_EFFECT_CLOUD);
+        // Adapt only Geyser's own translator; never replace another plugin's.
+        if (Registries.JAVA_ENTITY_TYPES.get(type) != original
+                || Registries.JAVA_ENTITY_IDENTIFIERS.get("minecraft:area_effect_cloud") != original) {
+            logger.warning("Point-cloud adaptation skipped: another translator owns area_effect_cloud.");
+            return;
+        }
+        var replacement = VanillaEntityType.<TwilightAreaEffectCloud>inherited(TwilightAreaEffectCloud::new, original)
+                .type(EntityType.AREA_EFFECT_CLOUD).bedrockDefinition(original.defaultBedrockDefinition()).build(false);
+        if (!Registries.JAVA_ENTITY_TYPES.get().replace(type, original, replacement)) return;
+        if (!Registries.JAVA_ENTITY_IDENTIFIERS.get().replace("minecraft:area_effect_cloud", original, replacement)) {
+            Registries.JAVA_ENTITY_TYPES.get().replace(type, replacement, original);
+            return;
+        }
+        cloudDefinition = replacement;
+        logger.info("Registered automatic invisible point-cloud adaptation.");
     }
 
     private static Map<String, Integer> readIndex(Path path) throws IOException {
@@ -103,6 +126,10 @@ public final class GeyserDisplayBridge implements AutoCloseable {
 
     @Override public void close() {
         GeyserApi.api().eventBus().unregisterAll(registrar);
+        if (cloudDefinition != null) {
+            Registries.JAVA_ENTITY_TYPES.get().replace(cloudDefinition.type(), cloudDefinition, VanillaEntities.AREA_EFFECT_CLOUD);
+            Registries.JAVA_ENTITY_IDENTIFIERS.get().replace("minecraft:area_effect_cloud", cloudDefinition, VanillaEntities.AREA_EFFECT_CLOUD);
+        }
         if (definition != null) {
             Registries.JAVA_ENTITY_TYPES.get().remove(definition.type(), definition);
             Registries.JAVA_ENTITY_IDENTIFIERS.get().remove("minecraft:item_display", definition);

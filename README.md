@@ -11,6 +11,8 @@ The current capability matrix and version-specific limitations are documented in
 
 The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [unreleased 1.0.0-pre.3 development JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
 
+The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) verifies automatic removal of unwanted ModelEngine particles, live state changes and passenger retention. Model lighting and full pose parity remain open.
+
 The following captures are from earlier sessions; they are not acceptance evidence for every current item or UI.
 
 <table>

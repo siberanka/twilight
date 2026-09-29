@@ -12,6 +12,7 @@ unsupported UI conversion and Geyser restart requirements explicit.
 - Added a live item-display bridge and verified sampled BetterModel and ModelEngine poses, including stationary MythicMobs models.
 - Corrected display invisibility and zero-view-range handling; inactive ModelEngine fire layers no longer appear as stray planes.
 - Corrected mounted display facing by aligning head and body yaw and removing duplicate mesh yaw.
+- Automatically adapted invisible zero-radius cloud anchors, removing unwanted ModelEngine particles while preserving ordinary clouds and mounted passengers.
 - Selected resource-pack overlays for the target Minecraft version and resolved explicit vanilla texture dependencies.
 - Skipped event hooks for disabled providers.
 
@@ -20,9 +21,11 @@ Bedrock observations, and unaccepted chat/UI checks. Java source assets were
 unchanged. This checkpoint does not claim full visual parity or production GUI support.
 The [additional seven-model matrix](docs/MODEL_MATRIX_2026-09-28.md) records
 orientation, lighting and particle defects, with follow-up evidence for corrections.
+The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) covers four ModelEngine
+models, live radius/visibility changes, passenger retention and client reconnection.
 
 The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
-65 tests across 16 suites passed. No hosted CI was run. Automatic GitHub/GitLab pipeline
+67 tests across 17 suites passed. No hosted CI was run. Automatic GitHub/GitLab pipeline
 triggers are disabled.
 
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom

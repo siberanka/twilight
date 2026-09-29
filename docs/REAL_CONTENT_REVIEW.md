@@ -185,13 +185,13 @@ by Lumine. These are compatibility probes, not bundled dependencies.
 
 ## Build and evidence integrity
 
-The latest local development build passed 65 tests across 16 suites, with zero failures or errors.
+The latest local development build passed 67 tests across 17 suites, with zero failures or errors.
 Regression tests include independent pose bases and rotated corners, left-hand
 mirroring, Euler singularities, UV rotation/defaults, animation-frame selection,
 tall static textures, font rejection, and persistent Geyser restart requirements.
 
 The [development artifact](../artifacts/) includes the live bridge and visibility
-fixes; it is not an accepted release. Screenshot hashes are in the
+fixes and automatic [cloud-anchor adaptation](CLOUD_ANCHORS_2026-09-29.md); it is not an accepted release. Screenshot hashes are in the
 [initial manifest](images/acceptance/2026-09-27/sha256.json) and
 [ModelEngine manifest](images/acceptance/2026-09-28/sha256.json). The private final
 item test pack SHA-256 is
