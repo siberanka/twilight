@@ -4,6 +4,9 @@ All notable changes in Twilight are documented here.
 
 ## 1.0.0-pre.3 - unreleased
 
+- Match Java's full-height passenger attachment for cloud-mounted item displays.
+  This corrects their vertical position and the potion basket's dark lighting
+  above solid blocks, without changing textures, shaders or brightness overrides.
 - Automatically represent invisible, zero-radius Java cloud anchors with inert
   Bedrock actors. Preserve cloud metadata and mounted passengers across changes;
   ordinary clouds retain Geyser translation. This removes the unwanted particles

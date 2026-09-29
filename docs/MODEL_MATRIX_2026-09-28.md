@@ -134,8 +134,9 @@ Java is the left column; Bedrock is the right column. See the [machine-readable 
 | ![Java basket glass lighting probe](images/acceptance/2026-09-28-matrix/yaw-fix/basket-glass-platform-java.png) | ![Bedrock basket glass lighting probe](images/acceptance/2026-09-28-matrix/yaw-fix/basket-glass-platform-bedrock.png) |
 
 Follow-up: the [29 September cloud-anchor regression](CLOUD_ANCHORS_2026-09-29.md)
-confirms an automatic plugin fix for the unwanted particles. The basket lighting
-defect remains unresolved.
+confirms an automatic plugin fix for the unwanted particles. The subsequent
+[mount-height regression](DISPLAY_SEATS_2026-09-29.md) corrects the basket lighting
+on unchanged stone. The images here retain the earlier failing baseline.
 
 Changing the platform is a diagnostic step, not a product fix. The normal stone
 platform was restored. Unwanted particles remained visible throughout this probe.

@@ -67,6 +67,10 @@ Geyser's live representation.
 
 ## Remaining defects
 
+Follow-up: [the mount-height correction](DISPLAY_SEATS_2026-09-29.md) resolves
+the basket darkening described below. These captures preserve the earlier build's
+results and its original limitations.
+
 The potion basket still becomes nearly black above the stone platform. Some
 crab/archer pose differences also remain. This change does not establish full
 animation timing, lighting, material, billboard, first-person, glyph or UI parity.

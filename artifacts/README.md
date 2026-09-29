@@ -13,5 +13,5 @@ the accompanying [GPL text](../LICENSE) is also provided.
 Read the [release notes](../RELEASE_NOTES.md) and
 [visual review](../docs/REAL_CONTENT_REVIEW.md) before deployment.
 This development checkpoint includes the live display bridge and ModelEngine
-visibility, display-facing and automatic [cloud-anchor corrections](../docs/CLOUD_ANCHORS_2026-09-29.md). The [additional model matrix](../docs/MODEL_MATRIX_2026-09-28.md) records remaining defects. Full animation, first-person, chat, UI, and entity
+visibility, display-facing, automatic [cloud-anchor corrections](../docs/CLOUD_ANCHORS_2026-09-29.md) and [Java-compatible cloud mount height](../docs/DISPLAY_SEATS_2026-09-29.md). The [additional model matrix](../docs/MODEL_MATRIX_2026-09-28.md) records remaining defects. Full animation, first-person, chat, UI, and entity
 parity remain incomplete. It is not an accepted release.

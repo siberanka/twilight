@@ -7,6 +7,7 @@ import org.geysermc.geyser.entity.spawn.EntitySpawnContext;
 import org.geysermc.geyser.entity.type.Entity;
 import org.geysermc.geyser.translator.item.ItemTranslator;
 import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.type.EntityType;
 
 /** One Java display, owned by Geyser's normal per-session entity lifecycle. */
 final class TwilightItemDisplay extends Entity {
@@ -38,6 +39,17 @@ final class TwilightItemDisplay extends Entity {
 
     @Override public void updateHeadLookRotation(float headYaw) {
         // A display has no independently rotatable head.
+    }
+
+    @Override public void setRiderSeatPosition(Vector3f position) {
+        Entity vehicle = getVehicle();
+        if (vehicle != null && vehicle.getEntityType() == EntityType.AREA_EFFECT_CLOUD) {
+            // Java clouds attach passengers at their full height; displays attach
+            // at their feet. Geyser's generic 75% mount offset places a display
+            // 0.125 blocks too low, potentially sampling light inside the floor.
+            position = Vector3f.from(position.getX(), vehicle.getJavaDefinition().height(), position.getZ());
+        }
+        super.setRiderSeatPosition(position);
     }
 
     void delay(int ticks) { delayTicks = Math.clamp(ticks, -72_000, 72_000); }

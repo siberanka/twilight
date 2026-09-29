@@ -13,6 +13,7 @@ unsupported UI conversion and Geyser restart requirements explicit.
 - Corrected display invisibility and zero-view-range handling; inactive ModelEngine fire layers no longer appear as stray planes.
 - Corrected mounted display facing by aligning head and body yaw and removing duplicate mesh yaw.
 - Automatically adapted invisible zero-radius cloud anchors, removing unwanted ModelEngine particles while preserving ordinary clouds and mounted passengers.
+- Corrected cloud-mounted display height to match Java, fixing the tested basket's dark appearance on solid ground while retaining day/night lighting.
 - Selected resource-pack overlays for the target Minecraft version and resolved explicit vanilla texture dependencies.
 - Skipped event hooks for disabled providers.
 
@@ -23,6 +24,8 @@ The [additional seven-model matrix](docs/MODEL_MATRIX_2026-09-28.md) records
 orientation, lighting and particle defects, with follow-up evidence for corrections.
 The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) covers four ModelEngine
 models, live radius/visibility changes, passenger retention and client reconnection.
+The [mount-height regression](docs/DISPLAY_SEATS_2026-09-29.md) measures Java's
+attachment point and verifies the basket on unchanged stone in daylight and at night.
 
 The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
 67 tests across 17 suites passed. No hosted CI was run. Automatic GitHub/GitLab pipeline
