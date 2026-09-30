@@ -6,6 +6,6 @@ import com.google.gson.JsonObject;
 import java.util.Map;
 
 record ResolvedJavaModel(String identifier, JsonArray elements, Map<String, String> textures, JsonObject display,
-                         boolean handheld) {
+                         boolean handheld, boolean frontLight) {
     boolean isThreeDimensional() { return elements != null && !elements.isEmpty(); }
 }

@@ -4,6 +4,13 @@ All notable changes in Twilight are documented here.
 
 ## 1.0.0-pre.3 - unreleased
 
+- Render custom inventory icons from Java model geometry and inherited GUI
+  transforms instead of the first texture. Preserve face UVs, UV quarter turns,
+  element rotation/rescale, depth and transparency in static previews.
+
+- Accept Java-compatible dotted and uppercase pack overlay directory names;
+  retain traversal protection. Extended real-source testing exposed versioned
+  directories that previously stopped Survival content discovery.
 - Match Java's full-height passenger attachment for cloud-mounted item displays.
   This corrects their vertical position and the potion basket's dark lighting
   above solid blocks, without changing textures, shaders or brightness overrides.

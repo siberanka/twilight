@@ -13,6 +13,10 @@ The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons
 
 The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) verifies automatic removal of unwanted ModelEngine particles, live state changes and passenger retention. The [mount-height regression](docs/DISPLAY_SEATS_2026-09-29.md) corrects the tested basket's lighting on solid ground. Full pose and material parity remain open.
 
+The [extended content checks](docs/BROAD_CONTENT_2026-09-29.md) cover 911 discovered
+item candidates, six further held items, 28 chat glyphs and Survival menu images.
+They document a corrected overlay-name blocker and remaining conversion failures.
+
 The following captures are from earlier sessions; they are not acceptance evidence for every current item or UI.
 
 <table>

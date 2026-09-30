@@ -46,6 +46,10 @@ the foreground game window, so MythicMobs visual acceptance remains incomplete
 and those images are excluded. An older persisted carrier had no ModelEngine
 binding in Java either and is not counted as a successful conversion.
 
+Follow-up: the [extended content checks](BROAD_CONTENT_2026-09-29.md) now include
+the completed full-frame MythicMobs retake in both clients. Animation-frame
+equality is still not claimed.
+
 The [sample results](images/acceptance/2026-09-29-seats/results.json),
 [image hashes](images/acceptance/2026-09-29-seats/sha256.json)
 and [runtime measurements](images/acceptance/2026-09-29-seats/measurements.json)

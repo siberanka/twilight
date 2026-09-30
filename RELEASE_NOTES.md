@@ -3,6 +3,7 @@
 This development build corrects custom item rotation and texture conversion and makes
 unsupported UI conversion and Geyser restart requirements explicit.
 
+- Rendered inventory icons from model faces and the inherited Java GUI pose instead of exporting the first raw texture.
 - Corrected third-person model-frame conversion, left-hand mirroring, and an Euler singularity.
 - Corrected rotated cuboid axes, default face UVs, and face UV rotation.
 - Exported the first authored animation frame instead of stretching sprite sheets; full animation playback remains unsupported.
@@ -15,6 +16,7 @@ unsupported UI conversion and Geyser restart requirements explicit.
 - Automatically adapted invisible zero-radius cloud anchors, removing unwanted ModelEngine particles while preserving ordinary clouds and mounted passengers.
 - Corrected cloud-mounted display height to match Java, fixing the tested basket's dark appearance on solid ground while retaining day/night lighting.
 - Selected resource-pack overlays for the target Minecraft version and resolved explicit vanilla texture dependencies.
+- Accepted dotted and uppercase overlay directory names, fixing discovery of versioned Survival content.
 - Skipped event hooks for disabled providers.
 
 The [real-content review](docs/REAL_CONTENT_REVIEW.md) includes Java references,
@@ -26,9 +28,12 @@ The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) covers four Mode
 models, live radius/visibility changes, passenger retention and client reconnection.
 The [mount-height regression](docs/DISPLAY_SEATS_2026-09-29.md) measures Java's
 attachment point and verifies the basket on unchanged stone in daylight and at night.
+The [extended content checks](docs/BROAD_CONTENT_2026-09-29.md) cover whole-source
+compilation, 36 inventory examples, six additional held items, 28 emoji and Survival menu images; they
+confirm that full first-person, animated-texture and menu parity is still absent.
 
 The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
-67 tests across 17 suites passed. No hosted CI was run. Automatic GitHub/GitLab pipeline
+77 tests across 18 suites passed. No hosted CI was run. Automatic GitHub/GitLab pipeline
 triggers are disabled.
 
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom

@@ -129,6 +129,11 @@ final class TextureSet {
         }
     }
     int width() { return image.getWidth(); }
+    int sample(Region region, double u, double v) {
+        int x = Math.clamp((int) Math.floor(u * region.width() / 16), 0, region.width() - 1);
+        int y = Math.clamp((int) Math.floor(v * region.height() / 16), 0, region.height() - 1);
+        return image.getRGB(region.x() + x, region.y() + y);
+    }
     int height() { return image.getHeight(); }
     Region region(String identifier) throws IOException {
         Region region = regions.get(identifier);

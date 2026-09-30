@@ -85,8 +85,10 @@ final class JavaModelResolver {
 
         Map<String, String> textures = new LinkedHashMap<>();
         JsonObject display = new JsonObject();
+        boolean frontLight = false;
         com.google.gson.JsonArray elements = null;
         for (JsonObject json : chain) {
+            if (json.has("gui_light")) frontLight = json.get("gui_light").getAsString().equals("front");
             if (json.has("textures") && json.get("textures").isJsonObject()) {
                 for (Map.Entry<String, JsonElement> texture : json.getAsJsonObject("textures").entrySet()) {
                     textures.put(texture.getKey(), texture.getValue().getAsString());
@@ -102,7 +104,7 @@ final class JavaModelResolver {
         Map<String, String> resolvedTextures = new LinkedHashMap<>();
         for (String key : textures.keySet()) resolvedTextures.put(key, resolveTexture(key, textures, "minecraft"));
         return new ResolvedJavaModel(qualified(identifier, "minecraft"), elements, Map.copyOf(resolvedTextures),
-                display, handheld);
+                display, handheld, frontLight);
     }
 
     private static ResolvedJavaModel merge(List<ResolvedJavaModel> models) {
@@ -136,7 +138,7 @@ final class JavaModelResolver {
             }
         }
         return new ResolvedJavaModel("twilight:composite", elements.isEmpty() ? null : elements,
-                Map.copyOf(textures), display, models.getFirst().handheld());
+                Map.copyOf(textures), display, models.getFirst().handheld(), models.getFirst().frontLight());
     }
 
     private static String resolveTexture(String key, Map<String, String> textures, String fallbackNamespace) throws IOException {
@@ -221,7 +223,7 @@ final class JavaModelResolver {
             // inherited pose when a generated or handheld model becomes a
             // Bedrock attachable.
             case "minecraft:item/generated" -> JsonParser.parseString("""
-                    {"parent":"minecraft:builtin/generated","display":{
+                    {"parent":"minecraft:builtin/generated","gui_light":"front","display":{
                     "ground":{"rotation":[0,0,0],"translation":[0,2,0],"scale":[0.5,0.5,0.5]},
                     "head":{"rotation":[0,180,0],"translation":[0,13,7],"scale":[1,1,1]},
                     "thirdperson_righthand":{"rotation":[0,0,0],"translation":[0,3,1],"scale":[0.55,0.55,0.55]},

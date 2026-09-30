@@ -96,8 +96,7 @@ public final class BedrockPackCompiler {
                     for (ResolvedJavaModel state : dynamicWeapon.states()) stateTextures.addAll(usedTextures(state));
                     TextureSet atlas = TextureSet.atlas(resources, List.copyOf(stateTextures), vanillaAssets);
                     packFiles.put(texturePath + ".png", atlas.png());
-                    icon = TextureSet.png(TextureSet.layeredIcon(resources,
-                            layers.isEmpty() ? List.of(usedTextures(model).iterator().next()) : layers, vanillaAssets));
+                    icon = TextureSet.png(GuiIconRenderer.render(model, atlas, geometryElements(model)));
                     packFiles.put("textures/twilight/" + safe + "_icon.png", icon);
                     for (int state = 0; state < dynamicWeapon.states().size(); state++) {
                         String stateSafe = safe + "_state_" + state;
@@ -119,8 +118,7 @@ public final class BedrockPackCompiler {
                     TextureSet atlas = TextureSet.atlas(resources, List.copyOf(usedTextures), vanillaAssets);
                     GeometryBounds bounds = geometryBounds(model);
                     packFiles.put(texturePath + ".png", atlas.png());
-                    icon = TextureSet.png(TextureSet.layeredIcon(resources,
-                            layers.isEmpty() ? List.of(usedTextures.iterator().next()) : layers, vanillaAssets));
+                    icon = TextureSet.png(GuiIconRenderer.render(model, atlas, geometryElements(model)));
                     packFiles.put("textures/twilight/" + safe + "_icon.png", icon);
                     packFiles.put("models/entity/geometry." + safe + ".geo.json",
                             jsonBytes(geometry(safe, model, atlas, bounds)));
@@ -468,7 +466,7 @@ public final class BedrockPackCompiler {
         return root;
     }
 
-    private static double[] defaultFaceUv(String face, double[] from, double[] to) {
+    static double[] defaultFaceUv(String face, double[] from, double[] to) {
         return switch (face) {
             case "down" -> new double[]{from[0], 16 - to[2], to[0], 16 - from[2]};
             case "up" -> new double[]{from[0], from[2], to[0], to[2]};

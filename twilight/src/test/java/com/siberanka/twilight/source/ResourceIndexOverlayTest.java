@@ -76,10 +76,44 @@ class ResourceIndexOverlayTest {
     }
 
     @Test void rejectsTraversalInOverlayDirectory() throws Exception {
-        Files.writeString(root.resolve("pack.mcmeta"), """
-                {"overlays":{"entries":[{"directory":"../escape","formats":88}]}}
+        for (String name : List.of("../escape", ".", "..", "", "nested/path", "C:escape")) {
+            Files.writeString(root.resolve("pack.mcmeta"),
+                    "{\"overlays\":{\"entries\":[{\"directory\":\"" + name + "\",\"formats\":88}]}}");
+            assertThrows(java.io.IOException.class, () -> ResourceIndex.build(sources(root), config(),
+                    ignored -> new ResourceIndex.PackFormat(88,0)), name);
+        }
+    }
+
+    @Test void versionedAndUppercaseOverlayNamesWorkInDirectoriesAndArchives() throws Exception {
+        Map<String,String> files = new LinkedHashMap<>();
+        files.put("pack.mcmeta", """
+                {"overlays":{"entries":[
+                  {"directory":"1.21.5","formats":[55,100]},
+                  {"directory":"New_26.2-RC","formats":[88,100]}]}}
                 """);
-        assertThrows(java.io.IOException.class, () -> ResourceIndex.build(sources(root), config(), ignored -> new ResourceIndex.PackFormat(88,0)));
+        files.put(ASSET, "base");
+        files.put("1.21.5/" + ASSET, "versioned");
+        files.put("New_26.2-RC/" + ASSET, "uppercase");
+        Path directory = root.resolve("versioned");
+        Path archive = root.resolve("versioned.zip");
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(archive))) {
+            for (var file : files.entrySet()) {
+                Path target = directory.resolve(file.getKey());
+                Files.createDirectories(target.getParent());
+                Files.writeString(target, file.getValue());
+                zip.putNextEntry(new ZipEntry(file.getKey()));
+                zip.write(file.getValue().getBytes(StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+        }
+        for (Path source : List.of(directory, archive)) {
+            for (var sample : Map.of(54, "base", 55, "versioned", 88, "uppercase").entrySet()) {
+                try (ResourceIndex index = ResourceIndex.build(sources(source), config(),
+                        ignored -> new ResourceIndex.PackFormat(sample.getKey(),0))) {
+                    assertEquals(sample.getValue(), index.find(ASSET).orElseThrow().readUtf8());
+                }
+            }
+        }
     }
 
     private static Map<String,String> entries() {

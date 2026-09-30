@@ -34,7 +34,9 @@ final class PackOverlays {
             for (JsonElement value : overlays) {
                 JsonObject entry = value.getAsJsonObject();
                 String directory = entry.get("directory").getAsString();
-                if (!directory.matches("[a-z0-9_-]+") || !directories.add(directory)) {
+                // Java permits version-like names and uppercase letters. Keep
+                // path segments confined to the pack when accepting dots.
+                if (!directory.matches("[a-zA-Z0-9_.-]+") || directory.equals(".") || directory.equals("..") || !directories.add(directory)) {
                     throw new IOException("Invalid or duplicate overlay directory: " + directory);
                 }
                 ResourceIndex.PackFormat min, max;
