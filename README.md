@@ -17,6 +17,10 @@ The [extended content checks](docs/BROAD_CONTENT_2026-09-29.md) cover 911 discov
 item candidates, six further held items, 28 chat glyphs and Survival menu images.
 They document a corrected overlay-name blocker and remaining conversion failures.
 
+The [new-sample regression](docs/COMPOSITE_MODELS_2026-09-30.md) expands testing
+with 36 different items, 24 emoji and four further models. It identifies and
+corrects lost per-child composite transforms; remaining visual gaps are recorded.
+
 The following captures are from earlier sessions; they are not acceptance evidence for every current item or UI.
 
 <table>

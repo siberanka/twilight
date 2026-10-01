@@ -35,7 +35,9 @@ Implemented:
 
 - Geyser custom item mapping format v2.
 - Modern Java item model roots and Geyser-compatible condition, range, and select predicates.
-- Static composite model merging without flattening 3D parts.
+- Static composites retain separate child geometry and authored display poses
+  in item displays, attachables and static inventory previews; generated sprite
+  children are retained alongside cuboids. Dynamic composites remain unsupported.
 - Legacy numeric custom model data.
 - Layered 2D PNG composition and deterministic item atlas entries.
 - Java cuboids, default and explicit per-face UVs, face UV rotations, element rotations, texture atlases, Bedrock geometry and attachables.

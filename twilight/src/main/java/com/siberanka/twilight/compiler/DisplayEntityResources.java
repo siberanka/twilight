@@ -16,6 +16,11 @@ final class DisplayEntityResources {
 
     void add(Map<String, byte[]> files, String identifier, String safe, JsonObject itemGeometry,
              JsonObject display) {
+        add(files, identifier, safe, itemGeometry, List.of(display));
+    }
+
+    void add(Map<String, byte[]> files, String identifier, String safe, JsonObject itemGeometry,
+             List<JsonObject> displays) {
         int variant = index.size();
         index.addProperty(identifier, variant);
         String key = "v" + variant;
@@ -30,7 +35,7 @@ final class DisplayEntityResources {
         JsonArray bones = new JsonArray();
         String parent = null;
         for (String name : List.of("yaw", "pitch", "translation", "lz", "ly", "lx", "scale",
-                "rz", "ry", "rx", "item_flip", "item_t", "item_x", "item_y", "item_z", "item_s")) {
+                "rz", "ry", "rx", "item_flip")) {
             JsonObject bone = new JsonObject();
             bone.addProperty("name", name);
             if (parent != null) bone.addProperty("parent", parent);
@@ -38,26 +43,51 @@ final class DisplayEntityResources {
             bones.add(bone);
             parent = name;
         }
-        JsonObject mesh = body.getAsJsonArray("bones").get(0).getAsJsonObject();
-        mesh.remove("binding");
-        mesh.addProperty("parent", parent);
-        mesh.add("pivot", array(0, 0, 0));
-        // Item rendering uses a centered mesh; attachables use a hand pivot at y=8.
-        for (JsonElement value : mesh.getAsJsonArray("cubes")) {
-            JsonObject cube = value.getAsJsonObject();
-            for (String vector : List.of("origin", "pivot")) if (cube.has(vector)) {
-                JsonArray coordinates = cube.getAsJsonArray(vector);
-                coordinates.set(1, new JsonPrimitive(coordinates.get(1).getAsDouble() - 8));
+        JsonArray meshes = body.getAsJsonArray("bones");
+        if (meshes.size() != displays.size()) throw new IllegalArgumentException("Composite mesh/pose count mismatch");
+        JsonObject staticBones = new JsonObject();
+        for (int part = 0; part < meshes.size(); part++) {
+            String prefix = meshes.size() == 1 ? "item_" : "item_" + part + "_";
+            parent = "item_flip";
+            for (String suffix : List.of("t", "x", "y", "z", "s")) {
+                JsonObject bone = new JsonObject();
+                bone.addProperty("name", prefix + suffix);
+                bone.addProperty("parent", parent);
+                bone.add("pivot", array(0, 0, 0));
+                bones.add(bone);
+                parent = prefix + suffix;
             }
+            JsonObject mesh = meshes.get(part).getAsJsonObject();
+            mesh.remove("binding");
+            mesh.addProperty("parent", parent);
+            mesh.add("pivot", array(0, 0, 0));
+            // Item rendering uses a centered mesh; attachables use a hand pivot at y=8.
+            for (JsonElement value : mesh.getAsJsonArray("cubes")) {
+                JsonObject cube = value.getAsJsonObject();
+                for (String vector : List.of("origin", "pivot")) if (cube.has(vector)) {
+                    JsonArray coordinates = cube.getAsJsonArray(vector);
+                    coordinates.set(1, new JsonPrimitive(coordinates.get(1).getAsDouble() - 8));
+                }
+            }
+            bones.add(mesh);
+            addContextTransforms(staticBones, prefix, displays.get(part));
         }
-        bones.add(mesh);
         body.add("bones", bones);
         put(files, "models/entity/display." + safe + ".geo.json", geometry);
 
+        String animationId = "animation.twilight.display." + safe;
+        animations.addProperty(key, animationId);
+        JsonObject condition = new JsonObject();
+        condition.addProperty(key, "math.floor(q.property('twilight:appearance')/9)==" + variant);
+        animate.add(condition);
+        JsonObject animation = new JsonObject(); animation.addProperty("loop", true); animation.add("bones", staticBones);
+        put(files, "animations/display." + safe + ".json", property("animations", property(animationId, animation), "1.10.0"));
+    }
+
+    private static void addContextTransforms(JsonObject staticBones, String prefix, JsonObject display) {
         // Java ItemDisplayContext network ordinals, including NONE.
         String[] contexts = {"none", "thirdperson_lefthand", "thirdperson_righthand", "firstperson_lefthand",
                 "firstperson_righthand", "head", "gui", "ground", "fixed"};
-        JsonObject staticBones = new JsonObject();
         for (String component : List.of("translation", "rotation", "scale")) {
             JsonArray[] values = new JsonArray[contexts.length];
             for (int c = 0; c < contexts.length; c++) {
@@ -86,18 +116,11 @@ final class DisplayEntityResources {
                 for (int axis = 0; axis < 3; axis++) {
                     JsonArray rotation = array(0, 0, 0);
                     rotation.set(axis, expressions.get(axis));
-                    staticBones.add("item_" + "xyz".charAt(axis), property("rotation", rotation));
+                    staticBones.add(prefix + "xyz".charAt(axis), property("rotation", rotation));
                 }
-            } else staticBones.add(component.equals("scale") ? "item_s" : "item_t",
+            } else staticBones.add(prefix + (component.equals("scale") ? "s" : "t"),
                     property(component.equals("translation") ? "position" : "scale", expressions));
         }
-        String animationId = "animation.twilight.display." + safe;
-        animations.addProperty(key, animationId);
-        JsonObject condition = new JsonObject();
-        condition.addProperty(key, "math.floor(q.property('twilight:appearance')/9)==" + variant);
-        animate.add(condition);
-        JsonObject animation = new JsonObject(); animation.addProperty("loop", true); animation.add("bones", staticBones);
-        put(files, "animations/display." + safe + ".json", property("animations", property(animationId, animation), "1.10.0"));
     }
 
     void finish(Map<String, byte[]> files) {

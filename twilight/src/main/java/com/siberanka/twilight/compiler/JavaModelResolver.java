@@ -138,7 +138,7 @@ final class JavaModelResolver {
             }
         }
         return new ResolvedJavaModel("twilight:composite", elements.isEmpty() ? null : elements,
-                Map.copyOf(textures), display, models.getFirst().handheld(), models.getFirst().frontLight());
+                Map.copyOf(textures), display, models.getFirst().handheld(), models.getFirst().frontLight(), models);
     }
 
     private static String resolveTexture(String key, Map<String, String> textures, String fallbackNamespace) throws IOException {

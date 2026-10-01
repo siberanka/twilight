@@ -4,7 +4,7 @@
 
 Built locally by siberanka using Java 25.0.2 and Gradle 9.6.0, with
 `:twilight:build --offline --no-daemon --no-configuration-cache`.
-77 tests across 18 suites passed. No hosted CI was used.
+80 tests across 18 suites passed. No hosted CI was used.
 
 The corresponding source is in this commit under `twilight/`, with build files
 at the repository root. Licensed under [LGPL-3.0-or-later](../LICENSE.LESSER);
@@ -18,3 +18,6 @@ parity remain incomplete. It is not an accepted release.
 
 The [extended content checks](../docs/BROAD_CONTENT_2026-09-29.md) document the
 overlay-name fix, automatic model-based inventory previews, and current item, glyph and menu limitations.
+
+The [new-sample regression](../docs/COMPOSITE_MODELS_2026-09-30.md) covers the
+automatic preservation of individual composite child poses and additional real assets.

@@ -4,6 +4,8 @@ This development build corrects custom item rotation and texture conversion and 
 unsupported UI conversion and Geyser restart requirements explicit.
 
 - Rendered inventory icons from model faces and the inherited Java GUI pose instead of exporting the first raw texture.
+- Preserved individual static composite child poses, fixing separated BetterModel
+  head pieces and unintended tilt in the [new-sample regression](docs/COMPOSITE_MODELS_2026-09-30.md).
 - Corrected third-person model-frame conversion, left-hand mirroring, and an Euler singularity.
 - Corrected rotated cuboid axes, default face UVs, and face UV rotation.
 - Exported the first authored animation frame instead of stretching sprite sheets; full animation playback remains unsupported.
@@ -33,7 +35,7 @@ compilation, 36 inventory examples, six additional held items, 28 emoji and Surv
 confirm that full first-person, animated-texture and menu parity is still absent.
 
 The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
-77 tests across 18 suites passed. No hosted CI was run. Automatic GitHub/GitLab pipeline
+80 tests across 18 suites passed. No hosted CI was run. Automatic GitHub/GitLab pipeline
 triggers are disabled.
 
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom

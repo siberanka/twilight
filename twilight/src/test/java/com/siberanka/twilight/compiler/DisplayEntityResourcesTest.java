@@ -7,6 +7,27 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DisplayEntityResourcesTest {
+    @Test void compositeChildrenRetainFixedRotationsAndLeftHandFallbacks() {
+        JsonObject geometry = JsonParser.parseString("""
+                {"minecraft:geometry":[{"description":{},"bones":[
+                {"name":"bone_0","cubes":[]},{"name":"bone_1","cubes":[]}]}]}
+                """).getAsJsonObject();
+        JsonObject first = JsonParser.parseString("""
+                {"fixed":{"rotation":[0,25,21]},"thirdperson_righthand":{"translation":[2,3,4]}}
+                """).getAsJsonObject();
+        JsonObject second = JsonParser.parseString("""
+                {"fixed":{"rotation":[0,-35,12]},"thirdperson_lefthand":{"translation":[5,6,7]}}
+                """).getAsJsonObject();
+        Map<String, byte[]> files = new HashMap<>();
+        new DisplayEntityResources().add(files,"twilight:test","test",geometry,List.of(first,second));
+        JsonObject bones = json(files,"animations/display.test.json").getAsJsonObject("animations")
+                .getAsJsonObject("animation.twilight.display.test").getAsJsonObject("bones");
+        assertArrayEquals(new double[]{0,-25,0},evaluate(bones,"item_0_y","rotation",8));
+        assertArrayEquals(new double[]{0,35,0},evaluate(bones,"item_1_y","rotation",8));
+        assertArrayEquals(new double[]{0,0,-12},evaluate(bones,"item_1_z","rotation",8));
+        assertArrayEquals(new double[]{-2,3,-4},evaluate(bones,"item_0_t","position",1));
+        assertArrayEquals(new double[]{-5,6,-7},evaluate(bones,"item_1_t","position",1));
+    }
     @Test void mirrorsExplicitAndFallbackLeftContextsWithoutMirroringScale() {
         JsonObject geometry = JsonParser.parseString("""
                 {"minecraft:geometry":[{"description":{},"bones":[{"name":"mesh","cubes":[]}]}]}

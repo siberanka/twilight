@@ -105,7 +105,7 @@ public final class BedrockPackCompiler {
                         packFiles.put("models/entity/geometry." + stateSafe + ".geo.json",
                                 jsonBytes(geometry(stateSafe, stateModel, atlas, bounds)));
                         packFiles.put("animations/" + stateSafe + ".animation.json",
-                                jsonBytes(animations(stateSafe, stateModel.display())));
+                                jsonBytes(animations(stateSafe, stateModel)));
                     }
                     packFiles.put("render_controllers/" + safe + ".render_controllers.json",
                             jsonBytes(dynamicRenderController(safe, dynamicWeapon.states().size())));
@@ -123,10 +123,11 @@ public final class BedrockPackCompiler {
                     packFiles.put("models/entity/geometry." + safe + ".geo.json",
                             jsonBytes(geometry(safe, model, atlas, bounds)));
                     packFiles.put("animations/" + safe + ".animation.json",
-                            jsonBytes(animations(safe, model.display())));
+                            jsonBytes(animations(safe, model)));
                     packFiles.put("attachables/" + safe + ".json",
                             jsonBytes(attachable(identifier, safe, texturePath)));
-                    displays.add(packFiles, identifier, safe, geometry(safe, model, atlas, bounds), model.display());
+                    displays.add(packFiles, identifier, safe, geometry(safe, model, atlas, bounds),
+                            model.renderParts().stream().map(ResolvedJavaModel::display).toList());
                     if (model.isThreeDimensional()) threeDimensional++;
                 } else {
                     icon = TextureSet.png(TextureSet.layeredIcon(resources, layers, vanillaAssets));
@@ -267,6 +268,10 @@ public final class BedrockPackCompiler {
 
     private static Set<String> usedTextures(ResolvedJavaModel model) throws IOException {
         Set<String> textures = new LinkedHashSet<>();
+        if (!model.parts().isEmpty()) {
+            for (ResolvedJavaModel part : model.parts()) textures.addAll(usedTextures(part));
+            return textures;
+        }
         for (JsonElement element : geometryElements(model)) {
             JsonObject faces = element.getAsJsonObject().getAsJsonObject("faces");
             if (faces == null) continue;
@@ -375,7 +380,7 @@ public final class BedrockPackCompiler {
      * sheets. A small depth keeps both faces stable in Bedrock while each
      * layer retains its own texture and Java display transform.
      */
-    private static JsonArray geometryElements(ResolvedJavaModel model) throws IOException {
+    static JsonArray geometryElements(ResolvedJavaModel model) throws IOException {
         if (model.elements() != null && !model.elements().isEmpty()) return model.elements();
         List<String> layers = flatLayers(model);
         if (layers.isEmpty()) throw new IOException("Flat item has no texture layers");
@@ -402,6 +407,20 @@ public final class BedrockPackCompiler {
 
     private static JsonObject geometry(String safe, ResolvedJavaModel model, TextureSet atlas,
                                        GeometryBounds bounds) throws IOException {
+        if (!model.parts().isEmpty()) {
+            JsonObject result = null;
+            JsonArray bones = new JsonArray();
+            for (int i = 0; i < model.parts().size(); i++) {
+                JsonObject part = geometry(safe, model.parts().get(i), atlas, bounds);
+                if (result == null) result = part;
+                JsonObject bone = part.getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject()
+                        .getAsJsonArray("bones").get(0).getAsJsonObject();
+                bone.addProperty("name", "bone_" + i);
+                bones.add(bone);
+            }
+            result.getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject().add("bones", bones);
+            return result;
+        }
         JsonArray cubes = new JsonArray();
         for (JsonElement elementValue : geometryElements(model)) {
             JsonObject element = elementValue.getAsJsonObject();
@@ -629,6 +648,22 @@ public final class BedrockPackCompiler {
         String finalThreshold = type.equals("crossbow") ? "1.0" : "0.9";
         return "(q.is_using_item && q.item_remaining_use_duration(c.item_slot) > 0.0) ? (" + progress +
                 " >= " + finalThreshold + " ? 3 : (" + progress + " >= " + secondThreshold + " ? 2 : 1)) : 0";
+    }
+
+    private static JsonObject animations(String safe, ResolvedJavaModel model) {
+        if (model.parts().isEmpty()) return animations(safe, model.display());
+        JsonObject result = null;
+        for (int i = 0; i < model.parts().size(); i++) {
+            JsonObject part = animations(safe, model.parts().get(i).display());
+            for (var entry : part.getAsJsonObject("animations").entrySet()) {
+                JsonObject bones = entry.getValue().getAsJsonObject().getAsJsonObject("bones");
+                bones.add("bone_" + i, bones.remove("bone"));
+                if (result != null) result.getAsJsonObject("animations").getAsJsonObject(entry.getKey())
+                        .getAsJsonObject("bones").add("bone_" + i, bones.get("bone_" + i));
+            }
+            if (result == null) result = part;
+        }
+        return result;
     }
 
     private static JsonObject animations(String safe, JsonObject display) {

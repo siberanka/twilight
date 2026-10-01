@@ -28,45 +28,49 @@ final class GuiIconRenderer {
         Arrays.fill(depth, Double.NEGATIVE_INFINITY);
         List<List<Fragment>> translucent = new ArrayList<>(SIZE * SIZE);
         for (int i = 0; i < SIZE * SIZE; i++) translucent.add(null);
-        JsonObject gui = model.display().has("gui") ? model.display().getAsJsonObject("gui") : new JsonObject();
-        Vec scale = vector(gui, "scale", new Vec(1, 1, 1)).clamp(-4, 4);
-        Vec rotation = vector(gui, "rotation", Vec.ZERO);
-        Vec translation = vector(gui, "translation", Vec.ZERO).clamp(-80, 80);
-        for (JsonElement value : elements) {
-            JsonObject element = value.getAsJsonObject();
-            Vec from = vector(element, "from", Vec.ZERO), to = vector(element, "to", new Vec(16, 16, 16));
-            JsonObject faces = element.getAsJsonObject("faces");
-            if (faces == null) continue;
-            for (var entry : faces.entrySet()) {
-                JsonObject face = entry.getValue().getAsJsonObject();
-                if (!face.has("texture")) continue;
-                String reference = face.get("texture").getAsString();
-                String texture = reference.startsWith("#") ? model.textures().get(reference.substring(1))
-                        : JavaModelResolver.qualified(reference, "minecraft");
-                if (texture == null) throw new IOException("Unresolved GUI face texture " + reference);
-                TextureSet.Region region = atlas.region(texture);
-                Vec[] vertices = vertices(entry.getKey(), from, to);
-                for (int i = 0; i < 4; i++) {
-                    Vec point = elementRotation(vertices[i], element.getAsJsonObject("rotation"));
-                    vertices[i] = point.subtract(new Vec(8, 8, 8)).multiply(scale).rotate(rotation).add(translation);
+        // Composite children each apply their own display transform and lighting,
+        // but share a depth buffer so intersections are resolved across children.
+        for (ResolvedJavaModel part : model.renderParts()) {
+            JsonObject gui = part.display().has("gui") ? part.display().getAsJsonObject("gui") : new JsonObject();
+            Vec scale = vector(gui, "scale", new Vec(1, 1, 1)).clamp(-4, 4);
+            Vec rotation = vector(gui, "rotation", Vec.ZERO);
+            Vec translation = vector(gui, "translation", Vec.ZERO).clamp(-80, 80);
+            for (JsonElement value : model.parts().isEmpty() ? elements : BedrockPackCompiler.geometryElements(part)) {
+                JsonObject element = value.getAsJsonObject();
+                Vec from = vector(element, "from", Vec.ZERO), to = vector(element, "to", new Vec(16, 16, 16));
+                JsonObject faces = element.getAsJsonObject("faces");
+                if (faces == null) continue;
+                for (var entry : faces.entrySet()) {
+                    JsonObject face = entry.getValue().getAsJsonObject();
+                    if (!face.has("texture")) continue;
+                    String reference = face.get("texture").getAsString();
+                    String texture = reference.startsWith("#") ? part.textures().get(reference.substring(1))
+                            : JavaModelResolver.qualified(reference, "minecraft");
+                    if (texture == null) throw new IOException("Unresolved GUI face texture " + reference);
+                    TextureSet.Region region = atlas.region(texture);
+                    Vec[] vertices = vertices(entry.getKey(), from, to);
+                    for (int i = 0; i < 4; i++) {
+                        Vec point = elementRotation(vertices[i], element.getAsJsonObject("rotation"));
+                        vertices[i] = point.subtract(new Vec(8, 8, 8)).multiply(scale).rotate(rotation).add(translation);
+                    }
+                    Vec normal = vertices[1].subtract(vertices[0]).cross(vertices[2].subtract(vertices[0])).normalized();
+                    // GUI looks toward -Z. Keep the authored winding, including mirrored scales.
+                    if (normal.z <= 1e-9) continue;
+                    double shade = lighting(normal, part.frontLight());
+                    double[] uv = face.has("uv") ? numbers(face.getAsJsonArray("uv"), 4)
+                            : BedrockPackCompiler.defaultFaceUv(entry.getKey(), from.array(), to.array());
+                    int turn = face.has("rotation") ? Math.floorMod(face.get("rotation").getAsInt(), 360) : 0;
+                    if (turn % 90 != 0) throw new IOException("GUI face UV rotation must be a multiple of 90");
+                    double[][] corners = {{uv[0], uv[1]}, {uv[0], uv[3]}, {uv[2], uv[3]}, {uv[2], uv[1]}};
+                    Vertex[] quad = new Vertex[4];
+                    for (int i = 0; i < 4; i++) {
+                        Vec point = vertices[i];
+                        double[] tex = corners[(i + turn / 90) % 4];
+                        quad[i] = new Vertex(SIZE / 2.0 + point.x * PIXELS_PER_UNIT,
+                                SIZE / 2.0 - point.y * PIXELS_PER_UNIT, point.z, tex[0], tex[1]);
+                    }
+                    rasterize(quad, atlas, region, shade, image, depth, translucent);
                 }
-                Vec normal = vertices[1].subtract(vertices[0]).cross(vertices[2].subtract(vertices[0])).normalized();
-                // GUI looks toward -Z. Keep the authored winding, including mirrored scales.
-                if (normal.z <= 1e-9) continue;
-                double shade = lighting(normal, model.frontLight());
-                double[] uv = face.has("uv") ? numbers(face.getAsJsonArray("uv"), 4)
-                        : BedrockPackCompiler.defaultFaceUv(entry.getKey(), from.array(), to.array());
-                int turn = face.has("rotation") ? Math.floorMod(face.get("rotation").getAsInt(), 360) : 0;
-                if (turn % 90 != 0) throw new IOException("GUI face UV rotation must be a multiple of 90");
-                double[][] corners = {{uv[0], uv[1]}, {uv[0], uv[3]}, {uv[2], uv[3]}, {uv[2], uv[1]}};
-                Vertex[] quad = new Vertex[4];
-                for (int i = 0; i < 4; i++) {
-                    Vec point = vertices[i];
-                    double[] tex = corners[(i + turn / 90) % 4];
-                    quad[i] = new Vertex(SIZE / 2.0 + point.x * PIXELS_PER_UNIT,
-                            SIZE / 2.0 - point.y * PIXELS_PER_UNIT, point.z, tex[0], tex[1]);
-                }
-                rasterize(quad, atlas, region, shade, image, depth, translucent);
             }
         }
         for (int i = 0; i < translucent.size(); i++) {

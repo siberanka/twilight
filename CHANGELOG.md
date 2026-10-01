@@ -4,6 +4,11 @@ All notable changes in Twilight are documented here.
 
 ## 1.0.0-pre.3 - unreleased
 
+- Preserve each static composite child's display transforms in display entities,
+  attachables and inventory previews. This fixes detached BetterModel head parts
+  and unintended head/body tilt without changing provider assets. Generated
+  sprite children remain visible beside cuboid children.
+
 - Render custom inventory icons from Java model geometry and inherited GUI
   transforms instead of the first texture. Preserve face UVs, UV quarter turns,
   element rotation/rescale, depth and transparency in static previews.

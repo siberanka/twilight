@@ -26,6 +26,69 @@ class GuiIconRendererTest {
     @TempDir Path root;
 
     @Test
+    void compositeKeepsChildGuiTransformsAndSharesDepthAcrossChildren() throws Exception {
+        textures();
+        write("assets/demo/models/red_part.json", "{\"gui_light\":\"front\",\"display\":{\"gui\":{\"translation\":[-4,0,2]}},\"elements\":["
+                + plane(6,6,10,10,8,"red") + "]}");
+        write("assets/demo/models/blue_part.json", "{\"gui_light\":\"front\",\"display\":{\"gui\":{\"translation\":[4,0,0]}},\"elements\":["
+                + plane(6,6,10,10,8,"blue") + "]}");
+        try (ResourceIndex index = index()) {
+            var resolver = new JavaModelResolver(index);
+            var model = resolver.resolveAll(List.of("demo:red_part", "demo:blue_part"));
+            var atlas = TextureSet.atlas(index, List.of("demo:red", "demo:blue"));
+            var icon = GuiIconRenderer.render(model, atlas, model.elements());
+            assertEquals(0xFFFF0000, icon.getRGB(16,32));
+            assertEquals(0xFF0000FF, icon.getRGB(48,32));
+            assertEquals(0, icon.getRGB(32,32));
+            // Move the rear blue child onto red; neither child order may hide red.
+            model.parts().get(1).display().getAsJsonObject("gui").add("translation",
+                    JsonParser.parseString("[-4,0,0]"));
+            var reversed = new ResolvedJavaModel(model.identifier(), model.elements(), model.textures(),
+                    model.display(), false, true, List.of(model.parts().get(1), model.parts().get(0)));
+            assertEquals(0xFFFF0000, GuiIconRenderer.render(model, atlas, model.elements()).getRGB(16,32));
+            assertArrayEquals(pixels(GuiIconRenderer.render(model, atlas, model.elements())),
+                    pixels(GuiIconRenderer.render(reversed, atlas, reversed.elements())));
+        }
+    }
+
+    @Test
+    void compilerRetainsMeshAndGeneratedChildrenWithIndependentPoses() throws Exception {
+        textures();
+        write("assets/demo/models/mesh.json", "{\"display\":{\"fixed\":{\"rotation\":[0,25,21]}},\"elements\":["
+                + plane(6,6,10,10,8,"red") + "]}");
+        write("assets/demo/models/sprite.json", """
+                {"parent":"minecraft:item/generated","textures":{"layer0":"demo:blue"},
+                 "display":{"fixed":{"rotation":[0,-35,12]},"firstperson_righthand":{"translation":[2,3,4]}}}
+                """);
+        write("assets/demo/items/composite.json", """
+                {"model":{"type":"minecraft:composite","models":[{"type":"minecraft:model","model":"demo:mesh"},
+                {"type":"minecraft:composite","models":[{"type":"minecraft:model","model":"demo:sprite"}]}]}}
+                """);
+        var result = new BedrockPackCompiler(root.resolve("output"), config()).build(
+                List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, root, 1)),
+                List.of(new CustomItemDescriptor("test", "minecraft:paper", Optional.of("demo:composite"), OptionalInt.empty(), "")));
+        assertEquals(1, result.converted(), result.problems().toString());
+        try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
+            var entry = zip.stream().filter(e -> e.getName().startsWith("models/entity/display.")).findFirst().orElseThrow();
+            var geometry = JsonParser.parseString(new String(zip.getInputStream(entry).readAllBytes(), java.nio.charset.StandardCharsets.UTF_8))
+                    .getAsJsonObject().getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject();
+            var meshes = java.util.stream.StreamSupport.stream(geometry.getAsJsonArray("bones").spliterator(), false)
+                    .map(com.google.gson.JsonElement::getAsJsonObject).filter(b -> b.has("cubes")).toList();
+            assertEquals(2, meshes.size());
+            assertEquals("item_0_s", meshes.get(0).get("parent").getAsString());
+            assertEquals("item_1_s", meshes.get(1).get("parent").getAsString());
+            assertFalse(meshes.get(1).getAsJsonArray("cubes").isEmpty(), "Generated children must not disappear beside mesh children");
+            var animation = zip.stream().filter(e -> e.getName().endsWith(".animation.json")).findFirst().orElseThrow();
+            var definitions = JsonParser.parseString(new String(zip.getInputStream(animation).readAllBytes(), java.nio.charset.StandardCharsets.UTF_8))
+                    .getAsJsonObject().getAsJsonObject("animations");
+            var first = definitions.entrySet().stream().filter(e -> e.getKey().endsWith("first_person_right"))
+                    .findFirst().orElseThrow().getValue().getAsJsonObject().getAsJsonObject("bones");
+            assertEquals(2, first.size());
+            assertNotEquals(first.get("bone_0"), first.get("bone_1"));
+        }
+    }
+
+    @Test
     void compilerPublishesTheRenderedIconAndReferencesItFromTheItemAtlas() throws Exception {
         textures();
         write("assets/demo/models/marker.json", "{\"gui_light\":\"front\",\"elements\":[" + plane(4,2,12,14,8,"red") + "]}");
