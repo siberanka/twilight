@@ -650,8 +650,8 @@ class BedrockPackCompilerTest {
             assertEquals(256, page.getWidth());
             assertEquals(256, page.getHeight());
             assertEquals(0, page.getRGB(0, 0));
-            assertEquals(Color.MAGENTA.getRGB(), page.getRGB(3, 7));
-            assertEquals(Color.CYAN.getRGB(), page.getRGB(19, 7));
+            assertEquals(Color.MAGENTA.getRGB(), page.getRGB(0, 3));
+            assertEquals(Color.CYAN.getRGB(), page.getRGB(16, 3));
         }
     }
 
@@ -691,9 +691,10 @@ class BedrockPackCompilerTest {
         try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
             BufferedImage page = ImageIO.read(zip.getInputStream(zip.getEntry("font/glyph_E0.png")));
             assertEquals(256, page.getWidth());
-            assertEquals(0, page.getRGB(3, 6));
-            assertEquals(Color.MAGENTA.getRGB(), page.getRGB(3, 7));
-            assertEquals(Color.MAGENTA.getRGB(), page.getRGB(3, 15));
+            assertEquals(0, page.getRGB(0, 2));
+            assertEquals(Color.MAGENTA.getRGB(), page.getRGB(0, 3));
+            assertEquals(Color.MAGENTA.getRGB(), page.getRGB(0, 11));
+            assertEquals(0, page.getRGB(0, 12));
             assertEquals(0, page.getRGB(240, 0));
             assertEquals(0, page.getRGB(255, 15));
         }

@@ -4,6 +4,11 @@ All notable changes in Twilight are documented here.
 
 ## 1.0.0-pre.3 - unreleased
 
+- Preserve Java bitmap glyph heights and ascents with measured Bedrock cell
+  coordinates. Support representable negative ascents and reject visible
+  overflow without silently shrinking or clipping; isolate transparent padding
+  from neighboring characters.
+
 - Preserve each static composite child's display transforms in display entities,
   attachables and inventory previews. This fixes detached BetterModel head parts
   and unintended head/body tilt without changing provider assets. Generated

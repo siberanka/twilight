@@ -9,7 +9,7 @@ The current capability matrix and version-specific limitations are documented in
 
 ## Visual acceptance tests
 
-The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [unreleased 1.0.0-pre.3 development JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
+The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.3 release-candidate JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
 
 The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) verifies automatic removal of unwanted ModelEngine particles, live state changes and passenger retention. The [mount-height regression](docs/DISPLAY_SEATS_2026-09-29.md) corrects the tested basket's lighting on solid ground. Full pose and material parity remain open.
 
@@ -20,6 +20,9 @@ They document a corrected overlay-name blocker and remaining conversion failures
 The [new-sample regression](docs/COMPOSITE_MODELS_2026-09-30.md) expands testing
 with 36 different items, 24 emoji and four further models. It identifies and
 corrects lost per-child composite transforms; remaining visual gaps are recorded.
+
+The [font metrics regression](docs/FONT_METRICS_2026-10-01.md) measures Java/Bedrock
+glyph placement and corrects height/ascent conversion without page-relative heuristics.
 
 The following captures are from earlier sessions; they are not acceptance evidence for every current item or UI.
 

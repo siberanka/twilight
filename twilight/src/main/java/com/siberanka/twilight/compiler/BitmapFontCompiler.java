@@ -26,6 +26,10 @@ import java.util.Set;
 /** Converts Java bitmap-font graphs into Bedrock BMP glyph pages without contextual collisions. */
 final class BitmapFontCompiler {
     private static final int BEDROCK_CELL_SIZE = 16;
+    // A native 16px Bedrock cell starts four GUI units above ordinary text.
+    // Java bitmap glyphs start at 7-ascent, hence cellY = 11-ascent.
+    // Calibrated against both clients; do not derive this from neighboring glyphs.
+    private static final int BEDROCK_BASELINE = 11;
     private final ResourceIndex resources;
     private final VanillaAssetCache vanillaAssets;
     private final boolean vanillaOverride;
@@ -78,7 +82,7 @@ final class BitmapFontCompiler {
         if (!nonBmpGlyphs.isEmpty()) problems.add(nonBmpGlyphs.size() +
                 " supplementary-plane glyph(s) cannot be represented by Bedrock BMP pages");
         if (!unsupportedBaselineProviders.isEmpty()) problems.add(unsupportedBaselineProviders.size() +
-                " Java-only negative/out-of-range baseline provider(s) were skipped");
+                " invalid Java bitmap height/ascent provider(s) were skipped");
         return new Result(glyphs.size(), pages.size(), vanillaFallbackTextures.size(), namedFonts, namedGlyphs,
                 List.copyOf(problems));
     }
@@ -200,7 +204,7 @@ final class BitmapFontCompiler {
         }
         int declaredHeight = integer(provider, "height", 8);
         int declaredAscent = integer(provider, "ascent", declaredHeight);
-        if (declaredHeight < 1 || declaredAscent < 0 || declaredAscent > declaredHeight) {
+        if (declaredHeight < 1 || declaredAscent > declaredHeight) {
             unsupportedBaselineProviders.add(providerKey);
             return;
         }
@@ -221,8 +225,15 @@ final class BitmapFontCompiler {
                     nonBmpGlyphs.add(font + " -> U+%X".formatted(codePoint));
                     continue;
                 }
-                target.put(codePoint, new Glyph(codePoint, image, column * cellWidth, row * cellHeight,
-                        cellWidth, cellHeight, declaredHeight, declaredAscent));
+                Glyph glyph = new Glyph(codePoint, image, column * cellWidth, row * cellHeight,
+                        cellWidth, cellHeight, declaredHeight, declaredAscent);
+                if (!fitsBaseline(glyph)) {
+                    problem("bitmap glyph baselines require a Bedrock layout adapter", providerKey,
+                            font + " -> " + textureIdentifier + " (height=" + declaredHeight
+                                    + ", ascent=" + declaredAscent + ")");
+                    continue;
+                }
+                target.put(codePoint, glyph);
             }
         }
     }
@@ -276,8 +287,8 @@ final class BitmapFontCompiler {
     private static BufferedImage compose(List<Glyph> glyphs) {
         // Bedrock derives glyph metrics from the page cell size. Keeping every
         // page on the same 16px grid prevents a code point's apparent chat
-        // height from changing merely because it shares (or does not share) a
-        // page with a larger GUI glyph.
+        // height or baseline from changing merely because it shares a page
+        // with a larger GUI glyph. Source resolution is not a font metric.
         int cellSize = BEDROCK_CELL_SIZE;
         BufferedImage page = new BufferedImage(cellSize * 16, cellSize * 16, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = page.createGraphics();
@@ -286,12 +297,16 @@ final class BitmapFontCompiler {
             graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
             for (Glyph glyph : glyphs) {
                 double displayWidth = Math.max(1.0, glyph.width() * (glyph.declaredHeight() / (double) glyph.height()));
-                double scale = Math.min(1.0, cellSize / Math.max(displayWidth, glyph.declaredHeight()));
-                int width = Math.max(1, (int) Math.round(displayWidth * scale));
-                int height = Math.max(1, (int) Math.round(glyph.declaredHeight() * scale));
+                int width = Math.max(1, (int) Math.round(displayWidth));
+                int height = glyph.declaredHeight();
                 int slot = glyph.codePoint() & 0xFF;
-                int x = (slot & 15) * cellSize + Math.max(0, (cellSize - width) / 2);
-                int y = (slot >>> 4) * cellSize + Math.max(0, cellSize - height);
+                int cellX = (slot & 15) * cellSize;
+                int cellY = (slot >>> 4) * cellSize;
+                int x = cellX;
+                int y = cellY + BEDROCK_BASELINE - glyph.declaredAscent();
+                // Transparent source padding may extend beyond the cell, but
+                // must never clear or paint an adjacent code point's pixels.
+                graphics.setClip(cellX, cellY, cellSize, cellSize);
                 graphics.drawImage(glyph.image(), x, y, x + width, y + height,
                         glyph.x(), glyph.y(), glyph.x() + glyph.width(), glyph.y() + glyph.height(), null);
             }
@@ -299,6 +314,19 @@ final class BitmapFontCompiler {
             graphics.dispose();
         }
         return page;
+    }
+
+    private static boolean fitsBaseline(Glyph glyph) {
+        long top = (long) BEDROCK_BASELINE - glyph.declaredAscent();
+        if (top >= 0 && top + glyph.declaredHeight() <= BEDROCK_CELL_SIZE) return true;
+        double scale = glyph.declaredHeight() / (double) glyph.height();
+        for (int y = 0; y < glyph.height(); y++) {
+            if (top + y * scale >= 0 && top + (y + 1) * scale <= BEDROCK_CELL_SIZE) continue;
+            for (int x = 0; x < glyph.width(); x++) {
+                if ((glyph.image().getRGB(glyph.x() + x, glyph.y() + y) >>> 24) != 0) return false;
+            }
+        }
+        return true;
     }
 
     private static String fontPath(String identifier) {

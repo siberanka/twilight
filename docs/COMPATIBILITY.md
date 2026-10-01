@@ -60,7 +60,7 @@ Open release gates:
 
 ## Other custom content
 
-Supported bitmap providers reachable from `minecraft:default` are converted to Bedrock Unicode BMP pages with fixed 16-pixel cells and independent bottom alignment. Glyphs whose declared display height or width exceeds 16 pixels require a Bedrock UI adapter: strict builds reject them, and diagnostic builds report and omit them. Custom space advances also fail strict conversion. Actual inline emoji alignment still needs successful client acceptance. Unreadable generated layers can fall back to a valid lower-priority source asset. Collision-free BMP private-use glyphs from named fonts can join the global Bedrock atlas.
+Supported bitmap providers reachable from `minecraft:default` are converted to Bedrock Unicode BMP pages with fixed 16-pixel cells and Java height/ascent placement calibrated against Bedrock. Glyphs whose declared display height or width exceeds 16 pixels require a Bedrock UI adapter: strict builds reject them, and diagnostic builds report and omit them. Custom space advances also fail strict conversion. The [font metrics regression](FONT_METRICS_2026-10-01.md) records the measured cell origin and tested examples. Visible baseline overflow requires a layout adapter; representable negative ascents are supported. Unreadable generated layers can fall back to a valid lower-priority source asset. Collision-free BMP private-use glyphs from named fonts can join the global Bedrock atlas.
 
 When `vanilla-override` is disabled, normal Unicode cells from the Java default font are rejected rather than replacing Bedrock's vanilla glyphs. Differing named-font images that reuse one code point and named glyphs outside the private-use range require an outbound component-remapping bridge, so strict publication currently rejects them.
 
@@ -68,7 +68,7 @@ Explicit `minecraft:` texture references absent from the custom pack are resolve
 
 Layered Java `sounds.json` files are merged with `replace` semantics and converted to `sounds/sound_definitions.json`. File and event references, OGG assets, weight, volume, pitch, streaming, and compatible attenuation distances are preserved. Unqualified Java file references correctly resolve through `minecraft`; emitted paths retain a namespace segment to avoid Bedrock file collisions. Explicit vanilla sound dependencies are fetched through the version's SHA-1-verified Mojang asset index. With `vanilla-override` disabled, definitions identical to vanilla are skipped and changed vanilla events reject strict publication.
 
-Current font limitations are reported and fail strict builds: contextual named-font remapping, supplementary-plane code points, Java-only negative/out-of-range baseline controls, and protected/corrupt source PNG data. Full named-font GUI/HUD adaptation remains an open release gate.
+Current font limitations are reported and fail strict builds: contextual named-font remapping, supplementary-plane code points, out-of-cell baseline controls, and protected/corrupt source PNG data. Full named-font GUI/HUD adaptation remains an open release gate.
 
 Discovery counters also cover sounds, blockstates, `.bbmodel` files, and datapack biome definitions. Production conversion remains gated until each remaining subsystem has structural tests and real Java/Bedrock acceptance evidence:
 
