@@ -3,7 +3,7 @@
   "beforeArtifactSha256": "152fd07575e4a2c26b910f5ba9974ebf08c6e501eeb04e43f9c4c8f1010f24c5",
   "tests": 84,
   "suites": 19,
-  "finalBedrockVisualAcceptance": "pending-foreground-blocked; paused or obstructed frames excluded",
+  "finalBedrockVisualAcceptance": "passed for six measured bitmap probes, 35 supported real glyphs and the tested inventory title; broader parity not claimed",
   "nativeCalibration": "Manual diagnostic page, not plugin output: 4x4 native squares at cell y=0,2,4,6,8,10; Bedrock 2 screen pixels per GUI unit; cell top is H top minus 4 GUI units.",
   "metrics": [
     {
@@ -417,5 +417,165 @@
     0,
     0,
     0
-  ]
+  ],
+  "observedPixelMetrics": {
+    "java": {
+      "screenPixelsPerGuiUnit": 3,
+      "probes": [
+        {
+          "color": [
+            255,
+            0,
+            0
+          ],
+          "glyphTopScreenPx": 237,
+          "textTopScreenPx": 228,
+          "heightScreenPx": 12,
+          "topOffsetGuiUnits": 3.0,
+          "heightGuiUnits": 4.0
+        },
+        {
+          "color": [
+            0,
+            255,
+            0
+          ],
+          "glyphTopScreenPx": 297,
+          "textTopScreenPx": 282,
+          "heightScreenPx": 12,
+          "topOffsetGuiUnits": 5.0,
+          "heightGuiUnits": 4.0
+        },
+        {
+          "color": [
+            0,
+            128,
+            255
+          ],
+          "glyphTopScreenPx": 357,
+          "textTopScreenPx": 336,
+          "heightScreenPx": 12,
+          "topOffsetGuiUnits": 7.0,
+          "heightGuiUnits": 4.0
+        },
+        {
+          "color": [
+            255,
+            255,
+            0
+          ],
+          "glyphTopScreenPx": 417,
+          "textTopScreenPx": 390,
+          "heightScreenPx": 6,
+          "topOffsetGuiUnits": 9.0,
+          "heightGuiUnits": 2.0
+        },
+        {
+          "color": [
+            255,
+            0,
+            255
+          ],
+          "glyphTopScreenPx": 441,
+          "textTopScreenPx": 444,
+          "heightScreenPx": 24,
+          "topOffsetGuiUnits": -1.0,
+          "heightGuiUnits": 8.0
+        },
+        {
+          "color": [
+            0,
+            255,
+            255
+          ],
+          "glyphTopScreenPx": 495,
+          "textTopScreenPx": 498,
+          "heightScreenPx": 27,
+          "topOffsetGuiUnits": -1.0,
+          "heightGuiUnits": 9.0
+        }
+      ]
+    },
+    "bedrock": {
+      "screenPixelsPerGuiUnit": 2,
+      "probes": [
+        {
+          "color": [
+            255,
+            0,
+            0
+          ],
+          "glyphTopScreenPx": 704,
+          "textTopScreenPx": 698,
+          "heightScreenPx": 8,
+          "topOffsetGuiUnits": 3.0,
+          "heightGuiUnits": 4.0
+        },
+        {
+          "color": [
+            0,
+            255,
+            0
+          ],
+          "glyphTopScreenPx": 752,
+          "textTopScreenPx": 742,
+          "heightScreenPx": 8,
+          "topOffsetGuiUnits": 5.0,
+          "heightGuiUnits": 4.0
+        },
+        {
+          "color": [
+            0,
+            128,
+            255
+          ],
+          "glyphTopScreenPx": 800,
+          "textTopScreenPx": 786,
+          "heightScreenPx": 8,
+          "topOffsetGuiUnits": 7.0,
+          "heightGuiUnits": 4.0
+        },
+        {
+          "color": [
+            255,
+            255,
+            0
+          ],
+          "glyphTopScreenPx": 848,
+          "textTopScreenPx": 830,
+          "heightScreenPx": 4,
+          "topOffsetGuiUnits": 9.0,
+          "heightGuiUnits": 2.0
+        },
+        {
+          "color": [
+            255,
+            0,
+            255
+          ],
+          "glyphTopScreenPx": 872,
+          "textTopScreenPx": 874,
+          "heightScreenPx": 16,
+          "topOffsetGuiUnits": -1.0,
+          "heightGuiUnits": 8.0
+        },
+        {
+          "color": [
+            0,
+            255,
+            255
+          ],
+          "glyphTopScreenPx": 916,
+          "textTopScreenPx": 918,
+          "heightScreenPx": 18,
+          "topOffsetGuiUnits": -1.0,
+          "heightGuiUnits": 9.0
+        }
+      ]
+    }
+  },
+  "realGlyphsVisibleBedrock": 35,
+  "unsupportedWideGlyphs": 1,
+  "menuTitleObserved": "Metric square and real emoji visible and vertically aligned; Java dark title tint versus Bedrock original glyph colors remains different.",
+  "finalCaptureDate": "2026-10-01"
 }

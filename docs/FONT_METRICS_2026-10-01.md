@@ -22,10 +22,26 @@ diagnostic only; acceptance uses pages produced by the actual compiler.
 
 The final candidate pack was generated in full by the compiler and loaded on a
 fresh isolated server. Its font pages match the isolated font regression output
-byte for byte. **Final Bedrock after-fix screenshots remain pending:** another
-desktop window prevented foreground activation. Paused and obstructed captures
-were rejected. The measured placement and automated tests pass; this is not yet
-a completed visual acceptance gate or a published release.
+byte for byte. Final Java/Bedrock captures were reviewed on 1 October after the
+foreground blocker cleared. Six probes have identical declared heights and
+text-relative vertical positions after normalizing the clients' GUI scales:
+
+| Height / ascent | Java top offset | Bedrock top offset |
+| --- | --- | --- |
+| 4 / 4 | 3 | 3 |
+| 4 / 2 | 5 | 5 |
+| 4 / 0 | 7 | 7 |
+| 2 / -2 | 9 | 9 |
+| 8 / 8 | -1 | -1 |
+| 9 / 8 | -1 | -1 |
+
+Offsets are GUI units relative to the adjacent `H`. Java uses three screen
+pixels per GUI unit in these captures; Bedrock uses two. The 35 supported
+real-source glyphs are visible without lower-line clipping. The wide rank is
+still omitted with a diagnostic. The tested menu title retains the square and
+emoji height/alignment, but **title color modulation differs**: Java darkens
+the bitmap with its text color while Bedrock retains the original glyph colors.
+This is a passed baseline/height check, not complete glyph or UI parity.
 
 Four new automated tests cover measured positions, representable negative
 ascents, different source resolutions, page independence, visible overflow,
@@ -49,7 +65,10 @@ strict failures preserved the previous diagnostic outputs.
 | [Native Bedrock calibration](images/acceptance/2026-10-01-fonts/native-probe-bedrock.png) | Independent four-pixel squares at known cell offsets establish the text origin. This manually assembled probe is not plugin-output acceptance. |
 | [Java real-source reference](images/acceptance/2026-10-01-fonts/before-real-java.png) and [Bedrock before correction](images/acceptance/2026-10-01-fonts/before-real-bedrock.png) | 36 new glyphs compared; baseline error is visible and the wide rank label is omitted by diagnostic conversion. |
 | [Java metric probes](images/acceptance/2026-10-01-fonts/fixed-probe-java.png) | Six height/ascent combinations, including a negative ascent, form the unchanged Java reference. |
-| [Java menu title and inventory](images/acceptance/2026-10-01-fonts/fixed-menu-java.png) | Title combines ordinary text, a metric square and a real emoji. Bedrock menu-title comparison is pending. The two previously documented invalid Java item references remain. |
+| [Java menu title and inventory](images/acceptance/2026-10-01-fonts/fixed-menu-java.png) | Title combines ordinary text, a metric square and a real emoji. The matching Bedrock capture below confirms placement; text-color modulation still differs. The two previously documented invalid Java item references remain. |
+| [Bedrock metric probes](images/acceptance/2026-10-01-fonts/fixed-probe-bedrock.png) | All six measured heights and offsets match the Java reference, including negative ascent. |
+| [Final Java real glyphs](images/acceptance/2026-10-01-fonts/fixed-real-java.png) and [final Bedrock real glyphs](images/acceptance/2026-10-01-fonts/fixed-real-bedrock.png) | 35 supported glyphs visible; one wide rank remains unsupported. Native text spacing and UI scale differ. |
+| [Final Bedrock menu](images/acceptance/2026-10-01-fonts/fixed-menu-bedrock.png) | Title square/emoji align vertically; bitmap tint differs from Java. The existing missing-source inventory exceptions remain. |
 
 [Measurements](images/acceptance/2026-10-01-fonts/measurements.json) distinguish
 compiler checks from visual acceptance. [Image hashes](images/acceptance/2026-10-01-fonts/sha256.json)
@@ -75,6 +94,11 @@ tests remain under the repository's existing license; existing upstream author
 and license notices are retained.
 
 ## Limits
+
+Declared Java display dimensions are preserved; oversized content is never
+shrunk to fit a cell. High-resolution source textures are sampled at their
+authored Java display height, not fitted to a smaller fallback size. Native
+bitmap pages still cannot preserve every source texel or contextual text tint.
 
 This correction does not claim identical chat line spacing, antialiasing or
 client UI scale. Wide rank labels, oversized GUI backgrounds, custom advances

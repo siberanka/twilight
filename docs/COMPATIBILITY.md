@@ -68,7 +68,7 @@ Explicit `minecraft:` texture references absent from the custom pack are resolve
 
 Layered Java `sounds.json` files are merged with `replace` semantics and converted to `sounds/sound_definitions.json`. File and event references, OGG assets, weight, volume, pitch, streaming, and compatible attenuation distances are preserved. Unqualified Java file references correctly resolve through `minecraft`; emitted paths retain a namespace segment to avoid Bedrock file collisions. Explicit vanilla sound dependencies are fetched through the version's SHA-1-verified Mojang asset index. With `vanilla-override` disabled, definitions identical to vanilla are skipped and changed vanilla events reject strict publication.
 
-Current font limitations are reported and fail strict builds: contextual named-font remapping, supplementary-plane code points, out-of-cell baseline controls, and protected/corrupt source PNG data. Full named-font GUI/HUD adaptation remains an open release gate.
+Current font limitations are reported and fail strict builds: contextual named-font remapping, supplementary-plane code points, out-of-cell baseline controls, and protected/corrupt source PNG data. Full named-font GUI/HUD adaptation remains an open release gate. Final paired tests verify six normalized glyph heights/baselines and 35 real glyphs; Java menu-title bitmap tint differs from Bedrock. Oversized labels/backgrounds are rejected, never downscaled to fit.
 
 Discovery counters also cover sounds, blockstates, `.bbmodel` files, and datapack biome definitions. Production conversion remains gated until each remaining subsystem has structural tests and real Java/Bedrock acceptance evidence:
 

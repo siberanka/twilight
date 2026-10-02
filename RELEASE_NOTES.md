@@ -1,6 +1,6 @@
-# Twilight 1.0.0-pre.3 ? release candidate (unpublished)
+# Twilight 1.0.0-pre.3 - prerelease
 
-This development build corrects custom item rotation and texture conversion and makes
+This prerelease corrects custom item rotation and texture conversion and makes
 unsupported UI conversion and Geyser restart requirements explicit.
 
 - Corrected bitmap glyph baselines using Java height/ascent and measured Bedrock cell coordinates; added negative-ascent, overflow and page-independence regressions. See the [font metrics review](docs/FONT_METRICS_2026-10-01.md).
@@ -44,6 +44,8 @@ content enabled. The development display adapter specifically targets Geyser
 2.11.3 build 1247; other Geyser core versions require validation. Full animated
 textures, tint, billboard behavior, and UI adaptation remain open acceptance work.
 
-Publication is pending final Bedrock glyph and menu-title visual checks.
-Automated tests and native-cell calibration pass; the current desktop focus
-blocker is documented in the font metrics review.
+Final font captures verify six exact normalized height/baseline combinations,
+35 supported real glyphs and the tested inventory title. Java title color
+modulation, wide rank tags and full custom UI backgrounds remain unsupported
+or visually different. Oversized content is reported rather than downscaled.
+See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise scope.

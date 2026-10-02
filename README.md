@@ -9,7 +9,7 @@ The current capability matrix and version-specific limitations are documented in
 
 ## Visual acceptance tests
 
-The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.3 release-candidate JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
+The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.3 prerelease JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
 
 The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) verifies automatic removal of unwanted ModelEngine particles, live state changes and passenger retention. The [mount-height regression](docs/DISPLAY_SEATS_2026-09-29.md) corrects the tested basket's lighting on solid ground. Full pose and material parity remain open.
 
@@ -24,24 +24,27 @@ corrects lost per-child composite transforms; remaining visual gaps are recorded
 The [font metrics regression](docs/FONT_METRICS_2026-10-01.md) measures Java/Bedrock
 glyph placement and corrects height/ascent conversion without page-relative heuristics.
 
-The following captures are from earlier sessions; they are not acceptance evidence for every current item or UI.
+The latest reviewed captures below show the 1 October font/menu checks and the
+30 September composite regression. GUI scales differ between clients. The menu
+pair verifies glyph placement and inventory previews; title tint, two invalid
+Java source references, wide tags and full UI backgrounds remain limitations.
+See the linked reports for build hashes and per-sample results.
 
 <table>
+  <tr><th>Java inventory and glyph title - 1 October</th><th>Bedrock inventory and glyph title - 1 October</th></tr>
   <tr>
-    <th>Java 3D source</th>
-    <th>Bedrock 3D conversion</th>
+    <td><img src="docs/images/acceptance/2026-10-01-fonts/fixed-menu-java.png" alt="Java 36-item inventory and glyph title reference" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-01-fonts/fixed-menu-bedrock.png" alt="Current Bedrock inventory and aligned glyph title; color modulation differs" width="100%"></td>
   </tr>
+  <tr><th>Java real glyphs - 1 October</th><th>Bedrock real glyphs - 1 October</th></tr>
   <tr>
-    <td><img src="docs/images/acceptance/java-3d-inventory.png" alt="Java inventory showing source custom 3D items" width="100%"></td>
-    <td><img src="docs/images/acceptance/bedrock-3d-inventory.png" alt="Bedrock inventory showing the converted custom 3D item" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-01-fonts/fixed-real-java.png" alt="Java reference with 36 real-source glyphs" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-01-fonts/fixed-real-bedrock.png" alt="Bedrock with 35 supported glyphs at corrected heights; wide rank unsupported" width="100%"></td>
   </tr>
+  <tr><th>Java composite model - 30 September</th><th>Bedrock composite model - 30 September</th></tr>
   <tr>
-    <th>Bow idle state</th>
-    <th>Bow full-draw state</th>
-  </tr>
-  <tr>
-    <td><img src="docs/images/acceptance/bedrock-bow-idle.png" alt="Converted Bedrock custom bow in its idle state" width="100%"></td>
-    <td><img src="docs/images/acceptance/bedrock-bow-drawn.png" alt="Converted Bedrock custom bow in its full-draw state" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-09-30-composites/bettermodel-demon_knight-idle-java.png" alt="Java demon knight composite model reference" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-09-30-composites/bettermodel-demon_knight-idle-bedrock.png" alt="Bedrock demon knight with corrected child transforms and attached horns" width="100%"></td>
   </tr>
 </table>
 
@@ -89,7 +92,7 @@ Each operation writes a dedicated UTF-8 log under `plugins/Twilight/logs`, for e
 - Animated item textures currently export the first authored frame. Full `.mcmeta` animation playback is not implemented.
 - Layered 2D textures are composed without smoothing. Java cuboids remain volumetric Bedrock geometry with separate first/third-person left/right and head transforms. Handheld presentation follows the resolved Java model parent, while authored hand translation, rotation, and scale are preserved without implicit fitting.
 - Single-layer texture-only bows and crossbows reuse Bedrock's native pose, pull geometry, and animation controllers. Volumetric legacy pull stages retain separate Java geometry and display transforms behind one runtime-selected Bedrock attachable. Crossbow arrow/rocket loads and fishing-rod cast models become explicit Geyser predicates, preserving their distinct states.
-- Supported bitmap providers are converted into fixed 16-pixel-cell Bedrock Unicode pages with per-glyph bottom alignment. Oversized GUI glyphs and custom spacing require a Bedrock layout adapter and fail strict conversion; diagnostic builds report and omit them. Actual chat baseline parity remains a visual acceptance gate. Named fonts contribute only globally safe, collision-free BMP private-use glyphs.
+- Supported bitmap providers are converted into fixed 16-pixel-cell Bedrock Unicode pages with measured Java height/ascent alignment. Oversized GUI glyphs and custom spacing require a Bedrock layout adapter and fail strict conversion; diagnostic builds report and omit them. Six measured probe heights/baselines and 35 real glyphs were verified in both clients; contextual tint and full layout parity remain open. Named fonts contribute only globally safe, collision-free BMP private-use glyphs.
 - With `vanilla-override: false`, normal Unicode cells in the Java default font cannot replace Bedrock's vanilla glyphs. Named-font cells that need contextual remapping or collide globally stop strict publication instead of corrupting menus or chat.
 - Explicit `minecraft:` texture references missing from a custom pack can be resolved from a version-matched Mojang client JAR cached under `plugins/Twilight/cache`. Manifest metadata, size, and SHA-1 are verified before use; this never registers vanilla models as custom content.
 - Layered Java `sounds.json` registries, file/event references, OGG assets, weights, pitch, volume, streaming, and attenuation are converted to Bedrock sound definitions. Explicit vanilla sound dependencies use the same version-matched, hash-verified Mojang asset chain.

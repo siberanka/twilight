@@ -1,7 +1,11 @@
 {
-  "native-probe-bedrock.png": "c6b5d2e1b84f675522c7160c8429d856d6938a3eb1892cff45637acd4fac6a78",
-  "before-real-java.png": "384f9e4e9f007a6d45c3662efb95519dfad75f354e1646b8b4b7de2c3f369ce8",
   "before-real-bedrock.png": "68eec2c052f17908e784a861e4ecc8faa1425c7f8d62e8d443d93fa9a730b054",
+  "before-real-java.png": "384f9e4e9f007a6d45c3662efb95519dfad75f354e1646b8b4b7de2c3f369ce8",
+  "fixed-menu-bedrock.png": "26d91b02f05263486c226ae7be1c3de832bb16e9dab57c9704138bb3bf7dc828",
+  "fixed-menu-java.png": "de3eeef6563f88c734eb0615b69812b362bd9ec9e759d9465a2e1d1a1244979c",
+  "fixed-probe-bedrock.png": "8d530fba288ce79c37148617223e7c9f9f039db85cc7af69be49757e0a5c90a5",
   "fixed-probe-java.png": "ee9d0bfb79995bd5b3c692f7b70ce39d9b12abff24bba96b13f02f478c3f1235",
-  "fixed-menu-java.png": "de3eeef6563f88c734eb0615b69812b362bd9ec9e759d9465a2e1d1a1244979c"
+  "fixed-real-bedrock.png": "8e43ce35db8e179e52cbbcccfd8caea7d9eef0656193fca0c11d708b5f39712d",
+  "fixed-real-java.png": "f9287c6bd2b9e91034369a6f5b240528f34dd4b0f731adc564a81ac98d16cc48",
+  "native-probe-bedrock.png": "c6b5d2e1b84f675522c7160c8429d856d6938a3eb1892cff45637acd4fac6a78"
 }

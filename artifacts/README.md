@@ -1,4 +1,4 @@
-# Twilight 1.0.0-pre.3 release candidate (unpublished)
+# Twilight 1.0.0-pre.3 prerelease
 
 [Download Twilight.jar](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256)
 
@@ -14,7 +14,7 @@ Read the [release notes](../RELEASE_NOTES.md) and
 [visual review](../docs/REAL_CONTENT_REVIEW.md) before deployment.
 This development checkpoint includes the live display bridge and ModelEngine
 visibility, display-facing, automatic [cloud-anchor corrections](../docs/CLOUD_ANCHORS_2026-09-29.md) and [Java-compatible cloud mount height](../docs/DISPLAY_SEATS_2026-09-29.md). The [additional model matrix](../docs/MODEL_MATRIX_2026-09-28.md) records remaining defects. Full animation, first-person, chat, UI, and entity
-parity remain incomplete. This candidate retains the documented acceptance gaps; release publication awaits final Bedrock font screenshots.
+parity remain incomplete. Final font screenshots verify supported heights/baselines and menu-title placement; contextual title tint, wide tags and full UI layout still differ.
 
 The [extended content checks](../docs/BROAD_CONTENT_2026-09-29.md) document the
 overlay-name fix, automatic model-based inventory previews, and current item, glyph and menu limitations.
