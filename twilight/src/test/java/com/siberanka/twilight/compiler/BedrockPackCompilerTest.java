@@ -663,7 +663,7 @@ class BedrockPackCompilerTest {
         write(source, "assets/minecraft/font/default.json", """
                 {"providers":[
                   {"type":"bitmap","file":"demo:font/emoji.png","height":9,"ascent":8,"chars":["%s"]},
-                  {"type":"bitmap","file":"demo:font/gui.png","height":256,"ascent":255,"chars":["%s"]}
+                  {"type":"bitmap","file":"demo:font/gui.png","height":1024,"ascent":1023,"chars":["%s"]}
                 ]}
                 """.formatted(emoji, gui));
         Path emojiTexture = source.resolve("assets/demo/textures/font/emoji.png");

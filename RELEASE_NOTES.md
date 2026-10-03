@@ -1,4 +1,22 @@
-# Twilight 1.0.0-pre.3 - prerelease
+# Twilight 1.0.0-pre.4-SNAPSHOT - development checkpoint
+
+Adaptive bitmap-font cells now preserve wide labels and larger UI/HUD images at
+their Java-authored display size. Atlas growth also preserves neighboring glyph
+heights and baselines. The [wide glyph review](docs/WIDE_GLYPHS_2026-10-02.md)
+records six further real images, 36 existing real glyphs, source integrity,
+whole-source audits and paired client captures. All 87 tests in 19 suites pass.
+
+The [current JAR and checksum](artifacts/) are a locally built snapshot. Native
+inventory-title clipping, bitmap tint, transparent left padding and fractional
+sampling remain visible failures. Full menu, HUD, item and animation parity is
+not established. Large native atlases have substantial memory costs.
+
+The published `v1.0.0-pre.3` assets remain unchanged on
+[GitLab](https://gitlab.com/siberanka/twilight/-/releases/v1.0.0-pre.3) and
+[GitHub](https://github.com/siberanka/twilight/releases/tag/v1.0.0-pre.3).
+The notes below describe that historical release, not the current snapshot.
+
+## Twilight 1.0.0-pre.3 - prerelease
 
 This prerelease corrects custom item rotation and texture conversion and makes
 unsupported UI conversion and Geyser restart requirements explicit.

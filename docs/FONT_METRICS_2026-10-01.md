@@ -1,5 +1,9 @@
 # Bitmap glyph heights and baselines — 1 October 2026
 
+Follow-up: the [2 October wide glyph review](WIDE_GLYPHS_2026-10-02.md) extends
+this measured placement to larger atlas cells. The results below retain the
+original prerelease scope and evidence.
+
 The converter read Java's `ascent` but did not use it when placing glyphs.
 All images were aligned to the bottom of a 16-pixel cell. An ordinary
 height-9, ascent-8 emoji consequently appeared four GUI units too low in

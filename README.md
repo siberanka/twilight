@@ -9,7 +9,7 @@ The current capability matrix and version-specific limitations are documented in
 
 ## Visual acceptance tests
 
-The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.3 prerelease JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
+The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.4-SNAPSHOT JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
 
 The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) verifies automatic removal of unwanted ModelEngine particles, live state changes and passenger retention. The [mount-height regression](docs/DISPLAY_SEATS_2026-09-29.md) corrects the tested basket's lighting on solid ground. Full pose and material parity remain open.
 
@@ -24,22 +24,24 @@ corrects lost per-child composite transforms; remaining visual gaps are recorded
 The [font metrics regression](docs/FONT_METRICS_2026-10-01.md) measures Java/Bedrock
 glyph placement and corrects height/ascent conversion without page-relative heuristics.
 
-The latest reviewed captures below show the 1 October font/menu checks and the
-30 September composite regression. GUI scales differ between clients. The menu
-pair verifies glyph placement and inventory previews; title tint, two invalid
-Java source references, wide tags and full UI backgrounds remain limitations.
-See the linked reports for build hashes and per-sample results.
+The [wide glyph review](docs/WIDE_GLYPHS_2026-10-02.md) adds six real UI/HUD images
+and verifies the formerly omitted 41-pixel-wide rank. Atlas cells grow without
+shrinking the glyphs. The latest pairs below show 2 October captures at the same
+GUI scale, plus the earlier composite regression. Chat rendering now includes
+larger images; native inventory-title clipping, tint, horizontal padding and
+fractional sampling still prevent full UI parity. The report includes failures
+alongside successful comparisons.
 
 <table>
-  <tr><th>Java inventory and glyph title - 1 October</th><th>Bedrock inventory and glyph title - 1 October</th></tr>
+  <tr><th>Java leaderboard image in chat - 2 October</th><th>Bedrock leaderboard image in chat - 2 October</th></tr>
   <tr>
-    <td><img src="docs/images/acceptance/2026-10-01-fonts/fixed-menu-java.png" alt="Java 36-item inventory and glyph title reference" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-10-01-fonts/fixed-menu-bedrock.png" alt="Current Bedrock inventory and aligned glyph title; color modulation differs" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-02-wide-fonts/wide-5-java.png" alt="Java leaderboard bitmap rendered as a chat glyph" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-02-wide-fonts/wide-5-bedrock.png" alt="Bedrock preserves leaderboard bitmap dimensions and opaque pixels; this is not an interactive menu test" width="100%"></td>
   </tr>
-  <tr><th>Java real glyphs - 1 October</th><th>Bedrock real glyphs - 1 October</th></tr>
+  <tr><th>Java real glyphs - 2 October</th><th>Bedrock real glyphs - 2 October</th></tr>
   <tr>
-    <td><img src="docs/images/acceptance/2026-10-01-fonts/fixed-real-java.png" alt="Java reference with 36 real-source glyphs" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-10-01-fonts/fixed-real-bedrock.png" alt="Bedrock with 35 supported glyphs at corrected heights; wide rank unsupported" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-02-wide-fonts/real-java.png" alt="Java reference with 36 real-source glyphs" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-02-wide-fonts/real-bedrock.png" alt="Bedrock with all 36 glyphs visible, including the wide player rank" width="100%"></td>
   </tr>
   <tr><th>Java composite model - 30 September</th><th>Bedrock composite model - 30 September</th></tr>
   <tr>
@@ -92,7 +94,7 @@ Each operation writes a dedicated UTF-8 log under `plugins/Twilight/logs`, for e
 - Animated item textures currently export the first authored frame. Full `.mcmeta` animation playback is not implemented.
 - Layered 2D textures are composed without smoothing. Java cuboids remain volumetric Bedrock geometry with separate first/third-person left/right and head transforms. Handheld presentation follows the resolved Java model parent, while authored hand translation, rotation, and scale are preserved without implicit fitting.
 - Single-layer texture-only bows and crossbows reuse Bedrock's native pose, pull geometry, and animation controllers. Volumetric legacy pull stages retain separate Java geometry and display transforms behind one runtime-selected Bedrock attachable. Crossbow arrow/rocket loads and fishing-rod cast models become explicit Geyser predicates, preserving their distinct states.
-- Supported bitmap providers are converted into fixed 16-pixel-cell Bedrock Unicode pages with measured Java height/ascent alignment. Oversized GUI glyphs and custom spacing require a Bedrock layout adapter and fail strict conversion; diagnostic builds report and omit them. Six measured probe heights/baselines and 35 real glyphs were verified in both clients; contextual tint and full layout parity remain open. Named fonts contribute only globally safe, collision-free BMP private-use glyphs.
+- Supported bitmap providers use adaptive 16-to-512-pixel cells with measured Java height/ascent alignment. Atlas growth preserves authored display dimensions; overflow beyond the supported bounds and custom spacing fail strict conversion. Six metric probes, 36 real glyphs and six further UI/HUD images were compared in both clients. Native title clipping, tint, padding and fractional sampling remain limitations. Large atlases also increase memory use; see the wide glyph review. Named fonts contribute only globally safe, collision-free BMP private-use glyphs.
 - With `vanilla-override: false`, normal Unicode cells in the Java default font cannot replace Bedrock's vanilla glyphs. Named-font cells that need contextual remapping or collide globally stop strict publication instead of corrupting menus or chat.
 - Explicit `minecraft:` texture references missing from a custom pack can be resolved from a version-matched Mojang client JAR cached under `plugins/Twilight/cache`. Manifest metadata, size, and SHA-1 are verified before use; this never registers vanilla models as custom content.
 - Layered Java `sounds.json` registries, file/event references, OGG assets, weights, pitch, volume, streaming, and attenuation are converted to Bedrock sound definitions. Explicit vanilla sound dependencies use the same version-matched, hash-verified Mojang asset chain.

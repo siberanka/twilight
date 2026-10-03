@@ -51,8 +51,8 @@ class BitmapFontLayoutTest {
 
     @Test
     void refusesVisibleOverflowWithoutShrinkingOrDrawingInAdjacentCells() throws Exception {
-        add(0xE000,16,16,16,0,16); // top=-5, visible data above native cell
-        add(0xE001,16,9,0,0,16);   // bottom=20
+        add(0xE000,16,1024,1024,0,16); // exceeds the largest supported atlas
+        add(0xE001,16,9,-1024,0,16);   // baseline outside even the largest cell
         add(0xE002,16,4,4,0,16);
         var output=compile();
         assertEquals(1,output.result.glyphs());
@@ -60,6 +60,55 @@ class BitmapFontLayoutTest {
         var page=output.page("E0");
         for(int y=0;y<16;y++) for(int x=0;x<32;x++) assertEquals(0,page.getRGB(x,y));
         assertNotEquals(0,page.getRGB(32,7));
+    }
+
+    @Test
+    void enlargesCellsForVisibleAscendersAndDescendersWithoutResizingGlyphs() throws Exception {
+        add(0xE000,16,16,16,0,16);
+        add(0xE001,9,9,0,0,9);
+        add(0xE002,9,9,8,0,9);
+        var output=compile();
+        assertTrue(output.result.problems().isEmpty());
+        var page=output.page("E0");
+        assertEquals(512,page.getWidth());
+        // Native origin is -12 relative to H for a 32px cell.
+        assertEquals(0xFFFF0000,page.getRGB(0,3));   // 7-16 = -9 GUI units
+        assertEquals(0,page.getRGB(0,19));
+        assertEquals(0xFFFF0000,page.getRGB(32,19)); // 7-0 = 7 GUI units
+        assertEquals(0,page.getRGB(32,28));
+        assertEquals(0xFFFF0000,page.getRGB(64,11)); // 7-8 = -1 GUI unit
+        assertEquals(0,page.getRGB(64,20));
+    }
+
+    @Test
+    void preservesEveryPixelOfWideLabelsAndKeepsNeighborMetricsStable() throws Exception {
+        add(0xE001,9,9,8,0,9);
+        int[] small=compile().page("E0").getRGB(16,3,9,9,null,0,9);
+        BufferedImage label=new BufferedImage(41,9,BufferedImage.TYPE_INT_ARGB);
+        for(int y=0;y<9;y++) for(int x=0;x<41;x++) label.setRGB(x,y,0xFF000000|(x<<8)|y);
+        addImage(0xE000,label,9,8);
+        var output=compile();
+        assertTrue(output.result.problems().isEmpty());
+        var page=output.page("E0");
+        assertEquals(1024,page.getWidth());
+        // A 64px native cell starts 28 GUI units above H; 27 is still H-1.
+        assertArrayEquals(label.getRGB(0,0,41,9,null,0,41),page.getRGB(0,27,41,9,null,0,41));
+        assertArrayEquals(small,page.getRGB(64,27,9,9,null,0,9));
+        assertEquals(0,page.getRGB(41,27));
+        assertEquals(0,page.getRGB(0,36));
+    }
+
+    @Test
+    void retainsLargeMenuBitmapWithoutFittingItToAnEmoji() throws Exception {
+        BufferedImage menu=new BufferedImage(176,64,BufferedImage.TYPE_INT_ARGB);
+        for(int y=0;y<64;y++) for(int x=0;x<176;x++) menu.setRGB(x,y,0xFF000000|(x<<8)|y);
+        addImage(0xE000,menu,64,48);
+        var output=compile();
+        assertTrue(output.result.problems().isEmpty());
+        var page=output.page("E0");
+        assertEquals(4096,page.getWidth());
+        assertArrayEquals(menu.getRGB(0,0,176,64,null,0,176),page.getRGB(0,83,176,64,null,0,176));
+        assertEquals(0,page.getRGB(176,83));
     }
 
     @Test
@@ -78,9 +127,13 @@ class BitmapFontLayoutTest {
     }
 
     private void add(int codePoint,int sourceSize,int height,int ascent,int visibleStart,int visibleEnd) throws Exception {
-        String name="g"+Integer.toHexString(codePoint);
         BufferedImage image=new BufferedImage(sourceSize,sourceSize,BufferedImage.TYPE_INT_ARGB);
         for(int y=visibleStart;y<visibleEnd;y++) for(int x=0;x<sourceSize;x++) image.setRGB(x,y,0xFFFF0000);
+        addImage(codePoint,image,height,ascent);
+    }
+
+    private void addImage(int codePoint,BufferedImage image,int height,int ascent) throws Exception {
+        String name="g"+Integer.toHexString(codePoint);
         Path path=root.resolve("assets/test/textures/"+name+".png");Files.createDirectories(path.getParent());
         ImageIO.write(image,"PNG",path.toFile());
         JsonObject provider=new JsonObject();provider.addProperty("type","bitmap");provider.addProperty("file","test:"+name+".png");

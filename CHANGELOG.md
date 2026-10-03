@@ -2,6 +2,16 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.4-SNAPSHOT - Unreleased
+
+- Automatically enlarge bitmap-font atlas cells while retaining each glyph's
+  Java display dimensions and ascent. Wide rank labels and larger UI/HUD images
+  no longer need to be shrunk or omitted solely because they exceed 16 pixels.
+- Add pixel-preservation and neighboring-glyph regressions; all 87 tests pass.
+  Repeat whole-source audits and compare six further real UI/HUD images in both
+  clients. Record remaining title clipping, horizontal padding and fractional
+  sampling differences in the [wide glyph review](docs/WIDE_GLYPHS_2026-10-02.md).
+
 ## 1.0.0-pre.3 - 2026-10-02
 
 - Preserve Java bitmap glyph heights and ascents with measured Bedrock cell

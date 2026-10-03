@@ -25,11 +25,12 @@ import java.util.Set;
 
 /** Converts Java bitmap-font graphs into Bedrock BMP glyph pages without contextual collisions. */
 final class BitmapFontCompiler {
-    private static final int BEDROCK_CELL_SIZE = 16;
-    // A native 16px Bedrock cell starts four GUI units above ordinary text.
-    // Java bitmap glyphs start at 7-ascent, hence cellY = 11-ascent.
-    // Calibrated against both clients; do not derive this from neighboring glyphs.
-    private static final int BEDROCK_BASELINE = 11;
+    private static final int MIN_CELL_SIZE = 16;
+    private static final int MAX_CELL_SIZE = 512;
+    // Bedrock places the texture cell at 4-cellSize/2 relative to ordinary text.
+    // Java bitmap top is 7-ascent, hence textureY = cellSize/2+3-ascent.
+    // Texture pixels remain GUI units even on larger pages: never scale a glyph
+    // to the atlas resolution or fit an oversized image into a smaller cell.
     private final ResourceIndex resources;
     private final VanillaAssetCache vanillaAssets;
     private final boolean vanillaOverride;
@@ -211,7 +212,7 @@ final class BitmapFontCompiler {
         int cellWidth = image.getWidth() / columns;
         int cellHeight = image.getHeight() / rows.size();
         double displayWidth = cellWidth * (declaredHeight / (double) cellHeight);
-        if (declaredHeight > BEDROCK_CELL_SIZE || displayWidth > BEDROCK_CELL_SIZE) {
+        if (displayWidth > MAX_CELL_SIZE) {
             problem("oversized bitmap glyphs require a Bedrock UI adapter", providerKey,
                     font + " -> " + textureIdentifier + " (" + displayWidth + "x" + declaredHeight + ")");
             return;
@@ -226,14 +227,15 @@ final class BitmapFontCompiler {
                     continue;
                 }
                 Glyph glyph = new Glyph(codePoint, image, column * cellWidth, row * cellHeight,
-                        cellWidth, cellHeight, declaredHeight, declaredAscent);
-                if (!fitsBaseline(glyph)) {
+                        cellWidth, cellHeight, declaredHeight, declaredAscent, MIN_CELL_SIZE);
+                int requiredCellSize = minimumCellSize(glyph, displayWidth);
+                if (requiredCellSize == 0) {
                     problem("bitmap glyph baselines require a Bedrock layout adapter", providerKey,
                             font + " -> " + textureIdentifier + " (height=" + declaredHeight
                                     + ", ascent=" + declaredAscent + ")");
                     continue;
                 }
-                target.put(codePoint, glyph);
+                target.put(codePoint, glyph.withCellSize(requiredCellSize));
             }
         }
     }
@@ -285,11 +287,9 @@ final class BitmapFontCompiler {
     }
 
     private static BufferedImage compose(List<Glyph> glyphs) {
-        // Bedrock derives glyph metrics from the page cell size. Keeping every
-        // page on the same 16px grid prevents a code point's apparent chat
-        // height or baseline from changing merely because it shares a page
-        // with a larger GUI glyph. Source resolution is not a font metric.
-        int cellSize = BEDROCK_CELL_SIZE;
+        // Enlarge the atlas, not its glyphs. Correcting the native cell origin
+        // keeps existing heights/baselines stable when a wide glyph joins a page.
+        int cellSize = glyphs.stream().mapToInt(Glyph::cellSize).max().orElse(MIN_CELL_SIZE);
         BufferedImage page = new BufferedImage(cellSize * 16, cellSize * 16, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = page.createGraphics();
         try {
@@ -303,7 +303,7 @@ final class BitmapFontCompiler {
                 int cellX = (slot & 15) * cellSize;
                 int cellY = (slot >>> 4) * cellSize;
                 int x = cellX;
-                int y = cellY + BEDROCK_BASELINE - glyph.declaredAscent();
+                int y = cellY + cellSize / 2 + 3 - glyph.declaredAscent();
                 // Transparent source padding may extend beyond the cell, but
                 // must never clear or paint an adjacent code point's pixels.
                 graphics.setClip(cellX, cellY, cellSize, cellSize);
@@ -316,12 +316,19 @@ final class BitmapFontCompiler {
         return page;
     }
 
-    private static boolean fitsBaseline(Glyph glyph) {
-        long top = (long) BEDROCK_BASELINE - glyph.declaredAscent();
-        if (top >= 0 && top + glyph.declaredHeight() <= BEDROCK_CELL_SIZE) return true;
+    private static int minimumCellSize(Glyph glyph, double displayWidth) {
+        for (int size = MIN_CELL_SIZE; size <= MAX_CELL_SIZE; size *= 2) {
+            if (displayWidth <= size && fitsBaseline(glyph, size)) return size;
+        }
+        return 0;
+    }
+
+    private static boolean fitsBaseline(Glyph glyph, int cellSize) {
+        long top = (long) cellSize / 2 + 3 - glyph.declaredAscent();
+        if (top >= 0 && top + glyph.declaredHeight() <= cellSize) return true;
         double scale = glyph.declaredHeight() / (double) glyph.height();
         for (int y = 0; y < glyph.height(); y++) {
-            if (top + y * scale >= 0 && top + (y + 1) * scale <= BEDROCK_CELL_SIZE) continue;
+            if (top + y * scale >= 0 && top + (y + 1) * scale <= cellSize) continue;
             for (int x = 0; x < glyph.width(); x++) {
                 if ((glyph.image().getRGB(glyph.x() + x, glyph.y() + y) >>> 24) != 0) return false;
             }
@@ -406,5 +413,9 @@ final class BitmapFontCompiler {
     record Result(int glyphs, int pages, int vanillaFallbackTextures, int namedFonts, int namedGlyphs,
                   List<String> problems) {}
     private record Glyph(int codePoint, BufferedImage image, int x, int y, int width, int height,
-                         int declaredHeight, int declaredAscent) {}
+                         int declaredHeight, int declaredAscent, int cellSize) {
+        Glyph withCellSize(int size) {
+            return new Glyph(codePoint, image, x, y, width, height, declaredHeight, declaredAscent, size);
+        }
+    }
 }
