@@ -1,4 +1,47 @@
-# Twilight 1.0.0-pre.5 - prerelease
+# Twilight 1.0.0-pre.6 - prerelease
+
+This prerelease shows Java font content correctly on every Bedrock text surface
+and fixes conversion defects found by complete builds of five real servers.
+
+- Laid out Java text for Bedrock players in chat, the action bar, titles and
+  subtitles, boss bars, scoreboards, entity names, text displays and the titles of
+  hoppers, furnaces and other containers. Named-font images (for example
+  CraftEngine ranks), remapped characters and ItemsAdder offsets now appear at
+  Java's positions; centred lines follow Java's integer centring and chat keeps
+  its spaces for wrapping. Controlled by `ui.java-text-surfaces`; the text layout
+  no longer requires the container layout. See the
+  [text surface review](docs/TEXT_SURFACES_2026-10-04.md).
+- Stopped treating ItemsAdder's vanilla asset copies, temporary build folders and
+  stale nested packs as sources (they hid hundreds of custom items) and used a
+  renamed ItemsAdder output when `generated.zip` is absent.
+- Resolved texture atlas sprite renames, decoded protected PNGs like Java, read
+  object-form model textures, allowed vanilla models behind custom selectors and
+  used Java's missing texture for undefined face textures.
+- Kept characters from Java's own font sheets as Bedrock text and treated
+  off-screen or transparent spacing images as advances, which removed
+  private-use page overflow on real servers.
+- Reported content Java rejects as well (malformed fonts, unreadable TrueType
+  files, sound files present in no pack, skin-rendered heads) as notices in
+  `build-report.json` instead of failing strict builds.
+
+Every new surface measured zero offset against Java with independent SkyBlock
+content (CraftEngine ranks and icons, CustomNameplates backgrounds); the six real
+Survival menus and the typed container screens were unchanged. Complete builds of
+the same five servers improved, for example from 125 of 130 to 837 of 841 custom
+items on Survival. Remaining differences: item names and lore are not rewritten,
+a glyph directly after text without a space and overlapping layers are one unit
+off, and bitmap tint and high-resolution glyph sampling differ.
+
+The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
+138 tests across 25 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom
+content enabled. The display adapter and text layout target Geyser 2.11.3 build
+1247; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.5 - prerelease
 
 This prerelease lays out Java font-image menu titles on Bedrock with Java font
 metrics, so real menu art lands on Java's GUI pixels.
@@ -26,8 +69,6 @@ The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom
 content enabled. The display adapter and title layout target Geyser 2.11.3 build
 1247; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.4 - prerelease
 
