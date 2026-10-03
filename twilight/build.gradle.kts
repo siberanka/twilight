@@ -17,6 +17,8 @@ dependencies {
     // Pin the adapter to a reviewed core build; never bundle Geyser classes.
     compileOnly("org.geysermc.geyser:core:2.11.3-20260925.135253-13")
     testCompileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    // Title layout tests drive the reflective Adventure bridge with unrelocated components.
+    testImplementation("net.kyori:adventure-api:4.17.0")
 
     testImplementation(platform("org.junit:junit-bom:5.14.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")

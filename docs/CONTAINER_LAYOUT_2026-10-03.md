@@ -102,6 +102,10 @@ visible as missing-texture items in the Java menu.
 
 ## Remaining limits
 
+The [text layout review](TEXT_LAYOUT_2026-10-03.md) (1.0.0-pre.5) later removed the
+one-unit glyph offset and added Java spacing for chest titles; the items below
+describe this 1.0.0-pre.4 checkpoint.
+
 - Contextual bitmap tint, the one-unit glyph offset, Java space-provider
   advances (including negative spaces) and multi-layer title composition need a
   runtime text/layout adapter.

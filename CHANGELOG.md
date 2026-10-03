@@ -2,6 +2,20 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.5-SNAPSHOT - Unreleased
+
+- Lay out chest titles for Bedrock players with Java font metrics. Negative and
+  custom spacing (space providers, negative-height bitmaps), glyph bearings and
+  characters Java remaps in the default or named fonts are reproduced with
+  invisible spacer glyphs and private-use aliases. Real menu images now land on
+  Java's exact GUI pixels, including the former one-unit offset. Controlled by
+  `ui.java-text-layout`; the touch layout receives glyph substitution only.
+- Combine font definitions from every resource pack like Java, and ignore
+  TrueType fonts Java cannot load.
+- Verify six real Survival menus, every chest size and unchanged hopper, furnace
+  and dispenser screens in paired captures; see the
+  [text layout review](docs/TEXT_LAYOUT_2026-10-03.md). 109 tests pass.
+
 ## 1.0.0-pre.4 - 2026-10-03
 
 - Generate a Java container layout for Bedrock desktop chest screens. Wide

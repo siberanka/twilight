@@ -38,7 +38,13 @@ full UI parity. The report includes failures alongside successful comparisons.
 The [container layout review](docs/CONTAINER_LAYOUT_2026-10-03.md) resolves the
 clipped menu title. Desktop chest screens now show Java font-image menus in full,
 with Java's title position, drawing order and slot spacing for every chest row
-count from 1 to 6. Bitmap glyph tint and a one-unit glyph offset remain open.
+count from 1 to 6.
+
+The [text layout review](docs/TEXT_LAYOUT_2026-10-03.md) adds Java font metrics to
+chest titles: negative spaces, ItemsAdder offsets, remapped default-font
+characters and glyph bearings. Six real Survival menus match Java's GUI pixels in
+the title area and on all measured slot rows. Bitmap glyph tint and overlapping
+title layers remain open.
 
 <table>
   <tr><th>Java font-image menu - 3 October</th><th>Bedrock font-image menu - 3 October</th></tr>
@@ -107,7 +113,8 @@ Each operation writes a dedicated UTF-8 log under `plugins/Twilight/logs`, for e
 - Animated item textures currently export the first authored frame. Full `.mcmeta` animation playback is not implemented.
 - Layered 2D textures are composed without smoothing. Java cuboids remain volumetric Bedrock geometry with separate first/third-person left/right and head transforms. Handheld presentation follows the resolved Java model parent, while authored hand translation, rotation, and scale are preserved without implicit fitting.
 - Single-layer texture-only bows and crossbows reuse Bedrock's native pose, pull geometry, and animation controllers. Volumetric legacy pull stages retain separate Java geometry and display transforms behind one runtime-selected Bedrock attachable. Crossbow arrow/rocket loads and fishing-rod cast models become explicit Geyser predicates, preserving their distinct states.
-- Supported bitmap providers use adaptive 16-to-512-pixel cells with measured Java height/ascent alignment. Atlas growth preserves authored display dimensions; overflow beyond the supported bounds and custom spacing fail strict conversion. Six metric probes, 36 real glyphs and six further UI/HUD images were compared in both clients. Bitmap tint, a one-unit glyph offset, transparent left padding and fractional sampling remain limitations. Large atlases also increase memory use; see the wide glyph review. Named fonts contribute only globally safe, collision-free BMP private-use glyphs.
+- Supported bitmap providers use adaptive 16-to-512-pixel cells with measured Java height/ascent alignment. Atlas growth preserves authored display dimensions; overflow beyond the supported bounds and custom spacing fail strict conversion. Six metric probes, 36 real glyphs and six further UI/HUD images were compared in both clients. Chest titles use Java font metrics (spacing, negative shifts, bearings and remapped characters); bitmap tint and fractional sampling remain limitations. Large atlases also increase memory use; see the wide glyph review. Named fonts contribute only globally safe, collision-free BMP private-use glyphs.
+- Chest titles are laid out for Bedrock players with Java font metrics (`ui.java-text-layout: true`): fonts from all packs are combined like Java, spacing and negative-shift characters become invisible spacers, and characters Java remaps receive private-use aliases. A glyph directly after text without a space and overlapping title layers can still differ by a unit.
 - Desktop chest screens receive Java's container layout (`ui.java-container-layout: true`): unwrapped titles, Java label positions and drawing order, and Java slot spacing for 1 to 6 rows. Twilight merges partial UI definitions instead of replacing Bedrock UI files; other containers and touch layouts stay vanilla.
 - With `vanilla-override: false`, normal Unicode cells in the Java default font cannot replace Bedrock's vanilla glyphs. Named-font cells that need contextual remapping or collide globally stop strict publication instead of corrupting menus or chat.
 - Explicit `minecraft:` texture references missing from a custom pack can be resolved from a version-matched Mojang client JAR cached under `plugins/Twilight/cache`. Manifest metadata, size, and SHA-1 are verified before use; this never registers vanilla models as custom content.

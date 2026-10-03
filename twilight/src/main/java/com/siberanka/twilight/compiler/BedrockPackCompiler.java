@@ -157,18 +157,20 @@ public final class BedrockPackCompiler {
 
         displays.finish(packFiles);
         BitmapFontCompiler.Result fonts;
+        // The title layout relies on the chest label origin, so it requires the container layout.
+        boolean textLayout = config.javaContainerLayout() && config.javaTextLayout();
         SoundCompiler.Result sounds;
         if (vanillaAssets == null) {
-            fonts = new BitmapFontCompiler(resources, null, config.vanillaOverride()).compile(packFiles);
+            fonts = new BitmapFontCompiler(resources, null, config.vanillaOverride(), textLayout).compile(packFiles);
             sounds = new SoundCompiler(resources, config.vanillaOverride(), null).compile(packFiles);
         } else {
-            fonts = new BitmapFontCompiler(resources, vanillaAssets, config.vanillaOverride()).compile(packFiles);
+            fonts = new BitmapFontCompiler(resources, vanillaAssets, config.vanillaOverride(), textLayout).compile(packFiles);
             sounds = new SoundCompiler(resources, config.vanillaOverride(), vanillaAssets).compile(packFiles);
         }
         problems.addAll(fonts.problems());
         problems.addAll(sounds.problems());
         if (config.javaContainerLayout()) {
-            packFiles.put(JavaContainerUi.PATH, jsonBytes(JavaContainerUi.chestScreen()));
+            packFiles.put(JavaContainerUi.PATH, jsonBytes(JavaContainerUi.chestScreen(fonts.layout() != null)));
             packFiles.put(JavaContainerUi.COMMON_PATH, jsonBytes(JavaContainerUi.commonScreen()));
         }
 
@@ -206,6 +208,8 @@ public final class BedrockPackCompiler {
         report.addProperty("vanilla_fallback_textures", fonts.vanillaFallbackTextures());
         report.addProperty("named_fonts", fonts.namedFonts());
         report.addProperty("named_font_glyphs", fonts.namedGlyphs());
+        report.addProperty("aliased_glyphs", fonts.aliasedGlyphs());
+        report.addProperty("text_layout_entries", fonts.layout() == null ? 0 : fonts.layout().entryCount());
         report.addProperty("sound_definitions", sounds.definitions());
         report.addProperty("sound_files", sounds.files());
         report.addProperty("vanilla_fallback_sounds", sounds.vanillaFallbackFiles());

@@ -64,6 +64,7 @@ public final class TwilightPlugin extends JavaPlugin {
     private GeyserDeploymentService deployment;
     private ProviderHookManager providerHooks;
     private AutoCloseable displayBridge;
+    private com.siberanka.twilight.integration.text.GeyserTitleLayoutBridge titleBridge;
 
     @Override
     public void onEnable() {
@@ -82,6 +83,15 @@ public final class TwilightPlugin extends JavaPlugin {
                         deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger());
             } catch (Exception | LinkageError failure) {
                 getLogger().log(Level.SEVERE, "Live item-display bridge is unavailable; model animation parity is not supported.", failure);
+            }
+            if (config.javaContainerLayout() && config.javaTextLayout()) {
+                try {
+                    titleBridge = com.siberanka.twilight.integration.text.GeyserTitleLayoutBridge.create(this,
+                            deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger());
+                } catch (Exception | LinkageError failure) {
+                    getLogger().log(Level.SEVERE, "Java title layout is unavailable; Bedrock chest titles of a pack "
+                            + "built with the layout will be misplaced. Rebuild with ui.java-text-layout: false.", failure);
+                }
             }
         }
 
@@ -107,6 +117,10 @@ public final class TwilightPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (titleBridge != null) {
+            try { titleBridge.close(); }
+            catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close title layout", failure); }
+        }
         if (displayBridge != null) {
             try { displayBridge.close(); }
             catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close display bridge", failure); }

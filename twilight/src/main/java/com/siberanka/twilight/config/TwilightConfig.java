@@ -25,7 +25,8 @@ public record TwilightConfig(
         boolean deployAfterBuild,
         boolean reloadAfterDeploy,
         int backupsToKeep,
-        boolean javaContainerLayout
+        boolean javaContainerLayout,
+        boolean javaTextLayout
 ) {
     public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
                           boolean syncProviderChanges, long startupDelayTicks, long providerCommandDelayTicks,
@@ -35,7 +36,19 @@ public record TwilightConfig(
         this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
                 providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
                 autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
-                backupsToKeep, true);
+                backupsToKeep, true, true);
+    }
+
+    public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
+                          boolean syncProviderChanges, long startupDelayTicks, long providerCommandDelayTicks,
+                          long maximumSourceBytes, int maximumArchiveEntries, boolean downloadVanillaAssets,
+                          boolean autoDiscoverSources, List<Path> additionalSources, String geyserDirectory,
+                          boolean deployAfterBuild, boolean reloadAfterDeploy, int backupsToKeep,
+                          boolean javaContainerLayout) {
+        this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
+                providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
+                autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
+                backupsToKeep, javaContainerLayout, javaContainerLayout);
     }
 
     public static TwilightConfig read(FileConfiguration source, Path serverRoot) {
@@ -66,7 +79,8 @@ public record TwilightConfig(
                 source.getBoolean("geyser.deploy-after-build", true),
                 source.getBoolean("geyser.reload-after-deploy", false),
                 backups,
-                source.getBoolean("ui.java-container-layout", true)
+                source.getBoolean("ui.java-container-layout", true),
+                source.getBoolean("ui.java-text-layout", true)
         );
     }
 

@@ -363,7 +363,7 @@
     {
       "id": "gui.discovery",
       "area": "ui",
-      "status": "planned",
+      "status": "partial",
       "scenarios": [
         "menu config row count",
         "runtime inventory size",
@@ -372,7 +372,9 @@
         "identical filenames in distinct namespaces",
         "invalid size 53"
       ],
-      "existingEvidence": []
+      "existingEvidence": [
+        "docs/TEXT_LAYOUT_2026-10-03.md"
+      ]
     },
     {
       "id": "gui.composition",
@@ -390,7 +392,8 @@
       ],
       "existingEvidence": [
         "docs/WIDE_GLYPHS_2026-10-02.md",
-        "docs/CONTAINER_LAYOUT_2026-10-03.md"
+        "docs/CONTAINER_LAYOUT_2026-10-03.md",
+        "docs/TEXT_LAYOUT_2026-10-03.md"
       ]
     },
     {
@@ -439,7 +442,8 @@
         "accessibility text sizes"
       ],
       "existingEvidence": [
-        "docs/CONTAINER_LAYOUT_2026-10-03.md"
+        "docs/CONTAINER_LAYOUT_2026-10-03.md",
+        "docs/TEXT_LAYOUT_2026-10-03.md"
       ]
     },
     {

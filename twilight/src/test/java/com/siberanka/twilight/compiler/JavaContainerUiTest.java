@@ -101,6 +101,16 @@ class JavaContainerUiTest {
     }
 
     @Test
+    void movesTheLabelOriginForTheTitleLayoutOnly() {
+        JsonObject laidOut = JavaContainerUi.chestScreen(true);
+        assertEquals("[-248,-3]", laidOut.getAsJsonObject("small_chest_panel_top_half")
+                .get("$twilight_java_title_offset").toString());
+        assertEquals("[-248,-2]", laidOut.getAsJsonObject("large_chest_panel_top_half")
+                .get("$twilight_java_title_offset").toString());
+        assertEquals(JavaContainerUi.chestScreen(), JavaContainerUi.chestScreen(false));
+    }
+
+    @Test
     void neverWrapsAndLayersTheTitleBetweenSlotFramesAndItems() {
         JsonObject screen = JavaContainerUi.chestScreen();
         assertEquals("chest", screen.get("namespace").getAsString());
@@ -140,7 +150,9 @@ class JavaContainerUiTest {
             assertNotNull(entry);
             JsonObject parsed = JsonParser.parseString(new String(zip.getInputStream(entry).readAllBytes(),
                     StandardCharsets.UTF_8)).getAsJsonObject();
-            assertEquals(JavaContainerUi.chestScreen(), parsed);
+            // A custom font enables the title layout, which moves the label origin left.
+            assertEquals(JavaContainerUi.chestScreen(true), parsed);
+            assertNotNull(zip.getEntry("twilight/text-layout.json"));
             assertNotNull(zip.getEntry(JavaContainerUi.COMMON_PATH));
             assertNotNull(zip.getEntry("font/glyph_EC.png"));
         }

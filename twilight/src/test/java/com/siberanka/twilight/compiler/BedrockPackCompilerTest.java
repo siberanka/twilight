@@ -638,7 +638,8 @@ class BedrockPackCompilerTest {
         ImageIO.write(icons, "PNG", texture.toFile());
 
         ContentSource pack = new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1);
-        BuildResult result = new BedrockPackCompiler(root.resolve("font-data"), config())
+        // Without the title layout no spacer or wide-variant pages accompany the glyph page.
+        BuildResult result = new BedrockPackCompiler(root.resolve("font-data"), withoutTextLayout())
                 .build(List.of(pack), List.of());
 
         assertEquals(2, result.glyphs());
@@ -701,13 +702,13 @@ class BedrockPackCompilerTest {
     }
 
     @Test
-    void doesNotSilentlyDiscardCustomMenuSpacing() throws Exception {
+    void doesNotSilentlyDiscardCustomMenuSpacingWithoutTheTextLayout() throws Exception {
         Path source = root.resolve("custom-space-source");
         write(source, "assets/minecraft/font/default.json", """
                 {"providers":[{"type":"space","advances":{"\\ue000":-8}}]}
                 """);
         ConversionException failure = assertThrows(ConversionException.class,
-                () -> new BedrockPackCompiler(root.resolve("custom-space-data"), config()).build(
+                () -> new BedrockPackCompiler(root.resolve("custom-space-data"), withoutTextLayout()).build(
                         List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of()));
         assertTrue(failure.problems().stream().anyMatch(p -> p.contains("custom font advances")));
     }
@@ -786,7 +787,7 @@ class BedrockPackCompilerTest {
     }
 
     @Test
-    void rejectsNamedFontCodepointCollisionsInsteadOfPublishingWrongMenus() throws Exception {
+    void rejectsNamedFontCodepointCollisionsWithoutTheTextLayout() throws Exception {
         Path source = root.resolve("named-font-conflict");
         write(source, "assets/demo/font/a.json", """
                 {"providers":[{"type":"bitmap","file":"demo:font/a.png",
@@ -800,7 +801,7 @@ class BedrockPackCompilerTest {
         png(source.resolve("assets/demo/textures/font/b.png"), Color.GREEN);
 
         ConversionException failure = assertThrows(ConversionException.class,
-                () -> new BedrockPackCompiler(root.resolve("named-font-conflict-data"), config()).build(List.of(
+                () -> new BedrockPackCompiler(root.resolve("named-font-conflict-data"), withoutTextLayout()).build(List.of(
                         new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)
                 ), List.of()));
 
@@ -862,7 +863,7 @@ class BedrockPackCompilerTest {
     }
 
     @Test
-    void protectsVanillaFontCellsWhenVanillaOverrideIsDisabled() throws Exception {
+    void protectsVanillaFontCellsWithoutOverrideOrTextLayout() throws Exception {
         Path source = root.resolve("vanilla-font-override");
         write(source, "assets/minecraft/font/default.json", """
                 {"providers":[{"type":"bitmap","file":"demo:font/letters.png",
@@ -871,7 +872,7 @@ class BedrockPackCompilerTest {
         png(source.resolve("assets/demo/textures/font/letters.png"), Color.RED);
 
         ConversionException failure = assertThrows(ConversionException.class,
-                () -> new BedrockPackCompiler(root.resolve("vanilla-font-override-data"), config()).build(List.of(
+                () -> new BedrockPackCompiler(root.resolve("vanilla-font-override-data"), withoutTextLayout()).build(List.of(
                         new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)
                 ), List.of()));
 
@@ -1110,6 +1111,11 @@ class BedrockPackCompilerTest {
                 assertEquals(9, uv.getAsJsonArray("uv_size").get(1).getAsInt());
             }
         }
+    }
+
+    private TwilightConfig withoutTextLayout() {
+        return new TwilightConfig(false, true, false, true, 40, 100, 10_000_000, 10_000,
+                true, true, List.of(), "auto", false, false, 3, true, false);
     }
 
     private TwilightConfig config() {

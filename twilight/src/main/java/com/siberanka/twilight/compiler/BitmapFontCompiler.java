@@ -8,6 +8,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.siberanka.twilight.source.ResourceIndex;
+import com.siberanka.twilight.text.TextLayoutTable;
 
 import javax.imageio.ImageIO;
 import java.awt.AlphaComposite;
@@ -16,12 +17,16 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 /** Converts Java bitmap-font graphs into Bedrock BMP glyph pages without contextual collisions. */
 final class BitmapFontCompiler {
@@ -31,11 +36,21 @@ final class BitmapFontCompiler {
     // Java bitmap top is 7-ascent, hence textureY = cellSize/2+3-ascent.
     // Texture pixels remain GUI units even on larger pages: never scale a glyph
     // to the atlas resolution or fit an oversized image into a smaller cell.
+    /** Spacer glyphs ink 1..SPACER_COUNT columns with alpha 1, advancing 2..SPACER_COUNT+1 on Bedrock. */
+    static final int SPACER_COUNT = 32;
+    private static final int SPACER_CELL = 32;
+    private static final int FIRST_ALIAS_PAGE = 0xE2; // E0/E1 hold Bedrock's input icons
+    private static final int LAST_ALIAS_PAGE = 0xF8;
+    /** Wide variants (one invisible trailing column) are generated for glyphs up to this cell size. */
+    private static final int MAX_WIDE_CELL = 64;
     private final ResourceIndex resources;
     private final VanillaAssetCache vanillaAssets;
     private final boolean vanillaOverride;
+    private final boolean textLayout;
     private final Map<String, ProblemBucket> problemGroups = new LinkedHashMap<>();
     private final Map<Integer, Glyph> glyphs = new LinkedHashMap<>();
+    private final Map<String, Map<Integer, Object>> layoutSources = new TreeMap<>();
+    private final List<AliasRequest> aliasRequests = new ArrayList<>();
     private final Set<String> nonBmpGlyphs = new HashSet<>();
     private final Set<String> unsupportedBaselineProviders = new HashSet<>();
     private final Set<String> vanillaFallbackTextures = new HashSet<>();
@@ -47,19 +62,25 @@ final class BitmapFontCompiler {
     }
 
     BitmapFontCompiler(ResourceIndex resources, VanillaAssetCache vanillaAssets, boolean vanillaOverride) {
+        this(resources, vanillaAssets, vanillaOverride, false);
+    }
+
+    BitmapFontCompiler(ResourceIndex resources, VanillaAssetCache vanillaAssets, boolean vanillaOverride,
+                       boolean textLayout) {
         this.resources = resources;
         this.vanillaAssets = vanillaAssets;
         this.vanillaOverride = vanillaOverride;
+        this.textLayout = textLayout;
     }
 
     Result compile(Map<String, byte[]> packFiles) throws IOException {
         List<String> definitions = resources.paths().stream().map(BitmapFontCompiler::fontIdentifier)
                 .filter(java.util.Objects::nonNull).sorted().toList();
-        if (definitions.isEmpty()) return new Result(0, 0, 0, 0, 0, List.of());
+        if (definitions.isEmpty()) return new Result(0, 0, 0, 0, 0, 0, null, List.of());
 
         Set<String> defaultClosure = new HashSet<>();
         if (definitions.contains("minecraft:default")) {
-            Map<Integer, Glyph> defaultGlyphs = new LinkedHashMap<>();
+            Map<Integer, Object> defaultGlyphs = new LinkedHashMap<>();
             readFont("minecraft:default", new HashSet<>(), defaultClosure, defaultGlyphs);
             mergeDefaultFont(defaultGlyphs);
         }
@@ -68,15 +89,30 @@ final class BitmapFontCompiler {
                 .filter(identifier -> !defaultClosure.contains(identifier)).toList();
         namedFonts = namedDefinitions.size();
         for (String identifier : namedDefinitions) {
-            Map<Integer, Glyph> contextual = new LinkedHashMap<>();
+            Map<Integer, Object> contextual = new LinkedHashMap<>();
             readFont(identifier, new HashSet<>(), new HashSet<>(), contextual);
             mergeNamedFont(identifier, contextual);
         }
+
+        boolean layoutActive = textLayout && !layoutSources.isEmpty();
+        int spacerPage = layoutActive ? freePage(Set.of()) : -1;
+        Map<Integer, Integer> aliases = layoutActive ? allocateAliases(spacerPage) : Map.of();
+        Map<Integer, Integer> wide = layoutActive ? allocateWideVariants(spacerPage) : Map.of();
+
         Map<Integer, List<Glyph>> pages = new LinkedHashMap<>();
         glyphs.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry ->
                 pages.computeIfAbsent(entry.getKey() >>> 8, ignored -> new ArrayList<>()).add(entry.getValue()));
+        Map<Integer, int[]> ink = new HashMap<>();
         for (Map.Entry<Integer, List<Glyph>> page : pages.entrySet()) {
-            packFiles.put("font/glyph_%02X.png".formatted(page.getKey()), TextureSet.png(compose(page.getValue())));
+            BufferedImage image = compose(page.getValue());
+            packFiles.put("font/glyph_%02X.png".formatted(page.getKey()), TextureSet.png(image));
+            if (layoutActive) measureInk(image, page.getValue(), ink);
+        }
+        TextLayoutTable table = null;
+        if (layoutActive) {
+            packFiles.put("font/glyph_%02X.png".formatted(spacerPage), TextureSet.png(spacerPage()));
+            table = layoutTable(wide, ink, spacerPage << 8);
+            packFiles.put(TextLayoutTable.PATH, table.toJson().toString().getBytes(StandardCharsets.UTF_8));
         }
         List<String> problems = new ArrayList<>(problemGroups.entrySet().stream()
                 .map(entry -> entry.getValue().format(entry.getKey())).toList());
@@ -84,68 +120,120 @@ final class BitmapFontCompiler {
                 " supplementary-plane glyph(s) cannot be represented by Bedrock BMP pages");
         if (!unsupportedBaselineProviders.isEmpty()) problems.add(unsupportedBaselineProviders.size() +
                 " invalid Java bitmap height/ascent provider(s) were skipped");
-        return new Result(glyphs.size(), pages.size(), vanillaFallbackTextures.size(), namedFonts, namedGlyphs,
-                List.copyOf(problems));
+        int direct = glyphs.size() - aliases.size() - wide.size();
+        return new Result(direct, pages.size(), vanillaFallbackTextures.size(), namedFonts, namedGlyphs,
+                aliases.size(), table, List.copyOf(problems));
     }
 
     private void readFont(String identifier, Set<String> active, Set<String> closure,
-                          Map<Integer, Glyph> target) {
+                          Map<Integer, Object> target) {
         String normalized = identifier(identifier, "minecraft");
         if (!active.add(normalized)) return;
         closure.add(normalized);
         try {
-            var definition = resources.find(fontPath(normalized));
-            if (definition.isEmpty()) {
+            // Java combines a font's definitions from every resource pack: higher-priority packs'
+            // providers come first. findAll lists the effective pack first, so apply it last.
+            List<ResourceIndex.Asset> definitions = resources.findAll(fontPath(normalized));
+            if (definitions.isEmpty()) {
                 if (!normalized.startsWith("minecraft:")) problem("missing referenced fonts", normalized);
                 return;
             }
-            JsonElement parsed = JsonParser.parseString(definition.get().readUtf8());
-            if (!parsed.isJsonObject()) {
-                problem("font roots are not objects", normalized);
-                return;
+            for (int layer = definitions.size() - 1; layer >= 0; layer--) {
+                ResourceIndex.Asset definition = definitions.get(layer);
+                try { readProviders(normalized, definition, active, closure, target); }
+                catch (IOException | RuntimeException failure) {
+                    problem("font definitions could not be parsed", normalized + " -> "
+                            + definition.source().provider() + ": " + message(failure));
+                }
             }
-            JsonElement providersElement = parsed.getAsJsonObject().get("providers");
-            if (providersElement == null || !providersElement.isJsonArray()) return;
-            var providers = providersElement.getAsJsonArray();
-            for (int index = providers.size() - 1; index >= 0; index--) {
-                JsonElement element = providers.get(index);
-                if (!element.isJsonObject()) {
-                    problem("font definitions contain non-object providers", normalized);
-                    continue;
-                }
-                JsonObject provider = element.getAsJsonObject();
-                String type = string(provider, "type");
-                type = type.substring(type.indexOf(':') + 1);
-                if (type.equals("bitmap")) {
-                    try { readBitmap(normalized, provider, target); }
-                    catch (IOException failure) {
-                        problem("bitmap providers could not be decoded", normalized + '|' + provider,
-                                normalized + " -> " + message(failure));
-                    }
-                }
-                else if (type.equals("reference")) {
-                    String reference = string(provider, "id");
-                    if (!reference.isBlank()) readFont(reference, active, closure, target);
-                }
-                else if (type.equals("space") && provider.has("advances")) {
-                    for (var advance : provider.getAsJsonObject("advances").entrySet()) {
-                        if (!(advance.getKey().equals(" ") || advance.getKey().equals("\u00a0"))
-                                || advance.getValue().getAsDouble() != 4.0) {
-                            problem("custom font advances require a Bedrock layout adapter", normalized + '|' + provider, normalized);
-                            break;
-                        }
-                    }
-                }
-                // Built-in providers retain Bedrock's native metrics.
-            }
-        } catch (IOException | RuntimeException failure) {
+        } catch (RuntimeException failure) {
             problem("font definitions could not be parsed", normalized + " -> " + message(failure));
         } finally {
             active.remove(normalized);
         }
     }
 
-    private void readBitmap(String font, JsonObject provider, Map<Integer, Glyph> target) throws IOException {
+    private void readProviders(String normalized, ResourceIndex.Asset definition, Set<String> active,
+                               Set<String> closure, Map<Integer, Object> target) throws IOException {
+        JsonElement parsed = JsonParser.parseString(definition.readUtf8());
+        if (!parsed.isJsonObject()) {
+            problem("font roots are not objects", normalized);
+            return;
+        }
+        JsonElement providersElement = parsed.getAsJsonObject().get("providers");
+        if (providersElement == null || !providersElement.isJsonArray()) return;
+        var providers = providersElement.getAsJsonArray();
+        // Java uses the first provider that defines a character: read in reverse and overwrite.
+        for (int index = providers.size() - 1; index >= 0; index--) {
+            JsonElement element = providers.get(index);
+            if (!element.isJsonObject()) {
+                problem("font definitions contain non-object providers", normalized);
+                continue;
+            }
+            JsonObject provider = element.getAsJsonObject();
+            String type = string(provider, "type");
+            type = type.substring(type.indexOf(':') + 1);
+            if (type.equals("bitmap")) {
+                try { readBitmap(normalized, provider, target); }
+                catch (IOException failure) {
+                    problem("bitmap providers could not be decoded", normalized + '|' + provider,
+                            normalized + " -> " + message(failure));
+                }
+            }
+            else if (type.equals("reference")) {
+                String reference = string(provider, "id");
+                if (!reference.isBlank()) readFont(reference, active, closure, target);
+            }
+            else if (type.equals("space") && provider.has("advances")) {
+                readSpaces(normalized, provider, target);
+            }
+            else if (type.equals("ttf") && textLayout) {
+                readTrueType(normalized, provider, target);
+            }
+            // Built-in providers retain Bedrock's native metrics.
+        }
+    }
+
+    private void readSpaces(String font, JsonObject provider, Map<Integer, Object> target) {
+        for (var advance : provider.getAsJsonObject("advances").entrySet()) {
+            String key = advance.getKey();
+            if (key.codePointCount(0, key.length()) != 1) continue;
+            float value = advance.getValue().getAsFloat();
+            if (textLayout) {
+                target.put(key.codePointAt(0), new Advance(value));
+            } else if (!(key.equals(" ") || key.equals(" ")) || value != 4.0f) {
+                problem("custom font advances require a Bedrock layout adapter", font + '|' + provider, font);
+                return;
+            }
+        }
+    }
+
+    private void readTrueType(String font, JsonObject provider, Map<Integer, Object> target) {
+        String file = string(provider, "file");
+        String[] split = identifier(file, "minecraft").split(":", 2);
+        try {
+            var asset = resources.find("assets/" + split[0] + "/font/" + split[1]);
+            if (asset.isEmpty()) {
+                problem("TrueType font files are missing", font + " -> " + file);
+                return;
+            }
+            float size = provider.has("size") ? provider.get("size").getAsFloat() : 11f;
+            Set<Integer> skipped = new HashSet<>();
+            JsonElement skip = provider.get("skip");
+            if (skip != null && skip.isJsonPrimitive()) skip.getAsString().codePoints().forEach(skipped::add);
+            if (skip != null && skip.isJsonArray()) skip.getAsJsonArray().forEach(row -> row.getAsString().codePoints().forEach(skipped::add));
+            for (var metric : TrueTypeAdvances.read(asset.get().readBytes(), size).entrySet()) {
+                if (skipped.contains(metric.getKey())) continue;
+                // Outlined TrueType text keeps Bedrock's native font; empty glyphs are spacing only.
+                if (metric.getValue().visible()) target.remove(metric.getKey());
+                else target.put(metric.getKey(), new Advance(metric.getValue().advance()));
+            }
+        } catch (IOException failure) {
+            problem("TrueType fonts could not be read", font + " -> " + file + ": " + message(failure));
+        }
+    }
+
+    private void readBitmap(String font, JsonObject provider, Map<Integer, Object> target) throws IOException {
         String providerKey = font + '|' + provider;
         String file = string(provider, "file");
         JsonElement chars = provider.get("chars");
@@ -205,12 +293,26 @@ final class BitmapFontCompiler {
         }
         int declaredHeight = integer(provider, "height", 8);
         int declaredAscent = integer(provider, "ascent", declaredHeight);
+        int cellWidth = image.getWidth() / columns;
+        int cellHeight = image.getHeight() / rows.size();
+        float scale = declaredHeight / (float) cellHeight;
+        if (declaredHeight < 1 && textLayout) {
+            // Java's negative-space idiom: a negative height yields a negative advance and
+            // places the image far outside the line. Only its advance is converted.
+            for (int row = 0; row < rows.size(); row++) {
+                int[] codePoints = rows.get(row).codePoints().toArray();
+                for (int column = 0; column < codePoints.length; column++) {
+                    if (codePoints[column] == 0) continue;
+                    int actual = actualWidth(image, column * cellWidth, row * cellHeight, cellWidth, cellHeight);
+                    target.put(codePoints[column], new Advance(javaAdvance(actual, scale)));
+                }
+            }
+            return;
+        }
         if (declaredHeight < 1 || declaredAscent > declaredHeight) {
             unsupportedBaselineProviders.add(providerKey);
             return;
         }
-        int cellWidth = image.getWidth() / columns;
-        int cellHeight = image.getHeight() / rows.size();
         double displayWidth = cellWidth * (declaredHeight / (double) cellHeight);
         if (displayWidth > MAX_CELL_SIZE) {
             problem("oversized bitmap glyphs require a Bedrock UI adapter", providerKey,
@@ -222,12 +324,19 @@ final class BitmapFontCompiler {
             for (int column = 0; column < codePoints.length; column++) {
                 int codePoint = codePoints[column];
                 if (codePoint == 0) continue;
-                if (!isBmp(codePoint)) {
+                int actual = actualWidth(image, column * cellWidth, row * cellHeight, cellWidth, cellHeight);
+                int advance = javaAdvance(actual, scale);
+                if (actual == 0 && textLayout) {
+                    // Bedrock gives a fully transparent glyph a native width; Java advances by one.
+                    target.put(codePoint, new Advance(advance));
+                    continue;
+                }
+                if (!isBmp(codePoint) && !textLayout) {
                     nonBmpGlyphs.add(font + " -> U+%X".formatted(codePoint));
                     continue;
                 }
                 Glyph glyph = new Glyph(codePoint, image, column * cellWidth, row * cellHeight,
-                        cellWidth, cellHeight, declaredHeight, declaredAscent, MIN_CELL_SIZE);
+                        cellWidth, cellHeight, declaredHeight, declaredAscent, MIN_CELL_SIZE, advance);
                 int requiredCellSize = minimumCellSize(glyph, displayWidth);
                 if (requiredCellSize == 0) {
                     problem("bitmap glyph baselines require a Bedrock layout adapter", providerKey,
@@ -240,36 +349,219 @@ final class BitmapFontCompiler {
         }
     }
 
-    private void mergeNamedFont(String font, Map<Integer, Glyph> contextual) {
-        for (Map.Entry<Integer, Glyph> entry : contextual.entrySet()) {
+    /** Java's BitmapProvider: rightmost column containing any non-zero alpha, plus one. */
+    static int actualWidth(BufferedImage image, int x, int y, int width, int height) {
+        for (int column = width - 1; column >= 0; column--) {
+            for (int row = 0; row < height; row++) {
+                if ((image.getRGB(x + column, y + row) >>> 24) != 0) return column + 1;
+            }
+        }
+        return 0;
+    }
+
+    /** Java's BitmapProvider advance: {@code (int) (0.5 + actualWidth * scale) + 1}. */
+    static int javaAdvance(int actualWidth, float scale) {
+        return (int) (0.5f + actualWidth * scale) + 1;
+    }
+
+    private void mergeNamedFont(String font, Map<Integer, Object> contextual) {
+        for (Map.Entry<Integer, Object> entry : contextual.entrySet()) {
             int codePoint = entry.getKey();
-            Glyph candidate = entry.getValue();
-            Glyph existing = glyphs.get(codePoint);
-            if (existing != null && sameGlyph(existing, candidate)) continue;
-            if (!isBmpPrivateUse(codePoint)) {
-                problem("named font glyphs require contextual Bedrock remapping",
-                        font + " -> U+%04X".formatted(codePoint));
+            if (entry.getValue() instanceof Advance advance) {
+                layout(font, codePoint, advance);
                 continue;
             }
-            if (existing != null) {
-                problem("named font glyphs conflict on Bedrock's global codepoint map",
-                        font + " -> U+%04X".formatted(codePoint));
+            Glyph candidate = (Glyph) entry.getValue();
+            Glyph existing = glyphs.get(codePoint);
+            if (existing != null && sameGlyph(existing, candidate)) {
+                layout(font, codePoint, codePoint);
+                continue;
+            }
+            if (!isBmpPrivateUse(codePoint) || existing != null) {
+                if (textLayout) {
+                    alias(font, codePoint, candidate);
+                } else if (!isBmpPrivateUse(codePoint)) {
+                    problem("named font glyphs require contextual Bedrock remapping",
+                            font + " -> U+%04X".formatted(codePoint));
+                } else {
+                    problem("named font glyphs conflict on Bedrock's global codepoint map",
+                            font + " -> U+%04X".formatted(codePoint));
+                }
                 continue;
             }
             glyphs.put(codePoint, candidate);
+            layout(font, codePoint, codePoint);
             namedGlyphs++;
         }
     }
 
-    private void mergeDefaultFont(Map<Integer, Glyph> defaults) {
-        for (Map.Entry<Integer, Glyph> entry : defaults.entrySet()) {
-            if (!vanillaOverride && !isBmpPrivateUse(entry.getKey())) {
-                problem("default font glyphs require vanilla-override",
-                        "minecraft:default -> U+%04X".formatted(entry.getKey()));
+    private void mergeDefaultFont(Map<Integer, Object> defaults) {
+        String font = TextLayoutTable.DEFAULT_FONT;
+        for (Map.Entry<Integer, Object> entry : defaults.entrySet()) {
+            int codePoint = entry.getKey();
+            if (entry.getValue() instanceof Advance advance) {
+                layout(font, codePoint, advance);
                 continue;
             }
-            glyphs.put(entry.getKey(), entry.getValue());
+            Glyph glyph = (Glyph) entry.getValue();
+            if ((vanillaOverride && isBmp(codePoint)) || isBmpPrivateUse(codePoint)) {
+                glyphs.put(codePoint, glyph);
+                layout(font, codePoint, codePoint);
+            } else if (textLayout) {
+                // Java replaces this character for every Java player; Bedrock receives a private-use alias
+                // through the title layout so its own glyph for the character stays intact.
+                alias(font, codePoint, glyph);
+            } else {
+                problem("default font glyphs require vanilla-override",
+                        "minecraft:default -> U+%04X".formatted(codePoint));
+            }
         }
+    }
+
+    private void layout(String font, int codePoint, Object value) {
+        if (textLayout) layoutSources.computeIfAbsent(font, ignored -> new TreeMap<>()).put(codePoint, value);
+    }
+
+    private void alias(String font, int codePoint, Glyph glyph) {
+        AliasRequest request = new AliasRequest(font, codePoint, glyph);
+        aliasRequests.add(request);
+        layout(font, codePoint, request);
+    }
+
+    /** Places alias glyphs on private-use pages unused by direct glyphs, grouping similar cell sizes. */
+    private Map<Integer, Integer> allocateAliases(int spacerPage) {
+        Map<Integer, Integer> allocated = new HashMap<>();
+        if (aliasRequests.isEmpty()) return allocated;
+        Map<GlyphKey, Integer> shared = new HashMap<>();
+        Set<Integer> reserved = new HashSet<>(Set.of(spacerPage));
+        List<AliasRequest> ordered = new ArrayList<>(aliasRequests);
+        ordered.sort(Comparator.comparingInt((AliasRequest request) -> -request.glyph().cellSize())
+                .thenComparing(AliasRequest::font).thenComparingInt(AliasRequest::codePoint));
+        int page = -1, slot = 256, overflow = 0;
+        for (AliasRequest request : ordered) {
+            GlyphKey key = GlyphKey.of(request.glyph());
+            Integer existing = shared.get(key);
+            if (existing != null) {
+                request.bedrock = existing;
+                continue;
+            }
+            if (slot > 255) {
+                page = freePage(reserved);
+                slot = 0;
+                if (page < 0) {
+                    overflow++;
+                    continue;
+                }
+                reserved.add(page);
+            }
+            if (page < 0) {
+                overflow++;
+                continue;
+            }
+            int codePoint = page << 8 | slot++;
+            glyphs.put(codePoint, request.glyph().withCodePoint(codePoint));
+            allocated.put(codePoint, request.codePoint());
+            shared.put(key, codePoint);
+            request.bedrock = codePoint;
+        }
+        if (overflow > 0) problem("glyph aliases exceed Bedrock's private-use pages", overflow + " glyphs");
+        return allocated;
+    }
+
+    /**
+     * Gives small visible glyphs a variant with one invisible trailing column, so the title
+     * layout can absorb a one-unit gap (Bedrock has no one-unit spacer). Returns glyph -> variant.
+     */
+    private Map<Integer, Integer> allocateWideVariants(int spacerPage) {
+        Map<Integer, Integer> variants = new TreeMap<>();
+        Set<Integer> laidOut = new HashSet<>();
+        layoutSources.values().forEach(sources -> sources.values().forEach(source -> {
+            if (source instanceof Integer direct) laidOut.add(direct);
+            else if (source instanceof AliasRequest request && request.bedrock >= 0) laidOut.add(request.bedrock);
+        }));
+        List<Integer> candidates = laidOut.stream().filter(codePoint -> glyphs.get(codePoint) != null
+                && glyphs.get(codePoint).cellSize() <= MAX_WIDE_CELL).sorted(
+                Comparator.comparingInt((Integer codePoint) -> -glyphs.get(codePoint).cellSize())
+                        .thenComparingInt(codePoint -> codePoint)).toList();
+        Set<Integer> reserved = new HashSet<>(Set.of(spacerPage));
+        int page = -1, slot = 256;
+        for (int codePoint : candidates) {
+            if (slot > 255) {
+                page = freePage(reserved);
+                if (page < 0) break; // aliases keep priority; remaining one-unit gaps are approximations
+                reserved.add(page);
+                slot = 0;
+            }
+            int variant = page << 8 | slot++;
+            glyphs.put(variant, glyphs.get(codePoint).withCodePoint(variant).withTrailingMarker());
+            variants.put(codePoint, variant);
+        }
+        return variants;
+    }
+
+    private int freePage(Set<Integer> reserved) {
+        Set<Integer> used = new HashSet<>();
+        glyphs.keySet().forEach(codePoint -> used.add(codePoint >>> 8));
+        for (int page = LAST_ALIAS_PAGE; page >= FIRST_ALIAS_PAGE; page--) {
+            if (!used.contains(page) && !reserved.contains(page)) return page;
+        }
+        return -1;
+    }
+
+    private TextLayoutTable layoutTable(Map<Integer, Integer> wide, Map<Integer, int[]> ink, int spacerFirst) {
+        Map<String, Map<Integer, TextLayoutTable.Entry>> fonts = new TreeMap<>();
+        layoutSources.forEach((font, sources) -> {
+            Map<Integer, TextLayoutTable.Entry> entries = new TreeMap<>();
+            sources.forEach((codePoint, source) -> {
+                if (source instanceof Advance advance) {
+                    entries.put(codePoint, TextLayoutTable.Entry.advanceOnly(advance.value()));
+                    return;
+                }
+                int bedrock = source instanceof AliasRequest request ? request.bedrock : (Integer) source;
+                if (bedrock < 0) return;
+                int[] columns = ink.get(bedrock);
+                Glyph glyph = glyphs.get(bedrock);
+                if (columns == null || glyph == null) return;
+                Integer variant = wide.get(bedrock);
+                int[] variantColumns = variant == null ? null : ink.get(variant);
+                boolean usable = variantColumns != null && variantColumns[0] == columns[0]
+                        && variantColumns[1] == columns[1] + 1;
+                entries.put(codePoint, new TextLayoutTable.Entry(bedrock, usable ? variant : -1,
+                        columns[0], columns[1], glyph.javaAdvance()));
+            });
+            if (!entries.isEmpty()) fonts.put(font, entries);
+        });
+        return new TextLayoutTable(fonts, spacerFirst, SPACER_COUNT);
+    }
+
+    /** First inked column and inked width of each glyph cell, as Bedrock measures them (alpha above zero). */
+    private static void measureInk(BufferedImage page, List<Glyph> members, Map<Integer, int[]> ink) {
+        int cellSize = page.getWidth() / 16;
+        for (Glyph glyph : members) {
+            int slot = glyph.codePoint() & 0xFF;
+            int cellX = (slot & 15) * cellSize, cellY = (slot >>> 4) * cellSize;
+            int first = -1, last = -1;
+            for (int x = 0; x < cellSize; x++) {
+                for (int y = 0; y < cellSize; y++) {
+                    if ((page.getRGB(cellX + x, cellY + y) >>> 24) != 0) {
+                        if (first < 0) first = x;
+                        last = x;
+                        break;
+                    }
+                }
+            }
+            if (first >= 0) ink.put(glyph.codePoint(), new int[]{first, last - first + 1});
+        }
+    }
+
+    /** Invisible spacers: slot n inks columns 0..n with alpha 1, so Bedrock advances n + 2. */
+    private static BufferedImage spacerPage() {
+        BufferedImage page = new BufferedImage(SPACER_CELL * 16, SPACER_CELL * 16, BufferedImage.TYPE_INT_ARGB);
+        for (int slot = 0; slot < SPACER_COUNT; slot++) {
+            int cellX = (slot & 15) * SPACER_CELL, cellY = (slot >>> 4) * SPACER_CELL;
+            for (int x = 0; x <= slot; x++) page.setRGB(cellX + x, cellY + SPACER_CELL / 2, 0x01FFFFFF);
+        }
+        return page;
     }
 
     private static boolean sameGlyph(Glyph left, Glyph right) {
@@ -309,11 +601,23 @@ final class BitmapFontCompiler {
                 graphics.setClip(cellX, cellY, cellSize, cellSize);
                 graphics.drawImage(glyph.image(), x, y, x + width, y + height,
                         glyph.x(), glyph.y(), glyph.x() + glyph.width(), glyph.y() + glyph.height(), null);
+                if (glyph.trailingMarker()) markTrailingColumn(page, cellX, cellY, cellSize);
             }
         } finally {
             graphics.dispose();
         }
         return page;
+    }
+
+    /** Alpha-1 pixel right of the last inked column: invisible, but Bedrock counts it as ink. */
+    private static void markTrailingColumn(BufferedImage page, int cellX, int cellY, int cellSize) {
+        int last = -1;
+        for (int x = cellSize - 1; x >= 0 && last < 0; x--) {
+            for (int y = 0; y < cellSize; y++) {
+                if ((page.getRGB(cellX + x, cellY + y) >>> 24) != 0) { last = x; break; }
+            }
+        }
+        if (last >= 0 && last + 1 < cellSize) page.setRGB(cellX + last + 1, cellY + cellSize / 2, 0x01FFFFFF);
     }
 
     private static int minimumCellSize(Glyph glyph, double displayWidth) {
@@ -410,12 +714,72 @@ final class BitmapFontCompiler {
         }
     }
 
+    /**
+     * @param glyphs directly mapped glyphs (aliases excluded)
+     * @param aliasedGlyphs glyphs that Bedrock receives through private-use aliases in laid-out text
+     * @param layout Java metrics for the runtime title layout, or null when no custom font content exists
+     */
     record Result(int glyphs, int pages, int vanillaFallbackTextures, int namedFonts, int namedGlyphs,
-                  List<String> problems) {}
+                  int aliasedGlyphs, TextLayoutTable layout, List<String> problems) {}
+
+    private record Advance(float value) {}
+
+    private static final class AliasRequest {
+        private final String font;
+        private final int codePoint;
+        private final Glyph glyph;
+        private int bedrock = -1;
+
+        AliasRequest(String font, int codePoint, Glyph glyph) {
+            this.font = font;
+            this.codePoint = codePoint;
+            this.glyph = glyph;
+        }
+
+        String font() { return font; }
+        int codePoint() { return codePoint; }
+        Glyph glyph() { return glyph; }
+    }
+
+    private record GlyphKey(BufferedImage image, int x, int y, int width, int height, int declaredHeight,
+                            int declaredAscent) {
+        static GlyphKey of(Glyph glyph) {
+            return new GlyphKey(glyph.image(), glyph.x(), glyph.y(), glyph.width(), glyph.height(),
+                    glyph.declaredHeight(), glyph.declaredAscent());
+        }
+
+        @Override public boolean equals(Object other) {
+            return other instanceof GlyphKey key && key.image == image && key.x == x && key.y == y
+                    && key.width == width && key.height == height && key.declaredHeight == declaredHeight
+                    && key.declaredAscent == declaredAscent;
+        }
+
+        @Override public int hashCode() {
+            return java.util.Objects.hash(System.identityHashCode(image), x, y, width, height, declaredHeight, declaredAscent);
+        }
+    }
+
     private record Glyph(int codePoint, BufferedImage image, int x, int y, int width, int height,
-                         int declaredHeight, int declaredAscent, int cellSize) {
+                         int declaredHeight, int declaredAscent, int cellSize, int javaAdvance,
+                         boolean trailingMarker) {
+        Glyph(int codePoint, BufferedImage image, int x, int y, int width, int height,
+              int declaredHeight, int declaredAscent, int cellSize, int javaAdvance) {
+            this(codePoint, image, x, y, width, height, declaredHeight, declaredAscent, cellSize, javaAdvance, false);
+        }
+
         Glyph withCellSize(int size) {
-            return new Glyph(codePoint, image, x, y, width, height, declaredHeight, declaredAscent, size);
+            return new Glyph(codePoint, image, x, y, width, height, declaredHeight, declaredAscent, size, javaAdvance,
+                    trailingMarker);
+        }
+
+        Glyph withCodePoint(int alias) {
+            return new Glyph(alias, image, x, y, width, height, declaredHeight, declaredAscent, cellSize, javaAdvance,
+                    trailingMarker);
+        }
+
+        Glyph withTrailingMarker() {
+            return new Glyph(codePoint, image, x, y, width, height, declaredHeight, declaredAscent, cellSize, javaAdvance,
+                    true);
         }
     }
 }

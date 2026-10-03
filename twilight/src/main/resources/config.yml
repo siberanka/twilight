@@ -31,3 +31,8 @@ ui:
   # chest grid. Font-image menus therefore line up with their slots. This is
   # merged into Bedrock's chest UI instead of replacing it.
   java-container-layout: true
+  # Container titles are laid out for Bedrock players with Java font metrics:
+  # space/negative-space characters, bitmap glyph bearings and font characters
+  # that Java remaps are reproduced with invisible spacer glyphs and private-use
+  # aliases, so menu images land on Java's exact pixels. Requires Geyser.
+  java-text-layout: true

@@ -6,6 +6,7 @@ package com.siberanka.twilight.compiler;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.siberanka.twilight.text.TextLayoutTable;
 
 /**
  * Lays out Bedrock's desktop chest screens like Java's generic container screens.
@@ -71,11 +72,20 @@ final class JavaContainerUi {
     private JavaContainerUi() {}
 
     static JsonObject chestScreen() {
+        return chestScreen(false);
+    }
+
+    /**
+     * @param textLayout the runtime title layout prefixes every title with spacers that
+     *                   start Java's origin {@link TextLayoutTable#ORIGIN} units after the label
+     */
+    static JsonObject chestScreen(boolean textLayout) {
+        int origin = textLayout ? TextLayoutTable.ORIGIN : 0;
         JsonObject root = new JsonObject();
         root.addProperty("namespace", "chest");
 
         JsonObject label = new JsonObject();
-        label.add(OFFSET_VARIABLE + "|default", titleOffset(LARGE_CHEST_GRID));
+        label.add(OFFSET_VARIABLE + "|default", titleOffset(LARGE_CHEST_GRID, origin));
         label.addProperty("offset", OFFSET_VARIABLE);
         // Java never wraps or clips a container title.
         label.add("size", array("default", "default"));
@@ -86,8 +96,8 @@ final class JavaContainerUi {
         label.add("color", colour);
         root.add("chest_label", label);
 
-        root.add("small_chest_panel_top_half", topHalf(SMALL_CHEST_PANEL, SMALL_CHEST_GRID));
-        root.add("large_chest_panel_top_half", topHalf(LARGE_CHEST_PANEL, LARGE_CHEST_GRID));
+        root.add("small_chest_panel_top_half", topHalf(SMALL_CHEST_PANEL, SMALL_CHEST_GRID, origin));
+        root.add("large_chest_panel_top_half", topHalf(LARGE_CHEST_PANEL, LARGE_CHEST_GRID, origin));
         // Variables flow to every descendant; ender chest, shulker box and barrel panels inherit these.
         for (String panel : new String[]{"small_chest_panel", "large_chest_panel"}) {
             JsonObject screen = new JsonObject();
@@ -146,7 +156,11 @@ final class JavaContainerUi {
 
     /** Label origin that places the first text row where Java draws its title. */
     static JsonArray titleOffset(int[] grid) {
-        return array(grid[0] + JAVA_TITLE_RIGHT_OF_SLOT_FRAME,
+        return titleOffset(grid, 0);
+    }
+
+    static JsonArray titleOffset(int[] grid, int origin) {
+        return array(grid[0] + JAVA_TITLE_RIGHT_OF_SLOT_FRAME - origin,
                 grid[1] - JAVA_TITLE_ABOVE_SLOT_FRAME - BEDROCK_LABEL_TEXT_TOP);
     }
 
@@ -158,10 +172,10 @@ final class JavaContainerUi {
         return array(vanilla[0], vanilla[1] - (JAVA_INVENTORY_GAP - BEDROCK_INVENTORY_GAP));
     }
 
-    private static JsonObject topHalf(int[] panel, int[] grid) {
+    private static JsonObject topHalf(int[] panel, int[] grid, int origin) {
         JsonObject half = new JsonObject();
         half.add("offset", panelOffset(panel));
-        half.add(OFFSET_VARIABLE, titleOffset(grid));
+        half.add(OFFSET_VARIABLE, titleOffset(grid, origin));
         return half;
     }
 
