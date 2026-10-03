@@ -4,7 +4,7 @@ Adaptive bitmap-font cells now preserve wide labels and larger UI/HUD images at
 their Java-authored display size. Atlas growth also preserves neighboring glyph
 heights and baselines. The [wide glyph review](docs/WIDE_GLYPHS_2026-10-02.md)
 records six further real images, 36 existing real glyphs, source integrity,
-whole-source audits and paired client captures. All 87 tests in 19 suites pass.
+whole-source audits and paired client captures. All 89 tests in 19 suites pass.
 
 The [current JAR and checksum](artifacts/) are a locally built snapshot. Native
 inventory-title clipping, bitmap tint, transparent left padding and fractional

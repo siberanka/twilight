@@ -7,6 +7,10 @@ Twilight is a server-side Java-to-Bedrock custom-content compiler for Geyser. It
 
 The current capability matrix and version-specific limitations are documented in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md). Strict conversion fails closed when content cannot be represented safely.
 
+The [expanded acceptance contract](docs/COMPATIBILITY_REVIEW_2026-10-03.md)
+tracks 40 areas and 289 required scenarios, including menus, tooltips and live
+HUDs. These are acceptance obligations, not a count of passing tests.
+
 ## Visual acceptance tests
 
 The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.4-SNAPSHOT JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.

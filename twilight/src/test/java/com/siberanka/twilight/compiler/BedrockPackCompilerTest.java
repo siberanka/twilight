@@ -809,6 +809,59 @@ class BedrockPackCompilerTest {
     }
 
     @Test
+    void keepsIdenticalGlyphFilenamesInDifferentNamespacesDistinct() throws Exception {
+        Path source = root.resolve("font-namespace-collision");
+        write(source, "assets/minecraft/font/default.json", """
+                {"providers":[
+                  {"type":"bitmap","file":"first:gui/menu.png","height":16,"ascent":11,"chars":["\uE000"]},
+                  {"type":"bitmap","file":"second:gui/menu.png","height":16,"ascent":11,"chars":["\uE001"]}
+                ]}
+                """);
+        png(source.resolve("assets/first/textures/gui/menu.png"), Color.RED);
+        png(source.resolve("assets/second/textures/gui/menu.png"), Color.GREEN);
+        BuildResult result = new BedrockPackCompiler(root.resolve("font-namespace-output"), config())
+                .build(List.of(new ContentSource("fixture", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
+        assertEquals(2, result.glyphs());
+        try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
+            BufferedImage page = ImageIO.read(zip.getInputStream(zip.getEntry("font/glyph_E0.png")));
+            for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+                assertEquals(Color.RED.getRGB(), page.getRGB(x, y));
+                assertEquals(Color.GREEN.getRGB(), page.getRGB(16 + x, y));
+            }
+        }
+    }
+
+    @Test
+    void preservesMultiRowGlyphSheetsWithoutRegisteringBlankCells() throws Exception {
+        Path source = root.resolve("font-grid");
+        write(source, "assets/minecraft/font/default.json", """
+                {"providers":[{"type":"bitmap","file":"grid:sheet.png","height":16,"ascent":11,
+                  "chars":["\uE010\\u0000","\uE020\uE021"]}]}
+                """);
+        BufferedImage sheet = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+        int[] colors = {Color.RED.getRGB(), Color.YELLOW.getRGB(), Color.GREEN.getRGB(), Color.BLUE.getRGB()};
+        for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) {
+            sheet.setRGB(x, y, colors[(y / 16) * 2 + x / 16]);
+        }
+        Path texture = source.resolve("assets/grid/textures/sheet.png");
+        Files.createDirectories(texture.getParent());
+        ImageIO.write(sheet, "PNG", texture.toFile());
+        BuildResult result = new BedrockPackCompiler(root.resolve("font-grid-output"), config())
+                .build(List.of(new ContentSource("fixture", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
+        assertEquals(3, result.glyphs());
+        try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
+            assertTrue(zip.getEntry("font/glyph_00.png") == null);
+            BufferedImage page = ImageIO.read(zip.getInputStream(zip.getEntry("font/glyph_E0.png")));
+            for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+                assertEquals(colors[0], page.getRGB(x, 16 + y));
+                assertEquals(colors[2], page.getRGB(x, 32 + y));
+                assertEquals(colors[3], page.getRGB(16 + x, 32 + y));
+                assertEquals(0, page.getRGB(16 + x, 16 + y));
+            }
+        }
+    }
+
+    @Test
     void protectsVanillaFontCellsWhenVanillaOverrideIsDisabled() throws Exception {
         Path source = root.resolve("vanilla-font-override");
         write(source, "assets/minecraft/font/default.json", """

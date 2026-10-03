@@ -11,6 +11,10 @@ All notable changes in Twilight are documented here.
   Repeat whole-source audits and compare six further real UI/HUD images in both
   clients. Record remaining title clipping, horizontal padding and fractional
   sampling differences in the [wide glyph review](docs/WIDE_GLYPHS_2026-10-02.md).
+- Expand the acceptance contract to 40 areas and 289 required scenarios after
+  reviewing external feature documentation and the available menu corpus.
+  Add namespace-collision and multi-row glyph-sheet regressions; the local
+  suite now passes 89 tests. This expands validation, not runtime UI support.
 
 ## 1.0.0-pre.3 - 2026-10-02
 

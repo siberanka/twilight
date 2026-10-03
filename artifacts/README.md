@@ -4,7 +4,7 @@
 
 Built locally by siberanka using Java 25.0.2 and Gradle 9.6.0, with
 `:twilight:build --offline --no-daemon --no-configuration-cache`.
-87 tests across 19 suites passed. No hosted CI was used.
+89 tests across 19 suites passed. No hosted CI was used.
 
 The corresponding source is in this commit under `twilight/`, with build files
 at the repository root. Licensed under [LGPL-3.0-or-later](../LICENSE.LESSER);

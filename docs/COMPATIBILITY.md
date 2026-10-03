@@ -2,6 +2,10 @@
 
 This document separates implemented behavior from planned compatibility. A provider is supported only when its public API or generated standard assets pass the same conversion and validation pipeline; directory recognition alone is discovery support.
 
+The [3 October review](COMPATIBILITY_REVIEW_2026-10-03.md) and
+[acceptance catalog](acceptance/catalog.json) define the broader required test
+surface. Planned scenarios do not change the support statuses below.
+
 ## Runtime platforms
 
 | Platform | Status | Notes |
