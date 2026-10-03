@@ -37,7 +37,7 @@ class SourceDiscoveryTest {
         Path provider = Files.createDirectories(root.resolve("plugins/ItemsAdder"));
         Path generated = Files.createDirectories(provider.resolve("output"));
         Files.write(generated.resolve("generated.zip"), emptyZip());
-        Path cache = Files.createDirectories(provider.resolve("storage/cache/tmp/resource_pack/assets/demo"));
+        Path cache = Files.createDirectories(provider.resolve("storage/cache/resource_pack/assets/demo"));
         Files.writeString(cache.resolve("cached.json"), "{}");
         Files.createDirectories(cache.resolve("models/item"));
         Files.writeString(cache.resolve("models/item/shared.json"), "{\"layer\":\"cache\"}");
@@ -70,6 +70,52 @@ class SourceDiscoveryTest {
                     .orElseThrow().readUtf8());
             assertTrue(resources.find("provider-data/itemsadder/contents/example/configs/items.yml").isPresent());
         }
+    }
+
+    @Test
+    void ignoresVanillaAssetCopiesTemporaryBuildsAndStaleNestedPacks() throws Exception {
+        // Real ItemsAdder folders: storage/cache/vanilla_assets/<version> holds the vanilla client assets,
+        // storage/cache/tmp a leftover build folder, data/resource_pack/pack.zip an old self-hosted pack.
+        Path provider = Files.createDirectories(root.resolve("plugins/ItemsAdder"));
+        Files.createDirectories(provider.resolve("output"));
+        Files.write(provider.resolve("output/generated.zip"), emptyZip());
+        for (String stale : List.of("storage/cache/vanilla_assets/26.2", "storage/cache/tmp/resource_pack")) {
+            Path pack = Files.createDirectories(provider.resolve(stale).resolve("assets/minecraft/font"));
+            Files.writeString(pack.resolve("default.json"), "{\"providers\":[]}");
+            Files.writeString(provider.resolve(stale).resolve("pack.mcmeta"), "{}");
+        }
+        Path working = Files.createDirectories(provider.resolve("data/resource_pack/assets/demo"));
+        Files.writeString(working.getParent().getParent().resolve("pack.mcmeta"), "{}");
+        Files.write(working.getParent().getParent().resolve("pack.zip"), emptyZip());
+
+        TwilightConfig config = new TwilightConfig(false, true, true, true, 40, 100, 10_000_000, 1000,
+                true, true, List.of(), "auto", false, false, 3);
+        List<ContentSource> sources = new SourceDiscovery(root, config).discover(Set.of());
+        Path real = root.toRealPath();
+        assertTrue(sources.stream().noneMatch(source -> real.relativize(source.path()).toString().contains("vanilla_assets")), sources.toString());
+        assertTrue(sources.stream().noneMatch(source -> real.relativize(source.path()).toString().contains("tmp")), sources.toString());
+        assertTrue(sources.stream().noneMatch(source -> source.path().getFileName().toString().equals("pack.zip")), sources.toString());
+        assertTrue(sources.stream().anyMatch(source -> source.path().getFileName().toString().equals("generated.zip")));
+        assertTrue(sources.stream().anyMatch(source -> source.path().endsWith(Path.of("data", "resource_pack"))));
+    }
+
+    @Test
+    void usesTheNewestRenamedItemsAdderPackWhenGeneratedZipIsAbsent() throws Exception {
+        Path output = Files.createDirectories(root.resolve("plugins/ItemsAdder/output"));
+        Files.write(output.resolve("server-pack-1.18.zip"), emptyZip());
+        Files.write(output.resolve("generated_1.21.x.zip"), emptyZip());
+        Files.setLastModifiedTime(output.resolve("server-pack-1.18.zip"), java.nio.file.attribute.FileTime.fromMillis(1_000_000L));
+        Files.setLastModifiedTime(output.resolve("generated_1.21.x.zip"), java.nio.file.attribute.FileTime.fromMillis(2_000_000L));
+        TwilightConfig config = new TwilightConfig(false, true, true, true, 40, 100, 10_000_000, 1000,
+                true, true, List.of(), "auto", false, false, 3);
+        List<ContentSource> sources = new SourceDiscovery(root, config).discover(Set.of());
+        assertEquals(List.of("generated_1.21.x.zip"), sources.stream().map(source -> source.path().getFileName().toString())
+                .filter(name -> name.endsWith(".zip")).toList());
+
+        Files.write(output.resolve("generated.zip"), emptyZip());
+        List<ContentSource> standard = new SourceDiscovery(root, config).discover(Set.of());
+        assertEquals(List.of("generated.zip"), standard.stream().map(source -> source.path().getFileName().toString())
+                .filter(name -> name.endsWith(".zip")).toList());
     }
 
     private static ContentSource source(List<ContentSource> sources, String fileName, String... ancestor) {

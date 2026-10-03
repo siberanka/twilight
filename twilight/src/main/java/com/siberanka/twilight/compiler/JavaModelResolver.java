@@ -27,14 +27,26 @@ final class JavaModelResolver {
     }
 
     ResolvedJavaModel resolveAll(List<String> identifiers) throws IOException {
+        return resolveAll(identifiers, false);
+    }
+
+    /**
+     * @param vanillaModels the selector (custom model data, predicates) is custom, so its models may be
+     *                      plain vanilla ones, e.g. a menu button that shows {@code minecraft:item/barrier}
+     */
+    ResolvedJavaModel resolveAll(List<String> identifiers, boolean vanillaModels) throws IOException {
         if (identifiers.isEmpty()) throw new IOException("Model list is empty");
-        if (identifiers.size() == 1) return resolve(identifiers.getFirst());
+        if (identifiers.size() == 1) return resolve(identifiers.getFirst(), vanillaModels);
         List<ResolvedJavaModel> models = new ArrayList<>(identifiers.size());
-        for (String identifier : identifiers) models.add(resolve(identifier));
+        for (String identifier : identifiers) models.add(resolve(identifier, vanillaModels));
         return merge(models);
     }
 
     ResolvedJavaModel resolve(String identifier) throws IOException {
+        return resolve(identifier, false);
+    }
+
+    ResolvedJavaModel resolve(String identifier, boolean vanillaTopLevel) throws IOException {
         String current = qualified(identifier, "minecraft");
         ArrayDeque<JsonObject> chain = new ArrayDeque<>();
         java.util.Set<String> seen = new java.util.HashSet<>();
@@ -50,7 +62,7 @@ final class JavaModelResolver {
                 // pack does not copy. The requested top-level model itself
                 // must still come from a discovered custom source; otherwise
                 // an untouched vanilla item could become a custom mapping.
-                if (depth > 0 && vanilla != null && current.startsWith("minecraft:")) {
+                if ((depth > 0 || vanillaTopLevel) && vanilla != null && current.startsWith("minecraft:")) {
                     try {
                         var bytes = vanilla.readModel(modelPath(current));
                         if (bytes.isPresent()) {
@@ -91,7 +103,8 @@ final class JavaModelResolver {
             if (json.has("gui_light")) frontLight = json.get("gui_light").getAsString().equals("front");
             if (json.has("textures") && json.get("textures").isJsonObject()) {
                 for (Map.Entry<String, JsonElement> texture : json.getAsJsonObject("textures").entrySet()) {
-                    textures.put(texture.getKey(), texture.getValue().getAsString());
+                    String sprite = textureValue(texture.getValue());
+                    if (sprite != null) textures.put(texture.getKey(), sprite);
                 }
             }
             if (json.has("display") && json.get("display").isJsonObject()) {
@@ -139,6 +152,17 @@ final class JavaModelResolver {
         }
         return new ResolvedJavaModel("twilight:composite", elements.isEmpty() ? null : elements,
                 Map.copyOf(textures), display, models.getFirst().handheld(), models.getFirst().frontLight(), models);
+    }
+
+    /** A texture entry: a sprite name, or (since 1.21.6) an object such as {"sprite":..., "force_translucent":true}. */
+    static String textureValue(JsonElement value) {
+        if (value == null || value.isJsonNull()) return null;
+        if (value.isJsonPrimitive()) return value.getAsString();
+        if (value.isJsonObject() && value.getAsJsonObject().has("sprite")) {
+            JsonElement sprite = value.getAsJsonObject().get("sprite");
+            return sprite.isJsonPrimitive() ? sprite.getAsString() : null;
+        }
+        return null;
     }
 
     private static String resolveTexture(String key, Map<String, String> textures, String fallbackNamespace) throws IOException {

@@ -1,0 +1,89 @@
+package com.siberanka.twilight.compiler;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.siberanka.twilight.config.TwilightConfig;
+import com.siberanka.twilight.source.ContentSource;
+import com.siberanka.twilight.source.SourceDiscovery;
+import com.siberanka.twilight.source.WorldLayout;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Set;
+import java.util.zip.ZipFile;
+
+/**
+ * Production-shaped build audit: discovers every server's sources read-only and runs the complete
+ * Bedrock pack build (items, fonts with the text layout, sounds, UI) into a separate data directory,
+ * as the plugin would on that server. Reports conversion counts, problems, notices and the pack.
+ *
+ * <p>Usage: {@code <report.json> <data-root> <server-root>...}; the vanilla client cache is read from
+ * {@code <data-root>/cache/vanilla/<version>} (system property {@code twilight.audit.minecraftVersion}).
+ */
+public final class ServerBuildAuditMain {
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+
+    private ServerBuildAuditMain() {}
+
+    public static void main(String[] args) throws Exception {
+        if (args.length < 3) throw new IllegalArgumentException("Usage: <report.json> <data-root> <server-root>...");
+        Path output = Path.of(args[0]).toAbsolutePath().normalize();
+        Path dataRoot = Path.of(args[1]).toAbsolutePath().normalize();
+        String version = System.getProperty("twilight.audit.minecraftVersion", "").trim();
+        JsonArray servers = new JsonArray();
+        boolean failed = false;
+        for (int index = 2; index < args.length; index++) {
+            Path root = Path.of(args[index]).toRealPath();
+            JsonObject result = new JsonObject();
+            result.addProperty("root", root.toString());
+            // Non-strict, like a first production build: every problem is listed instead of the first.
+            TwilightConfig config = new TwilightConfig(false, false, false, false, 40, 100,
+                    2_147_483_648L, 200_000, !version.isEmpty(), true, List.of(), "auto", false, false, 3);
+            try {
+                Set<Path> worlds = WorldLayout.discover(root, Set.of());
+                List<ContentSource> sources = new SourceDiscovery(root, config).discover(worlds);
+                result.addProperty("sources", sources.size());
+                // One data directory: the shared vanilla cache is reused, each build replaces the previous output.
+                Path data = dataRoot;
+                long started = System.nanoTime();
+                BuildResult build = version.isEmpty() ? new BedrockPackCompiler(data, config).build(sources, List.of())
+                        : new BedrockPackCompiler(data, config, version).build(sources, List.of());
+                result.addProperty("seconds", Math.round((System.nanoTime() - started) / 1e7) / 100.0);
+                result.addProperty("candidates", build.candidates());
+                result.addProperty("converted", build.converted());
+                result.addProperty("three_dimensional", build.threeDimensional());
+                result.addProperty("glyphs", build.glyphs());
+                result.addProperty("font_pages", build.fontPages());
+                result.addProperty("sound_definitions", build.soundDefinitions());
+                result.addProperty("pack_sha256", build.packSha256());
+                Path pack = build.outputDirectory().resolve("pack.zip");
+                result.addProperty("pack_bytes", Files.size(pack));
+                try (ZipFile zip = new ZipFile(pack.toFile())) { result.addProperty("pack_entries", zip.size()); }
+                JsonObject report = JsonParser.parseString(Files.readString(build.outputDirectory().resolve("build-report.json")))
+                        .getAsJsonObject();
+                result.add("text_layout_entries", report.get("text_layout_entries"));
+                result.add("aliased_glyphs", report.get("aliased_glyphs"));
+                result.add("problems", GSON.toJsonTree(build.problems()));
+                result.add("notices", report.get("notices"));
+                failed |= !build.problems().isEmpty();
+            } catch (Exception failure) {
+                result.addProperty("error", failure.toString());
+                failed = true;
+            }
+            servers.add(result);
+            System.out.println(GSON.toJson(result));
+        }
+        JsonObject report = new JsonObject();
+        report.addProperty("schema", 1);
+        report.addProperty("minecraft_version", version);
+        report.add("servers", servers);
+        Files.createDirectories(output.getParent());
+        Files.writeString(output, GSON.toJson(report) + System.lineSeparator(), StandardCharsets.UTF_8);
+        System.out.println("Twilight server build audit: " + (failed ? "PROBLEMS" : "CLEAN") + " -> " + output);
+    }
+}

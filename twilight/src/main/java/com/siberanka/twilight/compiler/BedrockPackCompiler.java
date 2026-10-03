@@ -14,6 +14,7 @@ import com.siberanka.twilight.config.TwilightConfig;
 import com.siberanka.twilight.source.ContentSource;
 import com.siberanka.twilight.source.CustomItemDescriptor;
 import com.siberanka.twilight.source.ResourceIndex;
+import com.siberanka.twilight.text.TextLayoutTable;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -75,12 +76,23 @@ public final class BedrockPackCompiler {
         JsonObject textureData = new JsonObject();
         JsonObject mappedItems = new JsonObject();
         List<String> problems = new ArrayList<>();
+        List<String> notices = new ArrayList<>();
         DisplayEntityResources displays = new DisplayEntityResources();
         int converted = 0, threeDimensional = 0;
 
         for (ItemCandidate candidate : candidates) {
             try {
-                ResolvedJavaModel model = resolver.resolveAll(candidate.visualModels());
+                // A custom selector may show a vanilla model (menu buttons often use a barrier).
+                boolean customSelector = candidate.customModelData().isPresent() || !candidate.predicates().isEmpty();
+                ResolvedJavaModel model = resolver.resolveAll(candidate.visualModels(), customSelector);
+                if (!model.isThreeDimensional() && flatLayers(model).isEmpty()
+                        && candidate.nativeStateModels().isEmpty()) {
+                    // No elements and no layers: Java draws it with a special renderer (player skin heads,
+                    // shields, banners). Geyser renders those natively; a converted icon would replace that.
+                    notices.add(candidate.baseItem() + " -> " + candidate.visualModels()
+                            + ": drawn by Java's special renderer; Bedrock keeps its native rendering");
+                    continue;
+                }
                 String identifier = bedrockIdentifier(candidate);
                 String safe = identifier.substring(identifier.indexOf(':') + 1);
                 String texturePath = "textures/twilight/" + safe;
@@ -115,6 +127,10 @@ public final class BedrockPackCompiler {
                     if (dynamicWeapon.states().stream().anyMatch(ResolvedJavaModel::isThreeDimensional)) threeDimensional++;
                 } else if (model.isThreeDimensional() || customFlat) {
                     Set<String> usedTextures = usedTextures(model);
+                    if (usedTextures.contains(TextureSet.MISSING)) {
+                        notices.add(candidate.baseItem() + " -> " + candidate.visualModels()
+                                + ": faces without a defined texture show Java's missing texture, as on Java");
+                    }
                     TextureSet atlas = TextureSet.atlas(resources, List.copyOf(usedTextures), vanillaAssets);
                     GeometryBounds bounds = geometryBounds(model);
                     packFiles.put(texturePath + ".png", atlas.png());
@@ -157,8 +173,8 @@ public final class BedrockPackCompiler {
 
         displays.finish(packFiles);
         BitmapFontCompiler.Result fonts;
-        // The title layout relies on the chest label origin, so it requires the container layout.
-        boolean textLayout = config.javaContainerLayout() && config.javaTextLayout();
+        // Text layout metrics serve every text surface; only chest titles also need the container layout.
+        boolean textLayout = config.javaTextLayout();
         SoundCompiler.Result sounds;
         if (vanillaAssets == null) {
             fonts = new BitmapFontCompiler(resources, null, config.vanillaOverride(), textLayout).compile(packFiles);
@@ -169,12 +185,19 @@ public final class BedrockPackCompiler {
         }
         problems.addAll(fonts.problems());
         problems.addAll(sounds.problems());
+        notices.addAll(fonts.notices());
+        notices.addAll(sounds.notices());
+        if (fonts.layout() != null && !config.javaContainerLayout()) {
+            // Bedrock's own chest UI keeps its title label at the left edge: no origin to reach.
+            packFiles.put(TextLayoutTable.PATH, fonts.layout().withContainerOrigin(0)
+                    .toJson().toString().getBytes(StandardCharsets.UTF_8));
+        }
         if (config.javaContainerLayout()) {
             packFiles.put(JavaContainerUi.PATH, jsonBytes(JavaContainerUi.chestScreen(fonts.layout() != null)));
             packFiles.put(JavaContainerUi.COMMON_PATH, jsonBytes(JavaContainerUi.commonScreen()));
         }
 
-        if (converted == 0 && !candidates.isEmpty()) throw new IOException("No custom item could be converted; first problem: " + problems.get(0));
+        if (converted == 0 && !candidates.isEmpty() && !problems.isEmpty()) throw new IOException("No custom item could be converted; first problem: " + problems.get(0));
         if (config.strict() && !problems.isEmpty()) {
             throw new ConversionException("Strict conversion rejected " + problems.size() +
                     " content problem(s); first problem: " + problems.get(0), problems);
@@ -217,6 +240,7 @@ public final class BedrockPackCompiler {
         report.addProperty("vanilla_asset_download", config.downloadVanillaAssets());
         report.addProperty("skipped", candidates.size() - converted);
         report.add("problems", GSON.toJsonTree(problems));
+        report.add("notices", GSON.toJsonTree(notices));
         report.addProperty("vanilla_override", config.vanillaOverride());
         Files.write(staging.resolve("build-report.json"), jsonBytes(report));
         validate(pack, mappings, converted);
@@ -289,8 +313,8 @@ public final class BedrockPackCompiler {
                 String reference = faceJson.get("texture").getAsString();
                 if (reference.startsWith("#")) {
                     String resolved = model.textures().get(reference.substring(1));
-                    if (resolved == null) throw new IOException("Missing face texture " + reference);
-                    textures.add(resolved);
+                    // Java draws its missing texture for a face whose variable no model defines.
+                    textures.add(resolved == null ? TextureSet.MISSING : resolved);
                 } else textures.add(JavaModelResolver.qualified(reference, "minecraft"));
             }
         }
@@ -457,7 +481,7 @@ public final class BedrockPackCompiler {
                 String reference = face.get("texture").getAsString();
                 String texture = reference.startsWith("#") ? model.textures().get(reference.substring(1))
                         : JavaModelResolver.qualified(reference, "minecraft");
-                if (texture == null) throw new IOException("Unresolved face texture " + reference);
+                if (texture == null) texture = TextureSet.MISSING;
                 TextureSet.Region region = atlas.region(texture);
                 double[] faceUv = face.has("uv") ? vector4(face.getAsJsonArray("uv"))
                         : defaultFaceUv(faceEntry.getKey(), from, to);

@@ -28,11 +28,13 @@ public final class FontAuditMain {
         if (args.length < 2) throw new IllegalArgumentException("Usage: <report.json> <server-root>...");
         Path output = Path.of(args[0]).toAbsolutePath().normalize();
         String minecraftVersion = System.getProperty("twilight.audit.minecraftVersion", "").trim();
-        Path cacheDirectory = output.getParent().resolve("font-audit-cache");
+        String cacheProperty = System.getProperty("twilight.audit.cache", "").trim();
+        Path cacheDirectory = cacheProperty.isEmpty() ? output.getParent().resolve("font-audit-cache") : Path.of(cacheProperty);
+        boolean textLayout = Boolean.getBoolean("twilight.audit.textLayout");
         JsonArray servers = new JsonArray();
         boolean failed = false;
         for (int index = 1; index < args.length; index++) {
-            JsonObject result = audit(Path.of(args[index]), cacheDirectory, minecraftVersion);
+            JsonObject result = audit(Path.of(args[index]), cacheDirectory, minecraftVersion, textLayout);
             servers.add(result);
             failed |= result.get("problems").getAsJsonArray().size() > 0;
         }
@@ -47,7 +49,8 @@ public final class FontAuditMain {
         if (failed) System.exit(2);
     }
 
-    private static JsonObject audit(Path rootInput, Path cacheDirectory, String minecraftVersion) throws Exception {
+    private static JsonObject audit(Path rootInput, Path cacheDirectory, String minecraftVersion, boolean textLayout)
+            throws Exception {
         Path root = rootInput.toRealPath();
         TwilightConfig config = new TwilightConfig(false, false, false, false, 40, 100,
                 2_147_483_648L, 200_000, true, true, List.of(), "auto", false, false, 3);
@@ -56,7 +59,8 @@ public final class FontAuditMain {
         try (VanillaAssetCache vanilla = minecraftVersion.isBlank() ? null : new VanillaAssetCache(cacheDirectory, minecraftVersion, true);
              ResourceIndex resources = vanilla == null ? ResourceIndex.build(sources, config)
                      : ResourceIndex.build(sources, config, vanilla::packFormat)) {
-            BitmapFontCompiler.Result fonts = new BitmapFontCompiler(resources, vanilla).compile(new LinkedHashMap<>());
+            BitmapFontCompiler.Result fonts = new BitmapFontCompiler(resources, vanilla, false, textLayout)
+                    .compile(new LinkedHashMap<>());
             JsonObject result = new JsonObject();
             result.addProperty("root", root.toString());
             result.addProperty("sources", sources.size());
@@ -66,7 +70,22 @@ public final class FontAuditMain {
             result.addProperty("vanilla_fallback_textures", fonts.vanillaFallbackTextures());
             result.addProperty("named_fonts", fonts.namedFonts());
             result.addProperty("named_font_glyphs", fonts.namedGlyphs());
+            result.addProperty("text_layout", textLayout);
+            result.addProperty("aliased_glyphs", fonts.aliasedGlyphs());
+            if (fonts.layout() != null) {
+                result.addProperty("text_layout_entries", fonts.layout().entryCount());
+                JsonObject perFont = new JsonObject();
+                fonts.layout().fonts().forEach((font, entries) -> {
+                    JsonObject counts = new JsonObject();
+                    counts.addProperty("entries", entries.size());
+                    counts.addProperty("visible", entries.values().stream().filter(e -> e.visible()).count());
+                    counts.addProperty("advance_only", entries.values().stream().filter(e -> !e.visible()).count());
+                    perFont.add(font, counts);
+                });
+                result.add("text_layout_fonts", perFont);
+            }
             result.add("problems", GSON.toJsonTree(fonts.problems()));
+            result.add("notices", GSON.toJsonTree(fonts.notices()));
             return result;
         }
     }

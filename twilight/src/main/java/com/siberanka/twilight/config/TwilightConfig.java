@@ -26,7 +26,8 @@ public record TwilightConfig(
         boolean reloadAfterDeploy,
         int backupsToKeep,
         boolean javaContainerLayout,
-        boolean javaTextLayout
+        boolean javaTextLayout,
+        boolean javaTextSurfaces
 ) {
     public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
                           boolean syncProviderChanges, long startupDelayTicks, long providerCommandDelayTicks,
@@ -36,7 +37,7 @@ public record TwilightConfig(
         this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
                 providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
                 autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
-                backupsToKeep, true, true);
+                backupsToKeep, true, true, true);
     }
 
     public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
@@ -48,7 +49,19 @@ public record TwilightConfig(
         this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
                 providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
                 autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
-                backupsToKeep, javaContainerLayout, javaContainerLayout);
+                backupsToKeep, javaContainerLayout, javaContainerLayout, javaContainerLayout);
+    }
+
+    public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
+                          boolean syncProviderChanges, long startupDelayTicks, long providerCommandDelayTicks,
+                          long maximumSourceBytes, int maximumArchiveEntries, boolean downloadVanillaAssets,
+                          boolean autoDiscoverSources, List<Path> additionalSources, String geyserDirectory,
+                          boolean deployAfterBuild, boolean reloadAfterDeploy, int backupsToKeep,
+                          boolean javaContainerLayout, boolean javaTextLayout) {
+        this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
+                providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
+                autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
+                backupsToKeep, javaContainerLayout, javaTextLayout, javaTextLayout);
     }
 
     public static TwilightConfig read(FileConfiguration source, Path serverRoot) {
@@ -80,7 +93,8 @@ public record TwilightConfig(
                 source.getBoolean("geyser.reload-after-deploy", false),
                 backups,
                 source.getBoolean("ui.java-container-layout", true),
-                source.getBoolean("ui.java-text-layout", true)
+                source.getBoolean("ui.java-text-layout", true),
+                source.getBoolean("ui.java-text-surfaces", true)
         );
     }
 

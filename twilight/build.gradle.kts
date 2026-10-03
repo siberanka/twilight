@@ -19,6 +19,9 @@ dependencies {
     testCompileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     // Title layout tests drive the reflective Adventure bridge with unrelocated components.
     testImplementation("net.kyori:adventure-api:4.17.0")
+    // Text surface tests rewrite real protocol packets.
+    testImplementation("org.geysermc.mcprotocollib:protocol:26.2-20260824.124638-17") { isTransitive = false }
+    testImplementation("io.netty:netty-buffer:4.2.7.Final")
 
     testImplementation(platform("org.junit:junit-bom:5.14.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -88,10 +91,33 @@ tasks.register<JavaExec>("auditServerFonts") {
     providers.gradleProperty("twilight.audit.minecraft-version").orNull?.let {
         systemProperty("twilight.audit.minecraftVersion", it)
     }
+    providers.gradleProperty("twilight.audit.cache").orNull?.let { systemProperty("twilight.audit.cache", it) }
+    providers.gradleProperty("twilight.audit.text-layout").orNull?.let { systemProperty("twilight.audit.textLayout", it) }
     doFirst {
         val parsed = roots.orNull?.split(',')?.filter { it.isNotBlank() }
             ?: throw GradleException("Pass -Ptwilight.audit.roots=<server-root>,<server-root>")
         args = listOf(output.get()) + parsed
+    }
+}
+
+tasks.register<JavaExec>("auditServerBuilds") {
+    group = "verification"
+    description = "Runs the complete Bedrock pack build for server sources read-only and reports every problem."
+    dependsOn(tasks.testClasses)
+    mainClass = "com.siberanka.twilight.compiler.ServerBuildAuditMain"
+    classpath = sourceSets.test.get().runtimeClasspath
+    val output = providers.gradleProperty("twilight.buildAudit.output")
+        .orElse(layout.buildDirectory.file("reports/twilight-build-audit.json").map { it.asFile.absolutePath })
+    val data = providers.gradleProperty("twilight.buildAudit.data")
+        .orElse(layout.buildDirectory.dir("tmp/build-audit").map { it.asFile.absolutePath })
+    val roots = providers.gradleProperty("twilight.audit.roots")
+    providers.gradleProperty("twilight.audit.minecraft-version").orNull?.let {
+        systemProperty("twilight.audit.minecraftVersion", it)
+    }
+    doFirst {
+        val parsed = roots.orNull?.split(',')?.filter { it.isNotBlank() }
+            ?: throw GradleException("Pass -Ptwilight.audit.roots=<server-root>,<server-root>")
+        args = listOf(output.get(), data.get()) + parsed
     }
 }
 

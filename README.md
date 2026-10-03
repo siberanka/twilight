@@ -13,7 +13,7 @@ HUDs. These are acceptance obligations, not a count of passing tests.
 
 ## Visual acceptance tests
 
-The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.5 JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
+The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.6 JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
 
 The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) verifies automatic removal of unwanted ModelEngine particles, live state changes and passenger retention. The [mount-height regression](docs/DISPLAY_SEATS_2026-09-29.md) corrects the tested basket's lighting on solid ground. Full pose and material parity remain open.
 
@@ -45,6 +45,13 @@ chest titles: negative spaces, ItemsAdder offsets, remapped default-font
 characters and glyph bearings. Six real Survival menus match Java's GUI pixels in
 the title area and on all measured slot rows. Bitmap glyph tint and overlapping
 title layers remain open.
+
+The [text surface review](docs/TEXT_SURFACES_2026-10-04.md) applies the same
+layout to chat, the action bar, titles, boss bars, scoreboards, entity names and
+holograms. Independent SkyBlock content (CraftEngine named-font ranks and
+CustomNameplates backgrounds) measured zero offset on every surface. Complete
+production builds of five real servers found and fixed discovery, atlas, PNG and
+font defects; Survival now converts 837 of 841 custom items instead of 125.
 
 <table>
   <tr><th>Java font-image menu - 3 October</th><th>Bedrock font-image menu - 3 October</th></tr>
@@ -79,7 +86,7 @@ The release artifact is one server plugin: `Twilight.jar`. Fabric client support
 
 ## Discovery and automation
 
-Twilight resolves `level-name` from `server.properties`, active Bukkit worlds, their datapacks, and generated content under supported provider directories. Current discovery recognizes ItemsAdder, CraftEngine, Nexo, Oraxen, BetterModel, ModelEngine, RealisticSeasons, and explicitly configured pack sources. Provider `contents`/`resources`, `data`, and `cache` metadata and asset roots are indexed in that order of authority; generated ZIPs remain the lower-priority fallback for files absent from those roots. Standard assets remain the source of truth, so compatible providers can work through the file and Bukkit APIs without vendor-specific conversion code.
+Twilight resolves `level-name` from `server.properties`, active Bukkit worlds, their datapacks, and generated content under supported provider directories. Current discovery recognizes ItemsAdder, CraftEngine, Nexo, Oraxen, BetterModel, ModelEngine, RealisticSeasons, and explicitly configured pack sources. Provider `contents`/`resources`, `data`, and `cache` metadata and asset roots are indexed in that order of authority; generated ZIPs remain the lower-priority fallback for files absent from those roots. Copies of the vanilla client assets, temporary build folders and stale packs nested in a provider's working folder are ignored; a renamed ItemsAdder output pack is used when `generated.zip` is absent. Standard assets remain the source of truth, so compatible providers can work through the file and Bukkit APIs without vendor-specific conversion code.
 
 The runtime collector inspects recipe results, online player inventories, modern `minecraft:item_model` components, legacy custom model data, and public ItemsAdder, CraftEngine, Nexo, and Oraxen item registries when available. Supported provider load, reload, and pack-generation events plus content-changing commands trigger a debounced conversion and delayed settle check. File discovery remains available when an API shape changes.
 
@@ -114,9 +121,10 @@ Each operation writes a dedicated UTF-8 log under `plugins/Twilight/logs`, for e
 - Layered 2D textures are composed without smoothing. Java cuboids remain volumetric Bedrock geometry with separate first/third-person left/right and head transforms. Handheld presentation follows the resolved Java model parent, while authored hand translation, rotation, and scale are preserved without implicit fitting.
 - Single-layer texture-only bows and crossbows reuse Bedrock's native pose, pull geometry, and animation controllers. Volumetric legacy pull stages retain separate Java geometry and display transforms behind one runtime-selected Bedrock attachable. Crossbow arrow/rocket loads and fishing-rod cast models become explicit Geyser predicates, preserving their distinct states.
 - Supported bitmap providers use adaptive 16-to-512-pixel cells with measured Java height/ascent alignment. Atlas growth preserves authored display dimensions; overflow beyond the supported bounds and custom spacing fail strict conversion. Six metric probes, 36 real glyphs and six further UI/HUD images were compared in both clients. Chest titles use Java font metrics (spacing, negative shifts, bearings and remapped characters); bitmap tint and fractional sampling remain limitations. Large atlases also increase memory use; see the wide glyph review. Named fonts contribute only globally safe, collision-free BMP private-use glyphs.
-- Chest titles are laid out for Bedrock players with Java font metrics (`ui.java-text-layout: true`): fonts from all packs are combined like Java, spacing and negative-shift characters become invisible spacers, and characters Java remaps receive private-use aliases. A glyph directly after text without a space and overlapping title layers can still differ by a unit.
+- Text is laid out for Bedrock players with Java font metrics (`ui.java-text-layout: true`): fonts from all packs are combined like Java, spacing and negative-shift characters become invisible spacers, and characters Java remaps or named fonts use receive private-use aliases. Chest titles, chat, action bar, titles, boss bars, scoreboards, entity names and text displays are covered (`ui.java-text-surfaces: true`); item names and lore are not. A glyph directly after text without a space and overlapping layers can still differ by a unit.
 - Desktop chest screens receive Java's container layout (`ui.java-container-layout: true`): unwrapped titles, Java label positions and drawing order, and Java slot spacing for 1 to 6 rows. Twilight merges partial UI definitions instead of replacing Bedrock UI files; other containers and touch layouts stay vanilla.
-- With `vanilla-override: false`, normal Unicode cells in the Java default font cannot replace Bedrock's vanilla glyphs. Named-font cells that need contextual remapping or collide globally stop strict publication instead of corrupting menus or chat.
+- With `vanilla-override: false`, normal Unicode cells in the Java default font never replace Bedrock's vanilla glyphs; the text layout gives them private-use aliases instead. Characters drawn from Java's own font sheets stay ordinary Bedrock text.
+- Texture atlas sprite renames (for example ItemsAdder's `ia:<number>` sprites) and protected PNGs with broken checksums are resolved like Java. Faces whose texture variable no model defines use Java's missing texture. Content Java rejects as well is reported as a notice in `build-report.json` instead of stopping a strict build.
 - Explicit `minecraft:` texture references missing from a custom pack can be resolved from a version-matched Mojang client JAR cached under `plugins/Twilight/cache`. Manifest metadata, size, and SHA-1 are verified before use; this never registers vanilla models as custom content.
 - Layered Java `sounds.json` registries, file/event references, OGG assets, weights, pitch, volume, streaming, and attenuation are converted to Bedrock sound definitions. Explicit vanilla sound dependencies use the same version-matched, hash-verified Mojang asset chain.
 - Vanilla items without a custom definition are never registered. `vanilla-override` defaults to `false`.

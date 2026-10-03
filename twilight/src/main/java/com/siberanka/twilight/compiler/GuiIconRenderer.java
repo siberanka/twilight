@@ -46,7 +46,7 @@ final class GuiIconRenderer {
                     String reference = face.get("texture").getAsString();
                     String texture = reference.startsWith("#") ? part.textures().get(reference.substring(1))
                             : JavaModelResolver.qualified(reference, "minecraft");
-                    if (texture == null) throw new IOException("Unresolved GUI face texture " + reference);
+                    if (texture == null) texture = TextureSet.MISSING; // as Java draws it
                     TextureSet.Region region = atlas.region(texture);
                     Vec[] vertices = vertices(entry.getKey(), from, to);
                     for (int i = 0; i < 4; i++) {

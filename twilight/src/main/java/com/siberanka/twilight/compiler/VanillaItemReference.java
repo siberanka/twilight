@@ -9,9 +9,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.siberanka.twilight.source.ResourceIndex;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
@@ -58,7 +56,7 @@ final class VanillaItemReference {
             models.put(modelIdentifier, baseline);
         }
         if (!candidate.display().equals(baseline.display()) || baseline.layers().size() != 1) return false;
-        String customPath = JavaModelResolver.texturePath(candidateLayers.getFirst());
+        String customPath = JavaModelResolver.texturePath(TextureSet.spriteTexture(resources, candidateLayers.getFirst()));
         String baselineTexture = baseline.layers().getFirst();
         String baselinePath = JavaModelResolver.texturePath(baselineTexture);
         // Animated sprites change more than colour even if their first frame
@@ -97,7 +95,8 @@ final class VanillaItemReference {
             for (JsonObject json : chain) {
                 if (json.has("textures")) for (Map.Entry<String, JsonElement> texture
                         : json.getAsJsonObject("textures").entrySet()) {
-                    textures.put(texture.getKey(), texture.getValue().getAsString());
+                    String sprite = JavaModelResolver.textureValue(texture.getValue());
+                    if (sprite != null) textures.put(texture.getKey(), sprite);
                 }
                 if (json.has("display")) for (Map.Entry<String, JsonElement> transform
                         : json.getAsJsonObject("display").entrySet()) {
@@ -129,7 +128,7 @@ final class VanillaItemReference {
     }
 
     private static BufferedImage image(byte[] bytes, String name) throws IOException {
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
+        BufferedImage image = PngImages.read(bytes);
         if (image == null || image.getWidth() < 1 || image.getHeight() < 1) {
             throw new IOException("Invalid PNG " + name);
         }

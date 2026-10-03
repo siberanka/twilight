@@ -120,6 +120,106 @@ class BedrockPackCompilerTest {
     }
 
     @Test
+    void resolvesSpritesThatTextureAtlasesRename() throws Exception {
+        // ItemsAdder's generated packs reference atlas sprites such as "ia:2015" that a "single"
+        // source renames from the real texture; "directory" sources may rename whole folders.
+        // Java resolves both, so must the conversion.
+        Path source = root.resolve("atlas-source");
+        write(source, "assets/minecraft/models/item/paper.json", """
+                {"parent":"minecraft:item/generated","overrides":[
+                  {"predicate":{"custom_model_data":1},"model":"demo:item/lettuce"},
+                  {"predicate":{"custom_model_data":2},"model":"demo:item/gem"}]}
+                """);
+        write(source, "assets/demo/models/item/lettuce.json", """
+                {"parent":"minecraft:item/generated","textures":{"layer0":"ia:2015"}}
+                """);
+        // Object-form texture entries (1.21.6+) name their sprite in "sprite".
+        write(source, "assets/demo/models/item/gem.json", """
+                {"parent":"minecraft:item/generated","textures":{"layer0":{"sprite":"demo:shiny/gem","force_translucent":true}}}
+                """);
+        write(source, "assets/minecraft/atlases/items.json", """
+                {"sources":[{"type":"single","resource":"demo:item/food/lettuce","sprite":"ia:2015"},
+                            {"type":"directory","source":"item/gems","prefix":"shiny/"}]}
+                """);
+        png(source.resolve("assets/demo/textures/item/food/lettuce.png"), Color.GREEN);
+        png(source.resolve("assets/demo/textures/item/gems/gem.png"), Color.MAGENTA);
+
+        ContentSource pack = new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1);
+        BuildResult result = new BedrockPackCompiler(root.resolve("atlas-data"), config())
+                .build(List.of(pack), List.of());
+        assertTrue(result.problems().isEmpty(), result.problems().toString());
+        assertEquals(2, result.converted());
+    }
+
+    @Test
+    void facesWithUndefinedTexturesUseJavasMissingTexture() throws Exception {
+        // Real packs (GearForge bows, cosmetics icons) leave "#missing" undefined; Java draws its
+        // magenta-black texture on those faces and the rest of the model normally.
+        Path source = root.resolve("missing-texture-source");
+        write(source, "assets/minecraft/models/item/paper.json", """
+                {"parent":"minecraft:item/generated","overrides":[{"predicate":{"custom_model_data":3},"model":"demo:item/half"}]}
+                """);
+        write(source, "assets/demo/models/item/half.json", """
+                {"textures":{"all":"demo:item/half"},
+                 "elements":[{"from":[4,4,4],"to":[12,12,12],"faces":{
+                   "north":{"texture":"#all"},"south":{"texture":"#missing"},"east":{"texture":"#all"},
+                   "west":{"texture":"#missing"},"up":{"texture":"#all"},"down":{"texture":"#all"}}}]}
+                """);
+        png(source.resolve("assets/demo/textures/item/half.png"), Color.CYAN);
+        BuildResult result = new BedrockPackCompiler(root.resolve("missing-texture-data"), config())
+                .build(List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
+        assertTrue(result.problems().isEmpty(), result.problems().toString());
+        assertEquals(1, result.converted());
+        java.awt.image.BufferedImage missing = TextureSet.missingTexture();
+        assertEquals(0xFF000000, missing.getRGB(0, 0));
+        assertEquals(0xFFF800F8, missing.getRGB(8, 0));
+        JsonObject report = JsonParser.parseString(Files.readString(result.outputDirectory().resolve("build-report.json")))
+                .getAsJsonObject();
+        assertTrue(report.getAsJsonArray("notices").toString().contains("missing texture"), report.toString());
+    }
+
+    @Test
+    void customSelectorsMayShowPlainVanillaModels() throws Exception {
+        // Menu packs map custom model data to vanilla models (a barrier as "closed" button); only the
+        // selector is custom. The vanilla model comes from the verified client, as on Java.
+        Path source = root.resolve("vanilla-target-source");
+        write(source, "assets/minecraft/models/item/paper.json", """
+                {"parent":"minecraft:item/generated","overrides":[{"predicate":{"custom_model_data":9},"model":"minecraft:item/barrier"}]}
+                """);
+        Path data = root.resolve("vanilla-target-data");
+        seedClientCache(data, Map.of(
+                "assets/minecraft/models/item/barrier.json",
+                "{\"parent\":\"minecraft:item/generated\",\"textures\":{\"layer0\":\"minecraft:item/barrier\"}}"
+                        .getBytes(StandardCharsets.UTF_8),
+                "assets/minecraft/models/item/generated.json", "{}".getBytes(StandardCharsets.UTF_8),
+                "assets/minecraft/textures/item/barrier.png", pngBytes(Color.RED)));
+        BuildResult result = new BedrockPackCompiler(data, config(), "26.2").build(List.of(
+                new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
+        assertTrue(result.problems().isEmpty(), result.problems().toString());
+        assertEquals(1, result.converted());
+    }
+
+    @Test
+    void leavesSpecialRendererItemsToBedrocksNativeRendering() throws Exception {
+        // Player-skin heads (emote rigs, head plugins) have neither elements nor layers: Java's special
+        // renderer draws the owner's skin, as Geyser does natively. They are noted, not failed.
+        Path source = root.resolve("special-source");
+        write(source, "assets/minecraft/models/item/player_head.json", """
+                {"parent":"minecraft:builtin/entity","overrides":[{"predicate":{"custom_model_data":4},"model":"demo:entity/player/head"}]}
+                """);
+        write(source, "assets/demo/models/entity/player/head.json", """
+                {"parent":"minecraft:builtin/entity","display":{"head":{"scale":[1,1,1]}}}
+                """);
+        BuildResult result = new BedrockPackCompiler(root.resolve("special-data"), config())
+                .build(List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
+        assertTrue(result.problems().isEmpty(), result.problems().toString());
+        assertEquals(0, result.converted());
+        JsonObject report = JsonParser.parseString(Files.readString(result.outputDirectory().resolve("build-report.json")))
+                .getAsJsonObject();
+        assertTrue(report.getAsJsonArray("notices").toString().contains("special renderer"), report.toString());
+    }
+
+    @Test
     void preservesLargeModelJavaHandTransformWithoutImplicitFitting() throws Exception {
         Path source = root.resolve("wide-model-source");
         write(source, "assets/demo/items/wide.json", """
@@ -915,17 +1015,21 @@ class BedrockPackCompilerTest {
     }
 
     @Test
-    void rejectsMissingCustomSoundFilesInStrictMode() throws Exception {
+    void reportsSoundFilesMissingForJavaTooWithoutBlockingStrictBuilds() throws Exception {
+        // A definition whose file exists in no pack is silent for Java players as well (real case: a
+        // Survival mob pack); the conversion is faithful, so the report notes it and the build proceeds.
         Path source = root.resolve("sound-missing");
         write(source, "assets/demo/sounds.json", """
                 {"missing":{"sounds":["demo:not/present"]}}
                 """);
 
-        ConversionException failure = assertThrows(ConversionException.class,
-                () -> new BedrockPackCompiler(root.resolve("sound-missing-data"), config()).build(List.of(
-                        new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)
-                ), List.of()));
-        assertTrue(failure.problems().stream().anyMatch(problem -> problem.contains("references missing sound")));
+        BuildResult result = new BedrockPackCompiler(root.resolve("sound-missing-data"), config()).build(List.of(
+                new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)
+        ), List.of());
+        assertTrue(result.problems().isEmpty(), result.problems().toString());
+        JsonObject report = JsonParser.parseString(Files.readString(result.outputDirectory().resolve("build-report.json")))
+                .getAsJsonObject();
+        assertTrue(report.getAsJsonArray("notices").toString().contains("demo:not/present"), report.toString());
     }
 
     @Test

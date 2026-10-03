@@ -10,12 +10,10 @@ import com.google.gson.JsonParser;
 import com.siberanka.twilight.source.ResourceIndex;
 import com.siberanka.twilight.text.TextLayoutTable;
 
-import javax.imageio.ImageIO;
 import java.awt.AlphaComposite;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -43,11 +41,22 @@ final class BitmapFontCompiler {
     private static final int LAST_ALIAS_PAGE = 0xF8;
     /** Wide variants (one invisible trailing column) are generated for glyphs up to this cell size. */
     private static final int MAX_WIDE_CELL = 64;
+    /** Oversized images whose most opaque pixel stays at or below this alpha are spacing, not art. */
+    private static final int FAINT_ALPHA = 25;
+    /** A bitmap drawn this far above or below the line is the off-screen spacing idiom, not an image. */
+    private static final int OFF_SCREEN = 2048;
+    /** Java's own font sheets: characters drawn from them are text, which Bedrock renders natively. */
+    private static final java.util.regex.Pattern VANILLA_FONT_SHEET = java.util.regex.Pattern.compile(
+            "minecraft:font/(ascii|accented|nonlatin_european|unicode_page_[0-9a-f]{2})\\.png");
+    /** Marks a character that Java renders as ordinary text from its own font sheets. */
+    private static final Object NATIVE_TEXT = new Object();
     private final ResourceIndex resources;
     private final VanillaAssetCache vanillaAssets;
     private final boolean vanillaOverride;
     private final boolean textLayout;
     private final Map<String, ProblemBucket> problemGroups = new LinkedHashMap<>();
+    // Content Java itself rejects: Bedrock already matches Java, so it is reported without failing a build.
+    private final Map<String, ProblemBucket> noticeGroups = new LinkedHashMap<>();
     private final Map<Integer, Glyph> glyphs = new LinkedHashMap<>();
     private final Map<String, Map<Integer, Object>> layoutSources = new TreeMap<>();
     private final List<AliasRequest> aliasRequests = new ArrayList<>();
@@ -76,7 +85,7 @@ final class BitmapFontCompiler {
     Result compile(Map<String, byte[]> packFiles) throws IOException {
         List<String> definitions = resources.paths().stream().map(BitmapFontCompiler::fontIdentifier)
                 .filter(java.util.Objects::nonNull).sorted().toList();
-        if (definitions.isEmpty()) return new Result(0, 0, 0, 0, 0, 0, null, List.of());
+        if (definitions.isEmpty()) return new Result(0, 0, 0, 0, 0, 0, null, List.of(), List.of());
 
         Set<String> defaultClosure = new HashSet<>();
         if (definitions.contains("minecraft:default")) {
@@ -111,7 +120,7 @@ final class BitmapFontCompiler {
         TextLayoutTable table = null;
         if (layoutActive) {
             packFiles.put("font/glyph_%02X.png".formatted(spacerPage), TextureSet.png(spacerPage()));
-            table = layoutTable(wide, ink, spacerPage << 8);
+            table = layoutTable(wide, ink, spacerPage << 8, vanillaTextAdvances());
             packFiles.put(TextLayoutTable.PATH, table.toJson().toString().getBytes(StandardCharsets.UTF_8));
         }
         List<String> problems = new ArrayList<>(problemGroups.entrySet().stream()
@@ -121,8 +130,10 @@ final class BitmapFontCompiler {
         if (!unsupportedBaselineProviders.isEmpty()) problems.add(unsupportedBaselineProviders.size() +
                 " invalid Java bitmap height/ascent provider(s) were skipped");
         int direct = glyphs.size() - aliases.size() - wide.size();
+        List<String> notices = noticeGroups.entrySet().stream()
+                .map(entry -> entry.getValue().format(entry.getKey())).toList();
         return new Result(direct, pages.size(), vanillaFallbackTextures.size(), namedFonts, namedGlyphs,
-                aliases.size(), table, List.copyOf(problems));
+                aliases.size(), table, List.copyOf(problems), notices);
     }
 
     private void readFont(String identifier, Set<String> active, Set<String> closure,
@@ -141,6 +152,12 @@ final class BitmapFontCompiler {
             for (int layer = definitions.size() - 1; layer >= 0; layer--) {
                 ResourceIndex.Asset definition = definitions.get(layer);
                 try { readProviders(normalized, definition, active, closure, target); }
+                catch (com.google.gson.JsonParseException failure) {
+                    // Java fails on the same file and skips this pack's definition, as done here.
+                    notice("font definitions are malformed and ignored, as on Java", normalized + " -> "
+                            + definition.source().provider() + " (" + definition.source().path().getFileName() + "): "
+                            + firstLine(message(failure)));
+                }
                 catch (IOException | RuntimeException failure) {
                     problem("font definitions could not be parsed", normalized + " -> "
                             + definition.source().provider() + ": " + message(failure));
@@ -229,7 +246,8 @@ final class BitmapFontCompiler {
                 else target.put(metric.getKey(), new Advance(metric.getValue().advance()));
             }
         } catch (IOException failure) {
-            problem("TrueType fonts could not be read", font + " -> " + file + ": " + message(failure));
+            // Java (FreeType) refuses the same files, so its players see what Bedrock gets.
+            notice("TrueType fonts are unreadable and ignored, as on Java", font + " -> " + file + ": " + message(failure));
         }
     }
 
@@ -242,13 +260,22 @@ final class BitmapFontCompiler {
             return;
         }
         String textureIdentifier = identifier(file, "minecraft");
+        if (!vanillaOverride && VANILLA_FONT_SHEET.matcher(textureIdentifier).matches()) {
+            // Fonts such as CustomNameplates' shifted text reuse Java's font sheets. That is text, not
+            // an image: Bedrock keeps its own (tinted) glyph, so the character is laid out as ordinary text.
+            for (JsonElement row : chars.getAsJsonArray()) {
+                row.getAsString().codePoints().filter(codePoint -> codePoint != 0)
+                        .forEach(codePoint -> target.put(codePoint, NATIVE_TEXT));
+            }
+            return;
+        }
         String texturePath = texturePath(textureIdentifier);
         List<ResourceIndex.Asset> textureAssets = resources.findAll(texturePath);
         BufferedImage image = null;
         IOException lastFailure = null;
         for (ResourceIndex.Asset textureAsset : textureAssets) {
             try {
-                image = ImageIO.read(new ByteArrayInputStream(textureAsset.readBytes()));
+                image = PngImages.read(textureAsset.readBytes());
                 if (image != null) break;
                 lastFailure = new IOException("not a valid PNG from " + textureAsset.source().provider());
             } catch (IOException failure) {
@@ -259,7 +286,7 @@ final class BitmapFontCompiler {
             try {
                 var vanilla = vanillaAssets.readTexture(texturePath);
                 if (vanilla.isPresent()) {
-                    image = ImageIO.read(new ByteArrayInputStream(vanilla.get()));
+                    image = PngImages.read(vanilla.get());
                     if (image == null) throw new IOException("cached vanilla entry is not a PNG");
                     vanillaFallbackTextures.add(texturePath);
                 }
@@ -314,9 +341,24 @@ final class BitmapFontCompiler {
             return;
         }
         double displayWidth = cellWidth * (declaredHeight / (double) cellHeight);
-        if (displayWidth > MAX_CELL_SIZE) {
-            problem("oversized bitmap glyphs require a Bedrock UI adapter", providerKey,
-                    font + " -> " + textureIdentifier + " (" + displayWidth + "x" + declaredHeight + ")");
+        boolean offScreen = 7 - declaredAscent > OFF_SCREEN || 7 - declaredAscent + declaredHeight < -OFF_SCREEN;
+        if (displayWidth > MAX_CELL_SIZE || offScreen) {
+            // Bedrock cannot draw these. Java's transparent or off-screen ones only advance the pen.
+            boolean visible = false;
+            for (int row = 0; row < rows.size(); row++) {
+                int[] codePoints = rows.get(row).codePoints().toArray();
+                for (int column = 0; column < codePoints.length; column++) {
+                    if (codePoints[column] == 0) continue;
+                    int actual = actualWidth(image, column * cellWidth, row * cellHeight, cellWidth, cellHeight);
+                    if (textLayout) target.put(codePoints[column], new Advance(javaAdvance(actual, scale)));
+                    visible |= !offScreen && maximumAlpha(image, column * cellWidth, row * cellHeight,
+                            cellWidth, cellHeight) > FAINT_ALPHA;
+                }
+            }
+            if (visible || !textLayout) {
+                problem("oversized bitmap glyphs require a Bedrock UI adapter", providerKey,
+                        font + " -> " + textureIdentifier + " (" + displayWidth + "x" + declaredHeight + ")");
+            }
             return;
         }
         for (int row = 0; row < rows.size(); row++) {
@@ -349,6 +391,14 @@ final class BitmapFontCompiler {
         }
     }
 
+    private static int maximumAlpha(BufferedImage image, int x, int y, int width, int height) {
+        int maximum = 0;
+        for (int row = 0; row < height; row++) for (int column = 0; column < width; column++) {
+            maximum = Math.max(maximum, image.getRGB(x + column, y + row) >>> 24);
+        }
+        return maximum;
+    }
+
     /** Java's BitmapProvider: rightmost column containing any non-zero alpha, plus one. */
     static int actualWidth(BufferedImage image, int x, int y, int width, int height) {
         for (int column = width - 1; column >= 0; column--) {
@@ -367,6 +417,7 @@ final class BitmapFontCompiler {
     private void mergeNamedFont(String font, Map<Integer, Object> contextual) {
         for (Map.Entry<Integer, Object> entry : contextual.entrySet()) {
             int codePoint = entry.getKey();
+            if (entry.getValue() == NATIVE_TEXT) continue;
             if (entry.getValue() instanceof Advance advance) {
                 layout(font, codePoint, advance);
                 continue;
@@ -399,6 +450,7 @@ final class BitmapFontCompiler {
         String font = TextLayoutTable.DEFAULT_FONT;
         for (Map.Entry<Integer, Object> entry : defaults.entrySet()) {
             int codePoint = entry.getKey();
+            if (entry.getValue() == NATIVE_TEXT) continue;
             if (entry.getValue() instanceof Advance advance) {
                 layout(font, codePoint, advance);
                 continue;
@@ -508,7 +560,50 @@ final class BitmapFontCompiler {
         return -1;
     }
 
-    private TextLayoutTable layoutTable(Map<Integer, Integer> wide, Map<Integer, int[]> ink, int spacerFirst) {
+    /**
+     * Java's advances for its own font sheets (include/default.json of the client), so centred lines
+     * can follow Java's integer rounding. Empty when the vanilla client is unavailable.
+     */
+    private Map<Integer, Float> vanillaTextAdvances() {
+        Map<Integer, Float> advances = new TreeMap<>();
+        if (vanillaAssets == null) return advances;
+        try {
+            var definition = vanillaAssets.readFontDefinition("assets/minecraft/font/include/default.json");
+            if (definition.isEmpty()) return advances;
+            JsonElement providers = JsonParser.parseString(new String(definition.get(), StandardCharsets.UTF_8))
+                    .getAsJsonObject().get("providers");
+            if (providers == null || !providers.isJsonArray()) return advances;
+            for (JsonElement element : providers.getAsJsonArray()) {
+                JsonObject provider = element.getAsJsonObject();
+                String file = identifier(string(provider, "file"), "minecraft");
+                if (!string(provider, "type").endsWith("bitmap") || !VANILLA_FONT_SHEET.matcher(file).matches()) continue;
+                var bytes = vanillaAssets.readTexture(texturePath(file));
+                if (bytes.isEmpty()) continue;
+                BufferedImage image = PngImages.read(bytes.get());
+                List<String> rows = new ArrayList<>();
+                provider.getAsJsonArray("chars").forEach(row -> rows.add(row.getAsString()));
+                if (image == null || rows.isEmpty()) continue;
+                int columns = rows.getFirst().codePointCount(0, rows.getFirst().length());
+                int cellWidth = image.getWidth() / columns, cellHeight = image.getHeight() / rows.size();
+                float scale = integer(provider, "height", 8) / (float) cellHeight;
+                for (int row = 0; row < rows.size(); row++) {
+                    int[] codePoints = rows.get(row).codePoints().toArray();
+                    for (int column = 0; column < codePoints.length && column < columns; column++) {
+                        if (codePoints[column] == 0 || advances.containsKey(codePoints[column])) continue;
+                        int actual = actualWidth(image, column * cellWidth, row * cellHeight, cellWidth, cellHeight);
+                        advances.put(codePoints[column], (float) javaAdvance(actual, scale));
+                    }
+                }
+            }
+        } catch (IOException | RuntimeException failure) {
+            // Centring then keeps Bedrock's exact rounding; nothing else depends on these widths.
+            advances.clear();
+        }
+        return advances;
+    }
+
+    private TextLayoutTable layoutTable(Map<Integer, Integer> wide, Map<Integer, int[]> ink, int spacerFirst,
+                                        Map<Integer, Float> textAdvances) {
         Map<String, Map<Integer, TextLayoutTable.Entry>> fonts = new TreeMap<>();
         layoutSources.forEach((font, sources) -> {
             Map<Integer, TextLayoutTable.Entry> entries = new TreeMap<>();
@@ -531,7 +626,7 @@ final class BitmapFontCompiler {
             });
             if (!entries.isEmpty()) fonts.put(font, entries);
         });
-        return new TextLayoutTable(fonts, spacerFirst, SPACER_COUNT);
+        return new TextLayoutTable(fonts, spacerFirst, SPACER_COUNT, TextLayoutTable.ORIGIN, textAdvances);
     }
 
     /** First inked column and inked width of each glyph cell, as Bedrock measures them (alpha above zero). */
@@ -690,6 +785,15 @@ final class BitmapFontCompiler {
         return failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
     }
 
+    private void notice(String category, String example) {
+        noticeGroups.computeIfAbsent(category, ignored -> new ProblemBucket()).add(example, example);
+    }
+
+    private static String firstLine(String message) {
+        int end = message.indexOf('\n');
+        return end < 0 ? message : message.substring(0, end).trim();
+    }
+
     private void problem(String category, String example) {
         problem(category, example, example);
     }
@@ -718,9 +822,10 @@ final class BitmapFontCompiler {
      * @param glyphs directly mapped glyphs (aliases excluded)
      * @param aliasedGlyphs glyphs that Bedrock receives through private-use aliases in laid-out text
      * @param layout Java metrics for the runtime title layout, or null when no custom font content exists
+     * @param notices content Java rejects as well (Bedrock matches Java); never fails a strict build
      */
     record Result(int glyphs, int pages, int vanillaFallbackTextures, int namedFonts, int namedGlyphs,
-                  int aliasedGlyphs, TextLayoutTable layout, List<String> problems) {}
+                  int aliasedGlyphs, TextLayoutTable layout, List<String> problems, List<String> notices) {}
 
     private record Advance(float value) {}
 

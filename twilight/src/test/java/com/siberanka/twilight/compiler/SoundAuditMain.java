@@ -69,6 +69,7 @@ public final class SoundAuditMain {
             result.addProperty("bedrock_ogg_files", sounds.files());
             result.addProperty("vanilla_fallback_sounds", sounds.vanillaFallbackFiles());
             result.add("problems", GSON.toJsonTree(sounds.problems()));
+            result.add("notices", GSON.toJsonTree(sounds.notices()));
             return result;
         }
     }

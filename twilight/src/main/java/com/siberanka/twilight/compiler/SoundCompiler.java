@@ -26,6 +26,8 @@ final class SoundCompiler {
     private final VanillaAssetCache vanillaAssets;
     private final Map<String, JavaSound> definitions = new LinkedHashMap<>();
     private final Set<String> problems = new LinkedHashSet<>();
+    // Definitions that are broken for Java players too; reported without failing a strict build.
+    private final Set<String> notices = new LinkedHashSet<>();
     private JsonObject vanillaSoundRegistry;
     private boolean vanillaRegistryAttempted;
 
@@ -57,13 +59,19 @@ final class SoundCompiler {
                     else if (variant.file().startsWith("minecraft:") && vanillaAssets != null) {
                         var vanilla = vanillaAssets.readSound(assetPath);
                         if (vanilla.isEmpty()) {
-                            problem(entry.getKey() + " references missing sound " + variant.file());
+                            notices.add(entry.getKey() + " references a sound file that exists nowhere, as on Java: "
+                                    + variant.file());
                             continue;
                         }
                         bytes = vanilla.get();
                         vanillaFallbackFiles.add(variant.file());
-                    } else {
+                    } else if (variant.file().startsWith("minecraft:")) {
+                        // Without the vanilla client the file cannot be checked against Java's assets.
                         problem(entry.getKey() + " references missing sound " + variant.file());
+                        continue;
+                    } else {
+                        notices.add(entry.getKey() + " references a sound file that exists nowhere, as on Java: "
+                                + variant.file());
                         continue;
                     }
                     if (bytes.length < 4 || bytes[0] != 'O' || bytes[1] != 'g' || bytes[2] != 'g' || bytes[3] != 'S') {
@@ -102,7 +110,7 @@ final class SoundCompiler {
             packFiles.put("sounds/sound_definitions.json", BedrockPackCompiler.jsonBytes(root));
         }
         return new Result(bedrockDefinitions.size(), copiedFiles.size(), vanillaFallbackFiles.size(),
-                List.copyOf(problems));
+                List.copyOf(problems), List.copyOf(notices));
     }
 
     private void readDefinitions() {
@@ -301,7 +309,7 @@ final class SoundCompiler {
         problems.add(value);
     }
 
-    record Result(int definitions, int files, int vanillaFallbackFiles, List<String> problems) {}
+    record Result(int definitions, int files, int vanillaFallbackFiles, List<String> problems, List<String> notices) {}
     private record JavaSound(List<JsonElement> sounds) {}
     private record Variant(String file, double volume, double pitch, int weight, boolean stream,
                            Double attenuationDistance) {}

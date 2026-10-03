@@ -21,6 +21,7 @@ public final class ResourceIndex implements AutoCloseable {
     private final Map<String, Asset> assets;
     private final Map<String, List<Asset>> alternatives;
     private final List<ZipFile> archives;
+    private AtlasSprites atlasSprites;
 
     private ResourceIndex(Map<String, Asset> assets, Map<String, List<Asset>> alternatives, List<ZipFile> archives) {
         this.assets = Map.copyOf(assets);
@@ -63,6 +64,12 @@ public final class ResourceIndex implements AutoCloseable {
     /** Effective asset first, followed by lower-priority layers for validated fallback. */
     public List<Asset> findAll(String path) {
         return alternatives.getOrDefault(normalize(path), List.of());
+    }
+
+    /** Sprite renames declared by the packs' texture atlases (read once). */
+    public synchronized AtlasSprites atlasSprites() {
+        if (atlasSprites == null) atlasSprites = AtlasSprites.read(this);
+        return atlasSprites;
     }
 
     public Collection<String> paths() {

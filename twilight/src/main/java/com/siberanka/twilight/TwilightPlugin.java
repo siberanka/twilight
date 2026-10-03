@@ -64,7 +64,7 @@ public final class TwilightPlugin extends JavaPlugin {
     private GeyserDeploymentService deployment;
     private ProviderHookManager providerHooks;
     private AutoCloseable displayBridge;
-    private com.siberanka.twilight.integration.text.GeyserTitleLayoutBridge titleBridge;
+    private com.siberanka.twilight.integration.text.GeyserTextLayoutBridge textBridge;
 
     @Override
     public void onEnable() {
@@ -84,12 +84,13 @@ public final class TwilightPlugin extends JavaPlugin {
             } catch (Exception | LinkageError failure) {
                 getLogger().log(Level.SEVERE, "Live item-display bridge is unavailable; model animation parity is not supported.", failure);
             }
-            if (config.javaContainerLayout() && config.javaTextLayout()) {
+            if (config.javaTextLayout()) {
                 try {
-                    titleBridge = com.siberanka.twilight.integration.text.GeyserTitleLayoutBridge.create(this,
-                            deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger());
+                    textBridge = com.siberanka.twilight.integration.text.GeyserTextLayoutBridge.create(this,
+                            deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger(),
+                            config.javaTextSurfaces());
                 } catch (Exception | LinkageError failure) {
-                    getLogger().log(Level.SEVERE, "Java title layout is unavailable; Bedrock chest titles of a pack "
+                    getLogger().log(Level.SEVERE, "Java text layout is unavailable; Bedrock chest titles of a pack "
                             + "built with the layout will be misplaced. Rebuild with ui.java-text-layout: false.", failure);
                 }
             }
@@ -117,9 +118,9 @@ public final class TwilightPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (titleBridge != null) {
-            try { titleBridge.close(); }
-            catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close title layout", failure); }
+        if (textBridge != null) {
+            try { textBridge.close(); }
+            catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close text layout", failure); }
         }
         if (displayBridge != null) {
             try { displayBridge.close(); }

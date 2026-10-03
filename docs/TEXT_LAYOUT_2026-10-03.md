@@ -1,5 +1,10 @@
 # Java title layout for Bedrock chest screens - 3 October 2026
 
+> Later change (1.0.0-pre.6): the layout now also covers chat, the action bar,
+> titles, boss bars, scoreboards, entity names and other container titles, and no
+> longer requires the container layout. See the
+> [text surface review](TEXT_SURFACES_2026-10-04.md).
+
 Twilight 1.0.0-pre.5 lays out container titles for Bedrock players with Java font
 metrics. Real Java menu titles combine negative-space characters with large GUI
 images. On Bedrock these titles previously failed in three ways: characters that

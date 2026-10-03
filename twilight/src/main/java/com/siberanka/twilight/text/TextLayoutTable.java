@@ -19,13 +19,13 @@ import java.util.TreeMap;
  * or an advance-only character such as a space provider, a negative-height bitmap
  * or an empty TrueType glyph. Bedrock draws a glyph's first inked column one unit
  * after the pen and advances by its inked width plus one; Java draws column zero at
- * the pen. {@link TitleLayout} uses these numbers to reproduce Java positions with
+ * the pen. {@link TextLayout} uses these numbers to reproduce Java positions with
  * invisible spacer glyphs.
  */
 public final class TextLayoutTable {
     /** Pack path of the serialized table. */
     public static final String PATH = "twilight/text-layout.json";
-    /** The Bedrock title label starts this many GUI units left of Java's title origin. */
+    /** With Twilight's chest UI, the Bedrock title label starts this many GUI units left of Java's title origin. */
     public static final int ORIGIN = 256;
     public static final String DEFAULT_FONT = "minecraft:default";
 
@@ -45,14 +45,49 @@ public final class TextLayoutTable {
     private final Map<String, Map<Integer, Entry>> fonts;
     private final int spacerFirst;
     private final int spacerCount;
+    private final int containerOrigin;
+    private final Map<Integer, Float> textAdvances;
 
     public TextLayoutTable(Map<String, Map<Integer, Entry>> fonts, int spacerFirst, int spacerCount) {
+        this(fonts, spacerFirst, spacerCount, ORIGIN);
+    }
+
+    public TextLayoutTable(Map<String, Map<Integer, Entry>> fonts, int spacerFirst, int spacerCount,
+                           int containerOrigin) {
+        this(fonts, spacerFirst, spacerCount, containerOrigin, Map.of());
+    }
+
+    /**
+     * @param containerOrigin {@link #ORIGIN} when the pack moves the chest title label, otherwise 0
+     * @param textAdvances Java advances of ordinary default-font characters (Java's own font sheets),
+     *                     used only to centre lines with Java's rounding; empty when unknown
+     */
+    public TextLayoutTable(Map<String, Map<Integer, Entry>> fonts, int spacerFirst, int spacerCount,
+                           int containerOrigin, Map<Integer, Float> textAdvances) {
+        if (containerOrigin != 0 && containerOrigin != ORIGIN) throw new IllegalArgumentException("origin " + containerOrigin);
         Map<String, Map<Integer, Entry>> copy = new TreeMap<>();
         fonts.forEach((font, entries) -> copy.put(font, Collections.unmodifiableMap(new TreeMap<>(entries))));
         this.fonts = Collections.unmodifiableMap(copy);
         this.spacerFirst = spacerFirst;
         this.spacerCount = spacerCount;
+        this.containerOrigin = containerOrigin;
+        this.textAdvances = Collections.unmodifiableMap(new TreeMap<>(textAdvances));
     }
+
+    /** Same metrics for a pack whose chest title label does (or does not) start left of Java's origin. */
+    public TextLayoutTable withContainerOrigin(int origin) {
+        return new TextLayoutTable(fonts, spacerFirst, spacerCount, origin, textAdvances);
+    }
+
+    /** Java advance of an ordinary default-font character, or NaN when unknown. */
+    public float textAdvance(int codePoint) {
+        if (codePoint == ' ') return 4;
+        Float advance = textAdvances.get(codePoint);
+        return advance == null ? Float.NaN : advance;
+    }
+
+    /** Units the Bedrock chest title label starts left of Java's title origin. */
+    public int containerOrigin() { return containerOrigin; }
 
     public Entry lookup(String font, int codePoint) {
         Map<Integer, Entry> entries = fonts.get(font == null ? DEFAULT_FONT : font);
@@ -76,7 +111,7 @@ public final class TextLayoutTable {
     public JsonObject toJson() {
         JsonObject root = new JsonObject();
         root.addProperty("version", 1);
-        root.addProperty("origin", ORIGIN);
+        root.addProperty("origin", containerOrigin);
         root.addProperty("spacer_first", spacerFirst);
         root.addProperty("spacer_count", spacerCount);
         JsonObject fontsJson = new JsonObject();
@@ -96,11 +131,18 @@ public final class TextLayoutTable {
             fontsJson.add(font, entriesJson);
         });
         root.add("fonts", fontsJson);
+        if (!textAdvances.isEmpty()) {
+            JsonObject text = new JsonObject();
+            textAdvances.forEach((codePoint, advance) ->
+                    text.addProperty(Integer.toHexString(codePoint).toUpperCase(java.util.Locale.ROOT), advance));
+            root.add("text_advances", text);
+        }
         return root;
     }
 
     public static TextLayoutTable fromJson(JsonObject root) {
-        if (root.get("version").getAsInt() != 1 || root.get("origin").getAsInt() != ORIGIN) {
+        int origin = root.get("origin").getAsInt();
+        if (root.get("version").getAsInt() != 1 || (origin != ORIGIN && origin != 0)) {
             throw new IllegalArgumentException("Unsupported text layout table");
         }
         Map<String, Map<Integer, Entry>> fonts = new LinkedHashMap<>();
@@ -118,7 +160,14 @@ public final class TextLayoutTable {
             }
             fonts.put(font.getKey(), entries);
         }
-        return new TextLayoutTable(fonts, root.get("spacer_first").getAsInt(), root.get("spacer_count").getAsInt());
+        Map<Integer, Float> text = new LinkedHashMap<>();
+        if (root.has("text_advances")) {
+            for (var entry : root.getAsJsonObject("text_advances").entrySet()) {
+                text.put(Integer.parseInt(entry.getKey(), 16), entry.getValue().getAsFloat());
+            }
+        }
+        return new TextLayoutTable(fonts, root.get("spacer_first").getAsInt(), root.get("spacer_count").getAsInt(),
+                origin, text);
     }
 
 }

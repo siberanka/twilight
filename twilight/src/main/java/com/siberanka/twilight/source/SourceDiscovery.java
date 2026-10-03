@@ -22,6 +22,11 @@ public final class SourceDiscovery {
     private static final Set<String> PROVIDER_DATA_NAMES = Set.of(
             "cache", ".cache", "data", ".data", "contents", "content", "resources"
     );
+    /**
+     * Never content: ItemsAdder's copies of the vanilla client assets (they would shadow the
+     * server's packs with vanilla definitions) and temporary build folders that outlive builds.
+     */
+    private static final Set<String> IGNORED_DIRECTORIES = Set.of("vanilla_assets", "tmp", "temp", ".tmp");
 
     private final Path serverRoot;
     private final TwilightConfig config;
@@ -42,6 +47,7 @@ public final class SourceDiscovery {
                         String provider = pluginDirectory.getFileName().toString().toLowerCase(Locale.ROOT);
                         if (!PROVIDERS.contains(provider)) continue;
                         discoverProvider(provider, pluginDirectory, found, seen);
+                        if (provider.equals("itemsadder")) discoverRenamedItemsAdderOutput(pluginDirectory, found, seen);
                     }
                 }
             }
@@ -57,9 +63,12 @@ public final class SourceDiscovery {
     private void discoverProvider(String provider, Path directory, List<ContentSource> found, Set<Path> seen) throws IOException {
         try (var paths = Files.walk(directory, 6)) {
             for (Path path : paths.toList()) {
-                if (Files.isSymbolicLink(path)) continue;
+                if (Files.isSymbolicLink(path) || ignored(directory, path)) continue;
                 String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
-                boolean knownArchive = Files.isRegularFile(path) && PACK_NAMES.contains(name);
+                boolean knownArchive = Files.isRegularFile(path) && PACK_NAMES.contains(name)
+                        // ItemsAdder's working pack folder may keep a stale self-hosted pack.zip from
+                        // older versions; its current output lives in output/.
+                        && !(provider.equals("itemsadder") && insidePack(path, directory));
                 boolean packDirectory = Files.isDirectory(path) &&
                         (Files.isRegularFile(path.resolve("pack.mcmeta")) || Files.isDirectory(path.resolve("assets")))
                         && !insidePack(path, directory);
@@ -78,6 +87,37 @@ public final class SourceDiscovery {
                 }
             }
         }
+    }
+
+    /**
+     * ItemsAdder can be configured to write its pack under another name than generated.zip
+     * (e.g. generated_1.21.x.zip or the hosted file name). Without generated.zip, the most
+     * recently written archive in output/ is the pack ItemsAdder last produced.
+     */
+    private void discoverRenamedItemsAdderOutput(Path directory, List<ContentSource> found, Set<Path> seen) throws IOException {
+        Path output = directory.resolve("output");
+        if (!Files.isDirectory(output) || Files.isSymbolicLink(output) || Files.isRegularFile(output.resolve("generated.zip"))) return;
+        Path newest = null;
+        java.nio.file.attribute.FileTime newestTime = null;
+        try (var children = Files.list(output)) {
+            for (Path candidate : children.filter(Files::isRegularFile).filter(path -> !Files.isSymbolicLink(path))
+                    .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".zip"))
+                    .sorted().toList()) {
+                var modified = Files.getLastModifiedTime(candidate);
+                if (newestTime == null || modified.compareTo(newestTime) > 0) {
+                    newest = candidate;
+                    newestTime = modified;
+                }
+            }
+        }
+        if (newest != null) add("itemsadder", ContentSource.Kind.RESOURCE_PACK, newest, providerPriority("itemsadder"), found, seen);
+    }
+
+    private static boolean ignored(Path providerRoot, Path path) {
+        for (Path part : providerRoot.relativize(path)) {
+            if (IGNORED_DIRECTORIES.contains(part.toString().toLowerCase(Locale.ROOT))) return true;
+        }
+        return false;
     }
 
     private static boolean insidePack(Path path, Path providerRoot) {

@@ -79,6 +79,15 @@ final class VanillaAssetCache implements AutoCloseable {
         }
     }
 
+    Optional<byte[]> readFontDefinition(String logicalPath) throws IOException {
+        String normalized = logicalPath.replace('\\', '/');
+        if (!normalized.startsWith("assets/minecraft/font/") || !normalized.endsWith(".json") ||
+                normalized.contains("..")) {
+            throw new IOException("Vanilla font path is outside Minecraft fonts: " + logicalPath);
+        }
+        return readEntry(normalized, MAXIMUM_MODEL_BYTES);
+    }
+
     Optional<byte[]> readModel(String logicalPath) throws IOException {
         String normalized = logicalPath.replace('\\', '/');
         if (!normalized.startsWith("assets/minecraft/models/") || !normalized.endsWith(".json") ||

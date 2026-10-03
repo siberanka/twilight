@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedOn": "2026-10-03",
+  "reviewedOn": "2026-10-04",
   "baselineCommit": "30511e9fc1f0e946d66734218525c8f5f7ad1d7e",
   "purpose": "Required acceptance scope. Listed scenarios are obligations, not executed or passed tests.",
   "stages": [
@@ -25,7 +25,9 @@
         "configured ZIP/folder",
         "multiple providers together"
       ],
-      "existingEvidence": []
+      "existingEvidence": [
+        "docs/TEXT_SURFACES_2026-10-04.md"
+      ]
     },
     {
       "id": "source.resolution",
@@ -39,7 +41,9 @@
         "API unavailable",
         "provider disabled"
       ],
-      "existingEvidence": []
+      "existingEvidence": [
+        "docs/TEXT_SURFACES_2026-10-04.md"
+      ]
     },
     {
       "id": "source.immutability",
@@ -341,7 +345,8 @@
         "dialogue"
       ],
       "existingEvidence": [
-        "docs/WIDE_GLYPHS_2026-10-02.md"
+        "docs/WIDE_GLYPHS_2026-10-02.md",
+        "docs/TEXT_SURFACES_2026-10-04.md"
       ]
     },
     {
@@ -358,7 +363,10 @@
         "TTF/unihex",
         "vanilla letters preserved"
       ],
-      "existingEvidence": []
+      "existingEvidence": [
+        "docs/TEXT_LAYOUT_2026-10-03.md",
+        "docs/TEXT_SURFACES_2026-10-04.md"
+      ]
     },
     {
       "id": "gui.discovery",
@@ -464,7 +472,7 @@
     {
       "id": "hud.providers",
       "area": "ui",
-      "status": "planned",
+      "status": "partial",
       "scenarios": [
         "BetterHud",
         "MythicHUD",
@@ -473,7 +481,9 @@
         "CustomFishing",
         "simultaneous layers"
       ],
-      "existingEvidence": []
+      "existingEvidence": [
+        "docs/TEXT_SURFACES_2026-10-04.md"
+      ]
     },
     {
       "id": "hud.runtime",
@@ -494,7 +504,7 @@
     {
       "id": "scoreboard.layout",
       "area": "ui",
-      "status": "planned",
+      "status": "partial",
       "scenarios": [
         "multiple logos",
         "source baseline",
@@ -505,7 +515,9 @@
         "dynamic values",
         "no sidebar case"
       ],
-      "existingEvidence": []
+      "existingEvidence": [
+        "docs/TEXT_SURFACES_2026-10-04.md"
+      ]
     },
     {
       "id": "skull.profiles",

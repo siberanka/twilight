@@ -2,6 +2,30 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.6 - 2026-10-04
+
+- Lay out Java text on every Bedrock text surface: chat, action bar, titles,
+  boss bars, scoreboards, entity names, text displays and other container titles.
+  Named fonts, remapped characters and space shifts now show the right images at
+  Java's positions; centred lines follow Java's integer centring. Controlled by
+  `ui.java-text-surfaces`; `ui.java-text-layout` no longer requires the container
+  layout.
+- Stop treating ItemsAdder's vanilla asset copies, temporary build folders and
+  stale nested packs as sources; they hid hundreds of custom items. Use a renamed
+  ItemsAdder output pack when `generated.zip` is absent.
+- Resolve texture atlas sprite renames, decode protected PNGs like Java, read
+  object-form model textures, allow vanilla models behind custom selectors and use
+  Java's missing texture for undefined face textures.
+- Keep characters from Java's own font sheets as Bedrock text and treat
+  off-screen or transparent spacing images as advances, removing alias-page
+  overflow on real servers.
+- Report content Java rejects as well (malformed fonts, unreadable TrueType files,
+  absent sound files, skin-rendered heads) as notices instead of failing strict
+  builds.
+- Verify every surface live with independent SkyBlock content and run complete
+  production builds for five real servers; see the
+  [text surface review](docs/TEXT_SURFACES_2026-10-04.md). 138 tests pass.
+
 ## 1.0.0-pre.5 - 2026-10-03
 
 - Lay out chest titles for Bedrock players with Java font metrics. Negative and

@@ -4,7 +4,7 @@ import com.google.gson.JsonParser;
 import com.siberanka.twilight.config.TwilightConfig;
 import com.siberanka.twilight.source.ContentSource;
 import com.siberanka.twilight.text.TextLayoutTable;
-import com.siberanka.twilight.text.TitleLayout;
+import com.siberanka.twilight.text.TextLayout;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -75,7 +75,7 @@ class TextLayoutTest {
             assertExact(table, title);
         }
         // A glyph directly after ordinary text would need a one-unit backwards move: reported, not hidden.
-        assertEquals(1, TitleLayout.layout(table, "H\uE010").approximations());
+        assertEquals(1, TextLayout.layout(table, "H\uE010").approximations());
     }
 
     @Test
@@ -118,9 +118,12 @@ class TextLayoutTest {
                   {"type":"ttf","file":"minecraft:broken.ttf","size":10},
                   {"type":"bitmap","file":"demo:font/icon.png","ascent":7,"height":8,"chars":["\ue010"]}
                 ]}""");
-        Compiled compiled = compile(diagnostic());
+        // Java's players get the same result, so a strict build is not blocked; the report notes it.
+        Compiled compiled = compile(config(true));
         assertNull(compiled.table().lookup(null, 0xF808));
-        assertTrue(compiled.problems().stream().anyMatch(problem -> problem.contains("TrueType fonts could not be read")));
+        assertTrue(compiled.problems().isEmpty(), compiled.problems().toString());
+        assertTrue(compiled.notices().stream().anyMatch(notice -> notice.contains("TrueType fonts are unreadable")),
+                compiled.notices().toString());
     }
 
     @Test
@@ -138,8 +141,8 @@ class TextLayoutTest {
         assertNotEquals(0xE121, other.bedrock());
         assertEquals(4, other.width());
         assertEquals(5f, other.advance());
-        String out = TitleLayout.layout(compiled.table(),
-                List.of(new TitleLayout.Segment("\uE121", "demo:other"))).texts().getFirst();
+        String out = TextLayout.layout(compiled.table(),
+                List.of(new TextLayout.Segment("\uE121", "demo:other"))).texts().getFirst();
         assertTrue(out.codePoints().anyMatch(cp -> cp == other.bedrock()));
         assertTrue(out.codePoints().noneMatch(cp -> cp == 0xE121));
     }
@@ -192,6 +195,105 @@ class TextLayoutTest {
     }
 
     @Test
+    void textLayoutWorksWithoutTheJavaContainerLayout() throws Exception {
+        // Chat, HUD and name tags need the metrics even when chest screens keep Bedrock's layout.
+        image("icon", 8, 8, 0, 8);
+        font("""
+                {"providers":[{"type":"bitmap","file":"demo:font/icon.png","ascent":7,"height":8,"chars":["\\ue010"]}]}""");
+        TwilightConfig bedrockChests = new TwilightConfig(false, true, false, false, 40, 100, 10_000_000, 1000,
+                false, false, List.of(), "auto", false, false, 3, false, true);
+        Compiled compiled = compile(bedrockChests);
+        assertNotNull(compiled.table());
+        assertEquals(0, compiled.table().containerOrigin(), "Bedrock's own chest label has no shifted origin");
+        assertFalse(compiled.files().containsKey(JavaContainerUi.PATH));
+        assertEquals(TextLayoutTable.ORIGIN, compile(config(true)).table().containerOrigin());
+    }
+
+    @Test
+    void javaFontSheetsStayBedrockTextInsteadOfImageAliases() throws Exception {
+        // CustomNameplates-style shifted text: a named font reusing Java's own font sheets (absent here,
+        // as on servers without the vanilla cache) next to a real icon. Copying thousands of letters as
+        // untinted images would overflow Bedrock's private-use pages and lose the text colour.
+        image("icon", 8, 8, 0, 8);
+        write("assets/demo/font/shift.json", """
+                {"providers":[
+                  {"type":"bitmap","file":"demo:font/icon.png","ascent":7,"height":8,"chars":["\\ue010"]},
+                  {"type":"bitmap","file":"minecraft:font/ascii.png","ascent":3,"height":8,"chars":["ABC\\u00e9"]},
+                  {"type":"bitmap","file":"minecraft:font/unicode_page_01.png","ascent":3,"height":8,"chars":["\\u015f"]}
+                ]}""");
+        font("""
+                {"providers":[{"type":"bitmap","file":"minecraft:font/accented.png","ascent":7,"height":8,"chars":["\\u00c7"]}]}""");
+        Compiled compiled = compile(config(true));
+        assertTrue(compiled.problems().isEmpty(), compiled.problems().toString());
+        for (int codePoint : new int[]{'A', 'B', 0xE9, 0x15F}) assertNull(compiled.table().lookup("demo:shift", codePoint));
+        assertNull(compiled.table().lookup(null, 0xC7));
+        assertNotNull(compiled.table().lookup("demo:shift", 0xE010));
+        String laidOut = TextLayout.layout(compiled.table(), List.of(new TextLayout.Segment("AB", "demo:shift")),
+                TextLayout.Mode.LEFT).texts().getFirst();
+        assertEquals("AB", laidOut);
+    }
+
+    @Test
+    void offScreenAndTransparentOversizedGlyphsOnlyAdvance() throws Exception {
+        image("dot", 8, 8, 0, 4);
+        image("space", 600, 16, 0, 0);
+        image("bar", 600, 16, 0, 600);
+        font("""
+                {"providers":[
+                  {"type":"bitmap","file":"demo:font/dot.png","ascent":-5000,"height":8,"chars":["\\ue020"]},
+                  {"type":"bitmap","file":"demo:font/dot.png","ascent":-32768,"height":8,"chars":["\\ue021"]},
+                  {"type":"bitmap","file":"demo:font/space.png","ascent":7,"height":16,"chars":["\\ue022"]},
+                  {"type":"bitmap","file":"demo:font/bar.png","ascent":7,"height":16,"chars":["\\ue023"]}
+                ]}""");
+        Compiled compiled = compile(diagnostic());
+        TextLayoutTable table = compiled.table();
+        assertFalse(table.lookup(null, 0xE020).visible());
+        assertEquals(5f, table.lookup(null, 0xE020).advance(), "Java advance of the 4-column ink");
+        assertFalse(table.lookup(null, 0xE021).visible());
+        assertFalse(table.lookup(null, 0xE022).visible());
+        assertEquals(1f, table.lookup(null, 0xE022).advance());
+        assertFalse(table.lookup(null, 0xE023).visible(), "the bar cannot be drawn but keeps its advance");
+        assertEquals(1, compiled.problems().size(), compiled.problems().toString());
+        assertTrue(compiled.problems().getFirst().contains("oversized"), compiled.problems().toString());
+    }
+
+    @Test
+    void protectedPackTexturesAreDecodedLikeJava() throws Exception {
+        // Protection tools break chunk CRCs and the zlib checksum; Java's stb_image ignores both.
+        image("icon", 8, 8, 0, 8);
+        Path file = root.resolve("assets/demo/textures/font/icon.png");
+        byte[] png = Files.readAllBytes(file);
+        for (int offset = 8; offset + 8 <= png.length; ) {
+            int length = ByteBuffer.wrap(png, offset, 4).getInt();
+            String type = new String(png, offset + 4, 4, StandardCharsets.ISO_8859_1);
+            int crc = offset + 8 + length;
+            png[crc] ^= 0x55;
+            if (type.equals("IDAT")) png[crc - 1] ^= 0x55; // last Adler-32 byte
+            offset = crc + 4;
+        }
+        Files.write(file, png);
+        font("""
+                {"providers":[{"type":"bitmap","file":"demo:font/icon.png","ascent":7,"height":8,"chars":["\\ue010"]}]}""");
+        Compiled compiled = compile(config(true));
+        assertTrue(compiled.problems().isEmpty(), compiled.problems().toString());
+        assertTrue(compiled.table().lookup(null, 0xE010).visible());
+        assertEquals(8, compiled.table().lookup(null, 0xE010).width());
+    }
+
+    @Test
+    void malformedFontDefinitionsAreSkippedLikeJava() throws Exception {
+        // A real stale ItemsAdder pack holds two concatenated documents; Java's parser rejects the file.
+        image("icon", 8, 8, 0, 8);
+        font("{\"providers\":[]}\n\"],\"height\":9,\"type\":\"bitmap\"}]}");
+        write("assets/demo/font/icons.json", """
+                {"providers":[{"type":"bitmap","file":"demo:font/icon.png","ascent":7,"height":8,"chars":["\ue010"]}]}""");
+        Compiled compiled = compile(config(true));
+        assertTrue(compiled.problems().isEmpty(), compiled.problems().toString());
+        assertTrue(compiled.notices().stream().anyMatch(notice -> notice.contains("malformed")), compiled.notices().toString());
+        assertTrue(compiled.table().lookup("demo:icons", 0xE010).visible());
+    }
+
+    @Test
     void withoutTheLayoutNothingChanges() throws Exception {
         image("icon", 8, 8, 0, 8);
         font("""
@@ -206,7 +308,7 @@ class TextLayoutTest {
 
     /** Asserts every visible glyph's first inked column is at the same unit on both clients. */
     private static void assertExact(TextLayoutTable table, String title) {
-        TitleLayout.Result layout = TitleLayout.layout(table, title);
+        TextLayout.Result layout = TextLayout.layout(table, title);
         String bedrock = layout.texts().getFirst();
         assertEquals(0, layout.approximations(), escape(title));
         assertSameInk(javaInk(table, title), bedrockInk(table, bedrock), "title " + escape(title));
@@ -267,7 +369,8 @@ class TextLayoutTest {
 
     // --- fixtures ---------------------------------------------------------------------------
 
-    private record Compiled(TextLayoutTable table, Map<String, byte[]> files, List<String> problems) {}
+    private record Compiled(TextLayoutTable table, Map<String, byte[]> files, List<String> problems,
+                            List<String> notices) {}
 
     private Compiled compile(TwilightConfig config) throws Exception {
         ContentSource source = new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, root, 1);
@@ -284,7 +387,10 @@ class TextLayoutTest {
         byte[] layout = files.get(TextLayoutTable.PATH);
         TextLayoutTable table = layout == null ? null : TextLayoutTable.fromJson(
                 JsonParser.parseString(new String(layout, StandardCharsets.UTF_8)).getAsJsonObject());
-        return new Compiled(table, files, result.problems());
+        List<String> notices = new ArrayList<>();
+        JsonParser.parseString(Files.readString(result.outputDirectory().resolve("build-report.json")))
+                .getAsJsonObject().getAsJsonArray("notices").forEach(notice -> notices.add(notice.getAsString()));
+        return new Compiled(table, files, result.problems(), notices);
     }
 
     private static TwilightConfig diagnostic() {

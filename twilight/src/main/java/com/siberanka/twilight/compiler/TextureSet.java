@@ -8,7 +8,6 @@ import java.awt.AlphaComposite;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -79,7 +78,18 @@ final class TextureSet {
 
     byte[] png() throws IOException { return png(image); }
 
-    private static BufferedImage loadFrame(ResourceIndex resources, String identifier, VanillaAssetCache vanillaAssets) throws IOException {
+    /** Java's missing texture, used where a model leaves a face's texture variable undefined. */
+    static final String MISSING = "minecraft:missingno";
+
+    /** The texture file a model's sprite reference stands for: itself, or the file an atlas renames. */
+    static String spriteTexture(ResourceIndex resources, String identifier) {
+        if (resources.find(JavaModelResolver.texturePath(identifier)).isPresent()) return identifier;
+        return resources.atlasSprites().texture(identifier).orElse(identifier);
+    }
+
+    private static BufferedImage loadFrame(ResourceIndex resources, String sprite, VanillaAssetCache vanillaAssets) throws IOException {
+        if (sprite.equals(MISSING)) return missingTexture();
+        String identifier = spriteTexture(resources, sprite);
         String path = JavaModelResolver.texturePath(identifier);
         var custom = resources.find(path);
         byte[] bytes;
@@ -87,7 +97,7 @@ final class TextureSet {
         else if (path.startsWith("assets/minecraft/textures/") && vanillaAssets != null) {
             bytes = vanillaAssets.readTexture(path).orElseThrow(() -> new IOException("Missing vanilla texture " + identifier));
         } else throw new IOException("Missing texture " + identifier);
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
+        BufferedImage image = PngImages.read(bytes);
         if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) throw new IOException("Invalid PNG " + identifier);
         var metadata = resources.find(path + ".mcmeta");
         String animation = metadata.isPresent() ? metadata.get().readUtf8() : null;
@@ -96,6 +106,15 @@ final class TextureSet {
             if (vanillaMetadata.isPresent()) animation = new String(vanillaMetadata.get(), java.nio.charset.StandardCharsets.UTF_8);
         }
         return firstFrame(identifier, image, animation);
+    }
+
+    /** Java's 16x16 missing texture: magenta and black quarters, black in the top-left. */
+    static BufferedImage missingTexture() {
+        BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+            image.setRGB(x, y, (y < 8) ^ (x < 8) ? 0xFFF800F8 : 0xFF000000);
+        }
+        return image;
     }
 
     // Static item export samples the authored first frame. Never map an entire
