@@ -1,0 +1,179 @@
+/*
+ * Copyright (c) 2026 siberanka.
+ * Licensed under the GNU LGPL v3.0 or later.
+ */
+package com.siberanka.twilight.compiler;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
+/**
+ * Lays out Bedrock's desktop chest screens like Java's generic container screens.
+ *
+ * <p>Java draws the title unwrapped at (8, 6) with the container tint, after the
+ * slot frames of its background and before slot items. Its first slot frame is at
+ * (7, 17), so the title starts one unit right of and eleven units above it, and
+ * the player inventory frame starts 121 units below a six-row chest frame
+ * (18 per chest row plus 13). Bedrock's native label wraps at 90% of the panel,
+ * hyphenates a wide glyph, draws its first text row one unit below the label top
+ * and leaves only 11 units below the chest grid. Font-image menus designed for
+ * Java therefore clip or miss their slots.
+ *
+ * <p>This partial definition is merged with the vanilla {@code chest} namespace.
+ * It changes only the title label's size, position, layer and default colour,
+ * the top-half panel offsets, the hotbar gap and the inventory label's position
+ * and layer; text bindings, grids, other screens and the pocket layout keep
+ * vanilla values through variable defaults.
+ */
+final class JavaContainerUi {
+    static final String PATH = "ui/chest_screen.json";
+    static final String COMMON_PATH = "ui/ui_common.json";
+    static final int JAVA_TITLE_RIGHT_OF_SLOT_FRAME = 1;
+    static final int JAVA_TITLE_ABOVE_SLOT_FRAME = 11;
+    /** Gap between the last chest-row frame and the player inventory frame on Java. */
+    static final int JAVA_INVENTORY_GAP = 13;
+    /** Measured Bedrock gap with vanilla offsets on 1-6 row chests (2 October / 3 October captures). */
+    static final int BEDROCK_INVENTORY_GAP = 11;
+    /** Java's hotbar frame is 4 units below the inventory; vanilla Bedrock's bottom-anchored hotbar is 3. */
+    static final int[] VANILLA_HOTBAR_OFFSET = {0, -5};
+    static final int JAVA_HOTBAR_GAP = 4;
+    static final int BEDROCK_HOTBAR_GAP = 3;
+    /**
+     * Java draws the chest inventory label at (8, imageHeight - 94): one unit right
+     * of and ten above the player inventory frame, after the title. Vanilla Bedrock
+     * draws it at offset (7, 3) in the bottom half (text row 9 above the frame) on
+     * layer 2, below a title image.
+     */
+    static final int[] VANILLA_INVENTORY_LABEL_OFFSET = {7, 3};
+    static final int VANILLA_INVENTORY_LABEL_LAYER = 2;
+    static final int[] JAVA_CHEST_INVENTORY_LABEL_OFFSET = {8, 2};
+    /** Above the title (chest panel + 4), below item renderers (chest panel + 8). */
+    static final int JAVA_INVENTORY_LABEL_LAYER = 6;
+    /** Native label text starts one GUI unit below the label origin. */
+    static final int BEDROCK_LABEL_TEXT_TOP = 1;
+    /** Vanilla small/large top-half offsets and grid offsets inside them. */
+    static final int[] SMALL_CHEST_PANEL = {0, 12};
+    static final int[] LARGE_CHEST_PANEL = {0, 11};
+    static final int[] SMALL_CHEST_GRID = {7, 9};
+    static final int[] LARGE_CHEST_GRID = {7, 10};
+    /**
+     * Relative to the top half: slot frames are at layer 3 (item 1 + cell 1 +
+     * image 1), selection at 5, hover at 6 and item renderers at 8.
+     */
+    static final int TITLE_LAYER = 4;
+    /** Java's default container title colour, 0x404040. */
+    static final double JAVA_TITLE_CHANNEL = 64 / 255.0;
+    private static final String OFFSET_VARIABLE = "$twilight_java_title_offset";
+    private static final String HOTBAR_VARIABLE = "$twilight_hotbar_offset";
+    private static final String LABEL_OFFSET_VARIABLE = "$twilight_inventory_label_offset";
+    private static final String LABEL_LAYER_VARIABLE = "$twilight_inventory_label_layer";
+
+    private JavaContainerUi() {}
+
+    static JsonObject chestScreen() {
+        JsonObject root = new JsonObject();
+        root.addProperty("namespace", "chest");
+
+        JsonObject label = new JsonObject();
+        label.add(OFFSET_VARIABLE + "|default", titleOffset(LARGE_CHEST_GRID));
+        label.addProperty("offset", OFFSET_VARIABLE);
+        // Java never wraps or clips a container title.
+        label.add("size", array("default", "default"));
+        label.addProperty("layer", TITLE_LAYER);
+        double channel = Math.round(JAVA_TITLE_CHANNEL * 1_000_000d) / 1_000_000d;
+        JsonArray colour = new JsonArray();
+        for (int index = 0; index < 3; index++) colour.add(channel);
+        label.add("color", colour);
+        root.add("chest_label", label);
+
+        root.add("small_chest_panel_top_half", topHalf(SMALL_CHEST_PANEL, SMALL_CHEST_GRID));
+        root.add("large_chest_panel_top_half", topHalf(LARGE_CHEST_PANEL, LARGE_CHEST_GRID));
+        // Variables flow to every descendant; ender chest, shulker box and barrel panels inherit these.
+        for (String panel : new String[]{"small_chest_panel", "large_chest_panel"}) {
+            JsonObject screen = new JsonObject();
+            screen.add(HOTBAR_VARIABLE, array(VANILLA_HOTBAR_OFFSET[0],
+                    VANILLA_HOTBAR_OFFSET[1] + JAVA_HOTBAR_GAP - BEDROCK_HOTBAR_GAP));
+            screen.add(LABEL_OFFSET_VARIABLE, array(JAVA_CHEST_INVENTORY_LABEL_OFFSET));
+            screen.addProperty(LABEL_LAYER_VARIABLE, JAVA_INVENTORY_LABEL_LAYER);
+            root.add(panel, screen);
+        }
+        return root;
+    }
+
+    /**
+     * Turns the shared hotbar offset and inventory label placement into variables
+     * whose defaults are vanilla's, so only chest screens that set them change.
+     * The label is rebuilt through Bedrock's control modifications because it is
+     * an array entry with literal values.
+     */
+    static JsonObject commonScreen() {
+        JsonObject root = new JsonObject();
+        root.addProperty("namespace", "common");
+        JsonObject hotbar = new JsonObject();
+        hotbar.add(HOTBAR_VARIABLE + "|default", array(VANILLA_HOTBAR_OFFSET));
+        hotbar.addProperty("offset", HOTBAR_VARIABLE);
+        root.add("hotbar_grid_template", hotbar);
+
+        JsonObject label = new JsonObject();
+        label.addProperty("anchor_from", "top_left");
+        label.addProperty("anchor_to", "top_left");
+        label.add(LABEL_OFFSET_VARIABLE + "|default", array(VANILLA_INVENTORY_LABEL_OFFSET));
+        label.addProperty("offset", LABEL_OFFSET_VARIABLE);
+        label.addProperty(LABEL_LAYER_VARIABLE + "|default", VANILLA_INVENTORY_LABEL_LAYER);
+        label.addProperty("layer", LABEL_LAYER_VARIABLE);
+        label.addProperty("text", "container.inventory");
+        JsonObject control = new JsonObject();
+        control.add("inventory_label@common.section_heading_label", label);
+        JsonArray value = new JsonArray();
+        value.add(control);
+
+        JsonObject remove = new JsonObject();
+        remove.addProperty("array_name", "controls");
+        remove.addProperty("operation", "remove");
+        remove.addProperty("control_name", "inventory_label");
+        JsonObject insert = new JsonObject();
+        insert.addProperty("array_name", "controls");
+        insert.addProperty("operation", "insert_back");
+        insert.add("value", value);
+        JsonArray modifications = new JsonArray();
+        modifications.add(remove);
+        modifications.add(insert);
+        JsonObject bottom = new JsonObject();
+        bottom.add("modifications", modifications);
+        root.add("inventory_panel_bottom_half_with_label", bottom);
+        return root;
+    }
+
+    /** Label origin that places the first text row where Java draws its title. */
+    static JsonArray titleOffset(int[] grid) {
+        return array(grid[0] + JAVA_TITLE_RIGHT_OF_SLOT_FRAME,
+                grid[1] - JAVA_TITLE_ABOVE_SLOT_FRAME - BEDROCK_LABEL_TEXT_TOP);
+    }
+
+    /**
+     * Raises the bottom-anchored player inventory's distance from the chest grid
+     * to Java's by moving the top-anchored half up; slots keep Java's spacing.
+     */
+    static JsonArray panelOffset(int[] vanilla) {
+        return array(vanilla[0], vanilla[1] - (JAVA_INVENTORY_GAP - BEDROCK_INVENTORY_GAP));
+    }
+
+    private static JsonObject topHalf(int[] panel, int[] grid) {
+        JsonObject half = new JsonObject();
+        half.add("offset", panelOffset(panel));
+        half.add(OFFSET_VARIABLE, titleOffset(grid));
+        return half;
+    }
+
+    private static JsonArray array(String... values) {
+        JsonArray array = new JsonArray();
+        for (String value : values) array.add(value);
+        return array;
+    }
+
+    private static JsonArray array(int... values) {
+        JsonArray array = new JsonArray();
+        for (int value : values) array.add(value);
+        return array;
+    }
+}

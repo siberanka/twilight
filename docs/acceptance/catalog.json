@@ -377,7 +377,7 @@
     {
       "id": "gui.composition",
       "area": "ui",
-      "status": "blocked",
+      "status": "partial",
       "scenarios": [
         "rows 1 through 6",
         "single image",
@@ -389,7 +389,8 @@
         "native frame policy"
       ],
       "existingEvidence": [
-        "docs/WIDE_GLYPHS_2026-10-02.md"
+        "docs/WIDE_GLYPHS_2026-10-02.md",
+        "docs/CONTAINER_LAYOUT_2026-10-03.md"
       ]
     },
     {
@@ -427,7 +428,7 @@
     {
       "id": "gui.devices",
       "area": "ui",
-      "status": "planned",
+      "status": "partial",
       "scenarios": [
         "desktop classic UI",
         "touch pocket UI",
@@ -437,7 +438,9 @@
         "narrow window",
         "accessibility text sizes"
       ],
-      "existingEvidence": []
+      "existingEvidence": [
+        "docs/CONTAINER_LAYOUT_2026-10-03.md"
+      ]
     },
     {
       "id": "hud.vanilla",

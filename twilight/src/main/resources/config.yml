@@ -23,3 +23,11 @@ geyser:
   deploy-after-build: true
   reload-after-deploy: true
   backups-to-keep: 3
+
+ui:
+  # Desktop chest screens use Java's container layout: the title is unwrapped,
+  # Java-aligned, uses Java's 0x404040 text colour and is drawn above slot
+  # frames but below items; the player inventory keeps Java's distance from the
+  # chest grid. Font-image menus therefore line up with their slots. This is
+  # merged into Bedrock's chest UI instead of replacing it.
+  java-container-layout: true

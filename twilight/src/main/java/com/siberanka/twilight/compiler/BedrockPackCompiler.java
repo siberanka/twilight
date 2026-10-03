@@ -167,6 +167,10 @@ public final class BedrockPackCompiler {
         }
         problems.addAll(fonts.problems());
         problems.addAll(sounds.problems());
+        if (config.javaContainerLayout()) {
+            packFiles.put(JavaContainerUi.PATH, jsonBytes(JavaContainerUi.chestScreen()));
+            packFiles.put(JavaContainerUi.COMMON_PATH, jsonBytes(JavaContainerUi.commonScreen()));
+        }
 
         if (converted == 0 && !candidates.isEmpty()) throw new IOException("No custom item could be converted; first problem: " + problems.get(0));
         if (config.strict() && !problems.isEmpty()) {

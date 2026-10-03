@@ -4,6 +4,17 @@ All notable changes in Twilight are documented here.
 
 ## 1.0.0-pre.4-SNAPSHOT - Unreleased
 
+- Generate a Java container layout for Bedrock desktop chest screens. Wide
+  font-image titles are no longer wrapped, hyphenated or clipped. Title and
+  inventory labels use Java's positions, colour and drawing order, and chest,
+  inventory and hotbar rows keep Java's spacing for 1 to 6 chest rows. The
+  partial UI is merged into Bedrock's vanilla UI and can be disabled with
+  `ui.java-container-layout`.
+- Verify all six chest sizes and hopper, dispenser and furnace screens in paired
+  Java/Bedrock captures with scripted measurements; record Bedrock's untinted
+  bitmap glyphs and one-unit glyph offset in the
+  [container layout review](docs/CONTAINER_LAYOUT_2026-10-03.md). 95 tests pass.
+
 - Automatically enlarge bitmap-font atlas cells while retaining each glyph's
   Java display dimensions and ascent. Wide rank labels and larger UI/HUD images
   no longer need to be shrunk or omitted solely because they exceed 16 pixels.

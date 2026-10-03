@@ -24,8 +24,20 @@ public record TwilightConfig(
         String geyserDirectory,
         boolean deployAfterBuild,
         boolean reloadAfterDeploy,
-        int backupsToKeep
+        int backupsToKeep,
+        boolean javaContainerLayout
 ) {
+    public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
+                          boolean syncProviderChanges, long startupDelayTicks, long providerCommandDelayTicks,
+                          long maximumSourceBytes, int maximumArchiveEntries, boolean downloadVanillaAssets,
+                          boolean autoDiscoverSources, List<Path> additionalSources, String geyserDirectory,
+                          boolean deployAfterBuild, boolean reloadAfterDeploy, int backupsToKeep) {
+        this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
+                providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
+                autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
+                backupsToKeep, true);
+    }
+
     public static TwilightConfig read(FileConfiguration source, Path serverRoot) {
         long maximumBytes = source.getLong("generation.maximum-source-bytes", 1_073_741_824L);
         int maximumEntries = source.getInt("generation.maximum-archive-entries", 100_000);
@@ -53,7 +65,8 @@ public record TwilightConfig(
                 source.getString("geyser.directory", "auto"),
                 source.getBoolean("geyser.deploy-after-build", true),
                 source.getBoolean("geyser.reload-after-deploy", false),
-                backups
+                backups,
+                source.getBoolean("ui.java-container-layout", true)
         );
     }
 
