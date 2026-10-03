@@ -1,4 +1,35 @@
-# Twilight 1.0.0-pre.4 - prerelease
+# Twilight 1.0.0-pre.5 - prerelease
+
+This prerelease lays out Java font-image menu titles on Bedrock with Java font
+metrics, so real menu art lands on Java's GUI pixels.
+
+- Laid out chest titles for Bedrock players with Java font metrics. Space
+  providers, negative-height bitmap shifts and ItemsAdder offsets become exact
+  invisible spacers; bitmap glyph bearings are corrected (removing the former
+  one-unit offset); characters Java remaps in the default or named fonts receive
+  private-use aliases instead of replacing Bedrock's glyphs. Controlled by
+  `ui.java-text-layout`. See the [text layout review](docs/TEXT_LAYOUT_2026-10-03.md).
+- Combined font definitions from every resource pack like Java and ignored
+  TrueType fonts that Java cannot load.
+- Kept the touch layout's native centred title with glyph substitution only.
+
+Six real Survival menus (negative-height shifts, an ItemsAdder offset and a
+512-pixel image) matched Java in the title area and on all measured slot rows;
+hopper, furnace and dispenser screens stayed identical to vanilla Bedrock.
+Remaining differences: a glyph directly after text without a space is one unit
+right, overlapping title layers are not reproduced, bitmap tint differs, and chat,
+lore, scoreboards and boss bars are not laid out yet.
+
+The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
+109 tests across 22 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom
+content enabled. The display adapter and title layout target Geyser 2.11.3 build
+1247; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.4 - prerelease
 
 This prerelease makes Java font-image menus usable on Bedrock desktop chest
 screens and preserves wide bitmap glyphs at their authored size.
@@ -32,7 +63,6 @@ Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with cust
 content enabled. The development display adapter specifically targets Geyser
 2.11.3 build 1247; other Geyser core versions require validation.
 
-The notes below describe the previous prerelease.
 
 ## Twilight 1.0.0-pre.3 - prerelease
 

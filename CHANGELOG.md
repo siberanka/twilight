@@ -2,7 +2,7 @@
 
 All notable changes in Twilight are documented here.
 
-## 1.0.0-pre.5-SNAPSHOT - Unreleased
+## 1.0.0-pre.5 - 2026-10-03
 
 - Lay out chest titles for Bedrock players with Java font metrics. Negative and
   custom spacing (space providers, negative-height bitmaps), glyph bearings and
