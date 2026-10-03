@@ -13,7 +13,7 @@ HUDs. These are acceptance obligations, not a count of passing tests.
 
 ## Visual acceptance tests
 
-The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.4-SNAPSHOT JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
+The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.4 JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
 
 The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) verifies automatic removal of unwanted ModelEngine particles, live state changes and passenger retention. The [mount-height regression](docs/DISPLAY_SEATS_2026-09-29.md) corrects the tested basket's lighting on solid ground. Full pose and material parity remain open.
 

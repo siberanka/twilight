@@ -1,20 +1,38 @@
-# Twilight 1.0.0-pre.4-SNAPSHOT - development checkpoint
+# Twilight 1.0.0-pre.4 - prerelease
 
-Adaptive bitmap-font cells now preserve wide labels and larger UI/HUD images at
-their Java-authored display size. Atlas growth also preserves neighboring glyph
-heights and baselines. The [wide glyph review](docs/WIDE_GLYPHS_2026-10-02.md)
-records six further real images, 36 existing real glyphs, source integrity,
-whole-source audits and paired client captures. All 89 tests in 19 suites pass.
+This prerelease makes Java font-image menus usable on Bedrock desktop chest
+screens and preserves wide bitmap glyphs at their authored size.
 
-The [current JAR and checksum](artifacts/) are a locally built snapshot. Native
-inventory-title clipping, bitmap tint, transparent left padding and fractional
-sampling remain visible failures. Full menu, HUD, item and animation parity is
-not established. Large native atlases have substantial memory costs.
+- Generated a Java container layout for Bedrock desktop chest screens. Wide
+  title images are no longer wrapped, hyphenated or clipped; title and
+  inventory labels use Java's positions, colour and drawing order; chest,
+  player inventory and hotbar rows keep Java's spacing for 1 to 6 chest rows.
+  The partial UI merges into Bedrock's vanilla UI and can be disabled with
+  `ui.java-container-layout`. See the [container layout review](docs/CONTAINER_LAYOUT_2026-10-03.md).
+- Enlarged bitmap-font atlas cells automatically while keeping each glyph's
+  Java display size and ascent, so wide rank labels and large UI/HUD images are
+  no longer shrunk or omitted. See the [wide glyph review](docs/WIDE_GLYPHS_2026-10-02.md).
+- Added regressions for title placement and layering, slot spacing, vanilla
+  defaults for other screens, glyph namespaces, multi-row glyph sheets, wide
+  glyph pixels and neighboring cells.
+- Expanded the acceptance contract to 40 areas and 289 required scenarios.
 
-The published `v1.0.0-pre.3` assets remain unchanged on
-[GitLab](https://gitlab.com/siberanka/twilight/-/releases/v1.0.0-pre.3) and
-[GitHub](https://github.com/siberanka/twilight/releases/tag/v1.0.0-pre.3).
-The notes below describe that historical release, not the current snapshot.
+Paired Java/Bedrock captures measured every chest size from 9 to 54 slots and
+confirmed that hopper, dispenser and furnace screens remain identical to the
+vanilla Bedrock UI. Known differences remain: Bedrock does not tint bitmap
+glyphs with the text colour, draws each bitmap glyph one GUI unit to the right,
+trims transparent left padding and samples fractional sizes differently. Java
+space advances, other container types, touch layouts, tooltips, live HUDs,
+complete animation and first-person parity are not yet supported.
+
+The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
+95 tests across 20 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom
+content enabled. The development display adapter specifically targets Geyser
+2.11.3 build 1247; other Geyser core versions require validation.
+
+The notes below describe the previous prerelease.
 
 ## Twilight 1.0.0-pre.3 - prerelease
 

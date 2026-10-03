@@ -2,7 +2,7 @@
 
 All notable changes in Twilight are documented here.
 
-## 1.0.0-pre.4-SNAPSHOT - Unreleased
+## 1.0.0-pre.4 - 2026-10-03
 
 - Generate a Java container layout for Bedrock desktop chest screens. Wide
   font-image titles are no longer wrapped, hyphenated or clipped. Title and
