@@ -1,4 +1,40 @@
-# Twilight 1.0.0-pre.7 - prerelease
+# Twilight 1.0.0-pre.8 - prerelease
+
+This prerelease reproduces stacked menu art and nameplates, shows custom and seasonal
+biomes in their exact colours and makes every build work without setup.
+
+- Drew text and images that Java moves back over earlier ones (stacked menu art,
+  CustomNameplates backgrounds, shifted text) with one Bedrock label per layer in chest
+  titles, the action bar and boss bars. Nine original-art menu styles, including four
+  stacked images and a translucent highlight over the slots, land on Java's pixels.
+- Showed custom biomes in their exact colours and climate through 25 redefined Bedrock
+  biomes. RealisticSeasons' seasonal biomes are read from the server registry and the
+  current season goes first; biome changes reach Bedrock players without a rejoin.
+- Hid the Bedrock name of ridden players and mobs like Java and Bedrock's name tag box
+  with CustomNameplates, so nameplates show only the plate.
+- Added `sources.providers` (auto, generated, contents or off per provider),
+  `sources.datapacks`, `geyser.send-pack-to-bedrock` and an export of every build to
+  `plugins/Twilight/export` for a proxy Geyser or another plugin that sends the pack.
+- Converted content Java tolerates (missing textures and models, screen-sized overlays,
+  changed vanilla sounds) the way Java shows it: complete builds of seven production
+  servers pass strict publication with the default configuration.
+
+Results and remaining differences (text displays on mobs sit about 0.4 blocks lower,
+the name tag box is hidden globally, hex text uses Bedrock's 28 colours) are in
+[stacked images, nameplates and exact biomes](docs/LAYERS_BIOMES_2026-10-04.md).
+
+The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
+183 tests across 34 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom
+content enabled. Twilight targets the newest Java and Bedrock versions first (tested
+with Java 26.2 and Bedrock 1.26.5203.0). The display adapter, text layout, biome,
+name and translation bridges target Geyser 2.11.3 build 1247 on the same server;
+other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.7 - prerelease
 
 This prerelease converts the content Java players actually receive from CraftEngine,
 ItemsAdder, Nexo and other providers, shows datapack biomes and pack translations on
@@ -36,7 +72,6 @@ Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with cust
 content enabled. The display adapter, text layout, biome and translation bridges
 target Geyser 2.11.3 build 1247; other Geyser core versions require validation.
 
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.6 - prerelease
 
