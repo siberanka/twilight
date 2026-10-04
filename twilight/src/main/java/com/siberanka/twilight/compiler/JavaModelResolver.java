@@ -86,7 +86,7 @@ final class JavaModelResolver {
                     continue;
                 }
                 if (isBuiltinParent(current)) break;
-                throw new IOException("Missing Java model " + current);
+                throw new MissingModelException("Missing Java model " + current);
             }
             JsonObject json = JsonParser.parseString(asset.readUtf8()).getAsJsonObject();
             chain.addFirst(json);
@@ -307,5 +307,12 @@ final class JavaModelResolver {
                     """).getAsJsonObject();
             default -> null;
         };
+    }
+
+    /** A model that exists in no pack: Java draws its missing model for such an item. */
+    static final class MissingModelException extends IOException {
+        MissingModelException(String message) {
+            super(message);
+        }
     }
 }

@@ -47,6 +47,11 @@ public final class BiomeMatcher {
      * of numbers, strings and maps). Fog comes from the 26.x attribute or the older effect field.
      */
     public Appearance appearance(Map<String, ?> biome) {
+        return appearance(look(biome));
+    }
+
+    /** The colours and climate a player sees of a biome definition (see {@link #appearance(Map)}). */
+    public BiomeLook look(Map<String, ?> biome) {
         float temperature = number(biome.get("temperature"), 0.5f);
         float downfall = number(biome.get("downfall"), 0.5f);
         boolean precipitation = bool(biome.get("has_precipitation"), true);
@@ -59,9 +64,34 @@ public final class BiomeMatcher {
         if ("swamp".equals(String.valueOf(modifier))) grass = 0x6A7039;
         int foliage = color(effects.get("foliage_color"), sample(foliageMap, temperature, downfall));
         int water = color(effects.get("water_color"), 0x3F76E4);
+        int waterFog = color(attributes.get("minecraft:visual/water_fog_color"), color(effects.get("water_fog_color"), 0x050533));
         int fog = color(attributes.get("minecraft:visual/fog_color"), color(effects.get("fog_color"), 0xC0D8FF));
+        int sky = color(attributes.get("minecraft:visual/sky_color"), color(effects.get("sky_color"), sky(temperature)));
         int kind = !precipitation ? 0 : frozen || temperature < 0.15f ? 2 : 1;
-        return new Appearance(grass, foliage, water, fog, kind);
+        return new BiomeLook(grass, foliage, water, waterFog, fog, sky, temperature, downfall, kind);
+    }
+
+    public static Appearance appearance(BiomeLook look) {
+        return new Appearance(look.grass(), look.foliage(), look.water(), look.fog(), look.precipitation());
+    }
+
+    /** Java's sky colour for a biome that sets none, from its temperature. */
+    static int sky(float temperature) {
+        float t = Math.clamp(temperature / 3f, -1f, 1f);
+        float hue = 0.62222224f - t * 0.05f, saturation = 0.5f + t * 0.1f;
+        // Java's HSV conversion truncates each channel (Mth.hsvToRgb).
+        int sector = (int) (hue * 6f) % 6;
+        float f = hue * 6f - sector, p = 1f - saturation, q = 1f - f * saturation, r = 1f - (1f - f) * saturation;
+        float[] rgb = switch (sector) {
+            case 0 -> new float[]{1f, r, p};
+            case 1 -> new float[]{q, 1f, p};
+            case 2 -> new float[]{p, 1f, r};
+            case 3 -> new float[]{p, q, 1f};
+            case 4 -> new float[]{r, p, 1f};
+            default -> new float[]{1f, p, q};
+        };
+        return Math.clamp((int) (rgb[0] * 255f), 0, 255) << 16 | Math.clamp((int) (rgb[1] * 255f), 0, 255) << 8
+                | Math.clamp((int) (rgb[2] * 255f), 0, 255);
     }
 
     /** The closest vanilla biome among {@code candidates}, or null when none is available. */
@@ -79,7 +109,7 @@ public final class BiomeMatcher {
         return best;
     }
 
-    static double distance(Appearance a, Appearance b) {
+    public static double distance(Appearance a, Appearance b) {
         return 3 * rgb(a.grass(), b.grass()) + 2 * rgb(a.foliage(), b.foliage()) + 2 * rgb(a.water(), b.water())
                 + 1.5 * rgb(a.fog(), b.fog()) + (a.precipitation() == b.precipitation() ? 0 : 120);
     }
@@ -115,7 +145,8 @@ public final class BiomeMatcher {
         return fallback;
     }
 
-    static int color(Object value, int fallback) {
+    /** A Java colour value (number or "#rrggbb"), or {@code fallback}. */
+    public static int color(Object value, int fallback) {
         if (value instanceof Number number) return number.intValue() & 0xFFFFFF;
         if (value instanceof String text && text.startsWith("#") && text.length() >= 7) {
             try { return Integer.parseInt(text.substring(text.length() - 6), 16); }

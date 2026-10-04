@@ -52,16 +52,26 @@ public final class TextLayout {
      * Text in render order; {@code text == null} marks a component Twilight cannot measure.
      *
      * @param bold Java widens bold characters by one unit; such lines are not width-corrected
+     * @param shadowless Java draws it without a shadow (a transparent shadow colour, as CustomNameplates sets
+     *                   for backgrounds and icons)
      * @param shaded a container title's text without a colour: Java darkens its images (see
      *               {@link TextLayoutTable#shade}); legacy colour codes in the text end it, {@code \u00a7r} restores it
      */
-    public record Segment(String text, String font, boolean bold, boolean shaded) {
+    public record Segment(String text, String font, boolean bold, boolean shaded, boolean shadowless) {
         public Segment(String text, String font) {
             this(text, font, false);
         }
 
         public Segment(String text, String font, boolean bold) {
             this(text, font, bold, false);
+        }
+
+        public Segment(String text, String font, boolean bold, boolean shaded) {
+            this(text, font, bold, shaded, false);
+        }
+
+        public Segment withShadowless(boolean value) {
+            return new Segment(text, font, bold, shaded, value);
         }
     }
 
@@ -202,8 +212,7 @@ public final class TextLayout {
                 align(out, 0);
                 out.appendCodePoint(codePoint);
                 forgetGlyph();
-                float advance = font == null || TextLayoutTable.DEFAULT_FONT.equals(font)
-                        ? table.textAdvance(codePoint) : Float.NaN;
+                float advance = table.textAdvance(font, codePoint);
                 if (Float.isNaN(advance)) javaWidthKnown = false;
                 else javaWidth += advance;
             } else if (!entry.visible()) {

@@ -66,6 +66,7 @@ public final class TwilightPlugin extends JavaPlugin {
     private AutoCloseable displayBridge;
     private com.siberanka.twilight.integration.text.GeyserTextLayoutBridge textBridge;
     private com.siberanka.twilight.integration.world.GeyserBiomeBridge biomeBridge;
+    private com.siberanka.twilight.integration.display.GeyserRiderNames riderNames;
     private com.siberanka.twilight.integration.text.GeyserLanguageBridge languageBridge;
 
     @Override
@@ -82,22 +83,28 @@ public final class TwilightPlugin extends JavaPlugin {
         if (getServer().getPluginManager().getPlugin("Geyser-Spigot") != null) {
             try {
                 displayBridge = new com.siberanka.twilight.integration.display.GeyserDisplayBridge(this,
-                        deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger());
+                        servedPack(), getLogger());
             } catch (Exception | LinkageError failure) {
                 getLogger().log(Level.SEVERE, "Live item-display bridge is unavailable; model animation parity is not supported.", failure);
             }
             if (config.javaTranslations()) {
                 try {
                     languageBridge = com.siberanka.twilight.integration.text.GeyserLanguageBridge.create(this,
-                            deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger());
+                            servedPack(), getLogger());
                 } catch (Exception | LinkageError failure) {
                     getLogger().log(Level.WARNING, "Resource-pack translations are unavailable for this Geyser build.", failure);
                 }
             }
+            try {
+                riderNames = com.siberanka.twilight.integration.display.GeyserRiderNames.create(this, getLogger());
+            } catch (Exception | LinkageError failure) {
+                getLogger().log(Level.WARNING, "Java's rider name rule is unavailable for this Geyser build.", failure);
+            }
             if (config.bedrockBiomeMatching()) {
                 try {
+                    var resender = new com.siberanka.twilight.integration.world.ChunkResender(this);
                     biomeBridge = com.siberanka.twilight.integration.world.GeyserBiomeBridge.create(this,
-                            deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger());
+                            servedPack(), getLogger(), resender::request);
                 } catch (Exception | LinkageError failure) {
                     getLogger().log(Level.WARNING, "Custom biome matching is unavailable for this Geyser build.", failure);
                 }
@@ -105,7 +112,7 @@ public final class TwilightPlugin extends JavaPlugin {
             if (config.javaTextLayout()) {
                 try {
                     textBridge = com.siberanka.twilight.integration.text.GeyserTextLayoutBridge.create(this,
-                            deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger(),
+                            servedPack(), getLogger(),
                             config.javaTextSurfaces());
                 } catch (Exception | LinkageError failure) {
                     getLogger().log(Level.SEVERE, "Java text layout is unavailable; Bedrock chest titles of a pack "
@@ -139,6 +146,10 @@ public final class TwilightPlugin extends JavaPlugin {
         if (languageBridge != null) {
             try { languageBridge.close(); }
             catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close translations", failure); }
+        }
+        if (riderNames != null) {
+            try { riderNames.close(); }
+            catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close the rider name rule", failure); }
         }
         if (biomeBridge != null) {
             try { biomeBridge.close(); }
@@ -192,15 +203,21 @@ public final class TwilightPlugin extends JavaPlugin {
         send(sender, (buildRequested ? "Build" : "Scan") + " started off the server thread.");
         CompletableFuture.supplyAsync(() -> {
             try {
+                // Strict publication keeps the last good pack; with none deployed yet, a first pack that leaves
+                // out the reported content serves Bedrock players better than no pack at all.
+                boolean firstPack = buildRequested && config.strict() && config.deployAfterBuild()
+                        && !java.nio.file.Files.isRegularFile(servedPack());
                 if (buildRequested && config.strict() && !runtimeCollection.issues().isEmpty()) {
-                    throw new ConversionException("Strict conversion rejected incomplete provider item discovery: "
+                    if (!firstPack) throw new ConversionException("Strict conversion rejected incomplete provider item discovery: "
                             + runtimeCollection.issues().getFirst(), runtimeCollection.issues());
+                    operationLog.warn("first-pack", "provider item discovery is incomplete: " + runtimeCollection.issues().getFirst());
                 }
                 Set<Path> worlds = WorldLayout.discover(serverRoot, runtimeWorlds);
                 operationLog.info("world-discovery", worlds);
                 List<ContentSource> sources = new SourceDiscovery(serverRoot, config).discover(worlds);
                 operationLog.info("source-discovery", sources);
-                String inputFingerprint = SourceFingerprint.compute(sources, liveItems, config);
+                WorldInputs world = buildRequested ? worldInputs(operationLog) : WorldInputs.NONE;
+                String inputFingerprint = SourceFingerprint.compute(sources, liveItems, config) + world.fingerprint();
                 operationLog.info("input-fingerprint", inputFingerprint);
                 ContentReport report = new ContentInspector(config).inspect(sources);
                 operationLog.info("content-report", report);
@@ -209,12 +226,33 @@ public final class TwilightPlugin extends JavaPlugin {
                 boolean unchanged = buildRequested && skipUnchanged &&
                         inputFingerprint.equals(lastSuccessfulInputFingerprint.get());
                 if (unchanged) operationLog.info("build-skip", "normalized inputs are unchanged");
-                BuildResult build = buildRequested && !unchanged
-                        ? new BedrockPackCompiler(getDataFolder().toPath(), config, minecraftVersion).build(sources, liveItems)
-                        : null;
+                BuildResult build = null;
+                if (buildRequested && !unchanged) {
+                    try {
+                        build = new BedrockPackCompiler(getDataFolder().toPath(), config, minecraftVersion)
+                                .withServerBiomes(world.biomes(), world.current())
+                                .withNameplatePlugin(world.nameplates()).build(sources, liveItems);
+                    } catch (ConversionException rejected) {
+                        if (!firstPack) throw rejected;
+                        operationLog.warn("first-pack", rejected.problems());
+                        getLogger().warning("Strict conversion found " + rejected.problems().size() + " problem(s) and no "
+                                + "Bedrock pack is deployed yet: deploying a first pack without that content. Later builds "
+                                + "stay strict. Details: " + operationLog.path());
+                        build = new BedrockPackCompiler(getDataFolder().toPath(), config.withStrict(false), minecraftVersion)
+                                .withServerBiomes(world.biomes(), world.current())
+                                .withNameplatePlugin(world.nameplates()).build(sources, liveItems);
+                    }
+                }
                 if (build != null) operationLog.info("build-result", build);
-                DeploymentResult deployed = build != null && config.deployAfterBuild()
-                        ? deployment.deploy(build.outputDirectory()) : null;
+                DeploymentResult deployed = null;
+                if (build != null) {
+                    com.siberanka.twilight.deploy.PackExport.write(build.outputDirectory(), getDataFolder().toPath());
+                    operationLog.info("export", getDataFolder().toPath().resolve(com.siberanka.twilight.deploy.PackExport.PACK));
+                    if (config.deployAfterBuild()) {
+                        if (localGeyser()) deployed = deployment.deploy(build.outputDirectory());
+                        else operationLog.info("deploy-skip", "no Geyser on this server; use the exported pack and mappings");
+                    }
+                }
                 if (deployed != null) {
                     operationLog.info("deploy-result", deployed);
                     reloadGeyser(operationLog, deployed);
@@ -262,6 +300,76 @@ public final class TwilightPlugin extends JavaPlugin {
             }
             try { operationLog.close(); } catch (Exception closeFailure) { getLogger().log(Level.WARNING, "Could not close operation log", closeFailure); }
         });
+    }
+
+    /** The pack Bedrock players receive: Geyser's copy, or the exported one that another plugin sends. */
+    private java.nio.file.Path servedPack() {
+        java.nio.file.Path export = getDataFolder().toPath().resolve(com.siberanka.twilight.deploy.PackExport.PACK);
+        if (!config.sendPackToBedrock()) return export;
+        try {
+            return deployment.resolveGeyserDirectory().resolve("packs/twilight.zip");
+        } catch (java.io.IOException noLocalGeyser) {
+            return export;
+        }
+    }
+
+    private boolean localGeyser() {
+        try {
+            deployment.resolveGeyserDirectory();
+            return true;
+        } catch (java.io.IOException absent) {
+            return false;
+        }
+    }
+
+    /** CustomNameplates draws name tags from text displays with their own (transparent) backgrounds. */
+    private boolean nameplatePlugin() {
+        org.bukkit.plugin.Plugin plugin = getServer().getPluginManager().getPlugin("CustomNameplates");
+        if (plugin == null) return false;
+        java.io.File file = new java.io.File(plugin.getDataFolder(), "config.yml");
+        return file.isFile() && org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file)
+                .getBoolean("modules.nametags", false);
+    }
+
+    /**
+     * Server state the pack depends on beyond its sources: the custom biomes of the registry (exact Bedrock
+     * biome looks), the ones a seasons plugin shows now, and whether a nameplate plugin draws tag backgrounds.
+     * Part of the input fingerprint, so a season change rebuilds the pack.
+     */
+    private WorldInputs worldInputs(OperationLog operationLog) {
+        java.util.Map<String, java.util.Map<String, ?>> biomes = java.util.Map.of();
+        java.util.Set<String> current = java.util.Set.of();
+        if (config.bedrockBiomeMatching()) {
+            try {
+                biomes = com.siberanka.twilight.integration.world.ServerBiomes.read(getServer());
+                operationLog.info("server-biomes", biomes.keySet());
+            } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+                operationLog.warn("server-biomes", "registry biomes are unavailable; datapack biomes are still used: " + failure);
+            }
+            try {
+                current = com.siberanka.twilight.integration.world.SeasonalBiomes.current(getServer(), biomes);
+                if (!current.isEmpty()) operationLog.info("season-biomes", current);
+            } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+                operationLog.warn("season-biomes", "the current season's biomes are unknown; slots follow the looks only: " + failure);
+            }
+        }
+        return new WorldInputs(biomes, current, nameplatePlugin());
+    }
+
+    private record WorldInputs(java.util.Map<String, java.util.Map<String, ?>> biomes, java.util.Set<String> current,
+                               boolean nameplates) {
+        static final WorldInputs NONE = new WorldInputs(java.util.Map.of(), java.util.Set.of(), false);
+
+        String fingerprint() {
+            if (biomes.isEmpty() && current.isEmpty() && !nameplates) return "";
+            String state = new java.util.TreeMap<>(biomes) + "|" + new java.util.TreeSet<>(current) + "|" + nameplates;
+            try {
+                return "+" + java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                        .digest(state.getBytes(java.nio.charset.StandardCharsets.UTF_8))).substring(0, 16);
+            } catch (java.security.NoSuchAlgorithmException impossible) {
+                throw new IllegalStateException(impossible);
+            }
+        }
     }
 
     void deploy(CommandSender sender) {

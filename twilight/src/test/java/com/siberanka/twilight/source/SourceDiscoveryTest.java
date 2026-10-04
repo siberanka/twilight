@@ -103,6 +103,38 @@ class SourceDiscoveryTest {
     }
 
     @Test
+    void providerModesSelectGeneratedPacksWorkingFoldersOrNothing() throws Exception {
+        Path provider = Files.createDirectories(root.resolve("plugins/ItemsAdder"));
+        Files.write(Files.createDirectories(provider.resolve("output")).resolve("generated.zip"), emptyZip());
+        Path contents = Files.createDirectories(provider.resolve("contents/demo/resourcepack"));
+        Files.writeString(contents.resolve("pack.mcmeta"), "{}");
+        Path datapack = Files.createDirectories(root.resolve("world/datapacks/example"));
+        Files.writeString(datapack.resolve("pack.mcmeta"), "{}");
+        java.util.function.Function<java.util.Map<String, String>, List<String>> kinds = modes -> {
+            TwilightConfig config = new TwilightConfig(false, true, true, true, 40, 100, 10_000_000, 1000, true, true,
+                    List.of(), "auto", false, false, 3, true, true, true, true, true, true, true, "auto", modes,
+                    !modes.containsKey("nodatapacks"), true);
+            try {
+                Path realRoot = root.toRealPath();
+                return new SourceDiscovery(root, config).discover(Set.of(root.resolve("world"))).stream()
+                        .filter(source -> source.kind() != ContentSource.Kind.PROVIDER_DATA)
+                        .map(source -> realRoot.relativize(source.path()).toString().replace('\\', '/')).sorted().toList();
+            } catch (java.io.IOException failure) {
+                throw new java.io.UncheckedIOException(failure);
+            }
+        };
+        assertEquals(List.of("plugins/ItemsAdder/contents/demo/resourcepack", "plugins/ItemsAdder/output/generated.zip",
+                "world/datapacks/example"), kinds.apply(java.util.Map.of()));
+        assertEquals(List.of("plugins/ItemsAdder/output/generated.zip", "world/datapacks/example"),
+                kinds.apply(java.util.Map.of("itemsadder", "generated")));
+        assertEquals(List.of("plugins/ItemsAdder/contents/demo/resourcepack", "world/datapacks/example"),
+                kinds.apply(java.util.Map.of("itemsadder", "contents")));
+        assertEquals(List.of("world/datapacks/example"), kinds.apply(java.util.Map.of("itemsadder", "off")));
+        assertEquals(List.of("plugins/ItemsAdder/output/generated.zip"),
+                kinds.apply(java.util.Map.of("itemsadder", "generated", "nodatapacks", "off")));
+    }
+
+    @Test
     void usesTheNewestRenamedItemsAdderPackWhenGeneratedZipIsAbsent() throws Exception {
         Path output = Files.createDirectories(root.resolve("plugins/ItemsAdder/output"));
         Files.write(output.resolve("server-pack-1.18.zip"), emptyZip());

@@ -54,36 +54,11 @@ real servers use; nothing is copied from a server, so all captures are published
 | Negative-height shifts | eight Jobs-style negative-height bitmaps, then the header | exact |
 | Hex text | `&#FFAA00` and legacy colours | exact |
 | Bold text | `&b&l` title | exact |
-| Layered | banner moved back over the header with a `-121` space, then bold text | **not reproduced**: Bedrock text cannot move left, so the banner and text follow the header instead of overlapping it |
+| Layered | banner moved back over the header with a `-121` space, then bold text | not reproduced in 1.0.0-pre.7; exact since 1.0.0-pre.8 (one label per layer) |
 
-<table>
-  <tr><th>Java - title without a colour</th><th>Bedrock - darkened copies</th></tr>
-  <tr>
-    <td><img src="images/acceptance/2026-10-04-ui-campaign/style-suite/header-uncoloured-java.png" alt="Java draws the uncoloured header darkened" width="100%"></td>
-    <td><img src="images/acceptance/2026-10-04-ui-campaign/style-suite/header-uncoloured-bedrock.png" alt="Bedrock shows the same darkened header at the same position" width="100%"></td>
-  </tr>
-  <tr><th>Java - white title</th><th>Bedrock</th></tr>
-  <tr>
-    <td><img src="images/acceptance/2026-10-04-ui-campaign/style-suite/header-white-java.png" alt="Java header with a white title colour" width="100%"></td>
-    <td><img src="images/acceptance/2026-10-04-ui-campaign/style-suite/header-white-bedrock.png" alt="Bedrock header, identical position and colours" width="100%"></td>
-  </tr>
-  <tr><th>Java - layered title</th><th>Bedrock - layers not reproduced</th></tr>
-  <tr>
-    <td><img src="images/acceptance/2026-10-04-ui-campaign/style-suite/layered-bold-java.png" alt="Java draws a red banner over the header and MARKET text inside it" width="100%"></td>
-    <td><img src="images/acceptance/2026-10-04-ui-campaign/style-suite/layered-bold-bedrock.png" alt="Bedrock draws the banner to the right of the header; the text is outside the panel" width="100%"></td>
-  </tr>
-</table>
-
-Further pairs: [icon row](images/acceptance/2026-10-04-ui-campaign/style-suite/icon-row-java.png)
-([Bedrock](images/acceptance/2026-10-04-ui-campaign/style-suite/icon-row-bedrock.png)),
-[negative-height shifts](images/acceptance/2026-10-04-ui-campaign/style-suite/negative-height-java.png)
-([Bedrock](images/acceptance/2026-10-04-ui-campaign/style-suite/negative-height-bedrock.png)),
-[hex text](images/acceptance/2026-10-04-ui-campaign/style-suite/hex-text-java.png)
-([Bedrock](images/acceptance/2026-10-04-ui-campaign/style-suite/hex-text-bedrock.png)),
-[bold text](images/acceptance/2026-10-04-ui-campaign/style-suite/bold-text-java.png)
-([Bedrock](images/acceptance/2026-10-04-ui-campaign/style-suite/bold-text-bedrock.png));
-[measurements](images/acceptance/2026-10-04-ui-campaign/style-suite/measurements.json),
-[hashes](images/acceptance/2026-10-04-ui-campaign/style-suite/sha256.json).
+The captures of this run were replaced by the 1.0.0-pre.8 captures of the same
+suite, which also covers stacked layers; see
+[stacked images, nameplates and exact biomes](LAYERS_BIOMES_2026-10-04.md).
 The Java client runs in English and the Bedrock client in Turkish, hence
 "Inventory" and "Envanter".
 
@@ -151,23 +126,15 @@ grass floor with `/fillbiome` and captured both clients. Twilight logged
 | Bedrock with the mapping | 102, 123, 54 |
 | Bedrock without it (ocean fallback) | 79, 103, 62 |
 
-<table>
-  <tr><th>Java</th><th>Bedrock - mapped</th><th>Bedrock - ocean fallback</th></tr>
-  <tr>
-    <td><img src="images/acceptance/2026-10-04-biomes/java.png" alt="Java grass floor in the custom biome" width="100%"></td>
-    <td><img src="images/acceptance/2026-10-04-biomes/bedrock-mapped.png" alt="Bedrock grass in the mapped cherry grove colours" width="100%"></td>
-    <td><img src="images/acceptance/2026-10-04-biomes/bedrock-fallback.png" alt="Bedrock grass in the darker ocean colours without the mapping" width="100%"></td>
-  </tr>
-</table>
-
-The mapping uses vanilla Bedrock biomes, so exact custom colours are not reproduced;
-persistent leaves kept Bedrock's own colour. [Measurements](images/acceptance/2026-10-04-biomes/measurements.json),
-[hashes](images/acceptance/2026-10-04-biomes/sha256.json).
+The mapping uses vanilla Bedrock biomes, so exact custom colours were not reproduced
+in this run. Since 1.0.0-pre.8 custom biomes get free Bedrock biome slots with their
+exact colours; the captures were replaced by the
+[1.0.0-pre.8 biome captures](LAYERS_BIOMES_2026-10-04.md#custom-biomes).
 
 ## Remaining differences
 
-- Layers moved back over an earlier image (a negative space after an image) are not
-  reproduced; titles that only shift before their images are exact.
+- Layers moved back over an earlier image (a negative space after an image) were not
+  reproduced in 1.0.0-pre.7; 1.0.0-pre.8 draws them with one label per layer.
 - Bedrock draws text with its own font: some character widths differ, and a
   character missing from its default font switches the whole title to the unicode
   font.

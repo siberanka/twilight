@@ -2,6 +2,38 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.8 - 2026-10-04
+
+- Draw text and images that Java moves back over earlier ones (stacked menu art,
+  CustomNameplates backgrounds) with one Bedrock label per layer in chest titles,
+  the action bar and boss bars, including font shifts and shadowless text
+  (`ui.java-text-layers`). Boss bars that the Java pack makes transparent stay
+  hidden.
+- Show custom biomes in their exact grass, foliage, water, fog and sky colours and
+  climate: the pack redefines 25 Bedrock biomes that only old worlds use. Biomes come
+  from datapacks and the server registry; the current RealisticSeasons season gets
+  slots first and a season change rebuilds the pack. Biome-only updates
+  (`/fillbiome`, seasons) now reach Bedrock players without a rejoin.
+- Hide the Bedrock name of ridden players and mobs like Java, so nameplate plugins
+  show only their plate, and hide Bedrock's name tag box when CustomNameplates draws
+  its own backgrounds (`ui.nametag-background`).
+- Choose per provider what is read (`sources.providers`: auto, generated, contents
+  or off) and whether world datapacks are read (`sources.datapacks`); `auto` follows
+  each provider's own delivery settings.
+- Export every build to `plugins/Twilight/export` (`Twilight.mcpack` and Geyser item
+  mappings) and allow another plugin or a proxy to send the pack
+  (`geyser.send-pack-to-bedrock: false`). Servers without a local Geyser only export.
+- Convert content Java tolerates the way Java shows it instead of failing strict
+  builds: missing textures and models, screen-sized overlay glyphs and vanilla sounds
+  changed without `vanilla-override` are notices. Complete builds of seven
+  production servers pass with the default configuration; a first build still
+  deploys when nothing is deployed yet.
+- Keep layered chest titles and boss bar names at Java's height (Bedrock raised them
+  by 4.5 units with one-unit line spacing).
+- Replace the published captures with current ones, including animated Java/Bedrock
+  comparisons; see [stacked images, nameplates and exact biomes](docs/LAYERS_BIOMES_2026-10-04.md).
+  183 tests pass.
+
 ## 1.0.0-pre.7 - 2026-10-04
 
 - Treat each provider's generated pack (CraftEngine `resource_pack.zip`,

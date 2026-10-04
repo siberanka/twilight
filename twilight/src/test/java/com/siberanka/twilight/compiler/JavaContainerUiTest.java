@@ -150,8 +150,9 @@ class JavaContainerUiTest {
             assertNotNull(entry);
             JsonObject parsed = JsonParser.parseString(new String(zip.getInputStream(entry).readAllBytes(),
                     StandardCharsets.UTF_8)).getAsJsonObject();
-            // A custom font enables the title layout, which moves the label origin left.
-            assertEquals(JavaContainerUi.chestScreen(true), parsed);
+            // A custom font enables the title layout, which moves the label origin left and adds layer labels.
+            assertEquals(JavaContainerUi.chestScreen(true, true), parsed);
+            assertNotNull(zip.getEntry(JavaHudUi.PATH), "layered action bar and boss bar labels");
             assertNotNull(zip.getEntry("twilight/text-layout.json"));
             assertNotNull(zip.getEntry(JavaContainerUi.COMMON_PATH));
             assertNotNull(zip.getEntry("font/glyph_EC.png"));

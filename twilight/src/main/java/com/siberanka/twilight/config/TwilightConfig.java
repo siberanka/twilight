@@ -8,6 +8,8 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public record TwilightConfig(
         boolean vanillaOverride,
@@ -30,8 +32,38 @@ public record TwilightConfig(
         boolean javaTextSurfaces,
         boolean bedrockBiomeMatching,
         boolean javaGlyphTint,
-        boolean javaTranslations
+        boolean javaTranslations,
+        boolean javaTextLayers,
+        String nametagBackground,
+        Map<String, String> providerSources,
+        boolean datapackSources,
+        boolean sendPackToBedrock
 ) {
+    /** How a provider's content is read: as the provider sends it, only its generated pack, only its folders, or not. */
+    public static final Set<String> SOURCE_MODES = Set.of("auto", "generated", "contents", "off");
+    /** Providers whose packs and data Twilight discovers on its own. */
+    public static final List<String> PROVIDERS = List.of("itemsadder", "nexo", "craftengine", "oraxen", "bettermodel",
+            "modelengine", "customnameplates", "betterhud", "realisticseasons");
+    /** Bedrock's name-tag background box: kept, hidden, or hidden when a nameplate plugin draws its own. */
+    public static final java.util.Set<String> NAMETAG_BACKGROUNDS = java.util.Set.of("auto", "bedrock", "hidden");
+
+    public TwilightConfig {
+        if (!NAMETAG_BACKGROUNDS.contains(nametagBackground)) {
+            throw new IllegalArgumentException("ui.nametag-background must be auto, bedrock or hidden");
+        }
+        providerSources = Map.copyOf(providerSources);
+        providerSources.forEach((provider, mode) -> {
+            if (!SOURCE_MODES.contains(mode)) {
+                throw new IllegalArgumentException("sources.providers." + provider + " must be auto, generated, contents or off");
+            }
+        });
+    }
+
+    /** The source mode of a provider; providers without a setting are read automatically. */
+    public String sourceMode(String provider) {
+        return providerSources.getOrDefault(provider, "auto");
+    }
+
     public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
                           boolean syncProviderChanges, long startupDelayTicks, long providerCommandDelayTicks,
                           long maximumSourceBytes, int maximumArchiveEntries, boolean downloadVanillaAssets,
@@ -40,7 +72,7 @@ public record TwilightConfig(
         this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
                 providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
                 autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
-                backupsToKeep, true, true, true, true, true, true);
+                backupsToKeep, true, true, true, true, true, true, true, "auto", Map.of(), true, true);
     }
 
     public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
@@ -52,7 +84,7 @@ public record TwilightConfig(
         this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
                 providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
                 autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
-                backupsToKeep, javaContainerLayout, javaContainerLayout, javaContainerLayout, true, true, true);
+                backupsToKeep, javaContainerLayout, javaContainerLayout, javaContainerLayout, true, true, true, true, "auto", Map.of(), true, true);
     }
 
     public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
@@ -64,7 +96,7 @@ public record TwilightConfig(
         this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
                 providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
                 autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
-                backupsToKeep, javaContainerLayout, javaTextLayout, javaTextLayout, true, true, true);
+                backupsToKeep, javaContainerLayout, javaTextLayout, javaTextLayout, true, true, true, true, "auto", Map.of(), true, true);
     }
 
     public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
@@ -76,7 +108,16 @@ public record TwilightConfig(
         this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
                 providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
                 autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
-                backupsToKeep, javaContainerLayout, javaTextLayout, javaTextSurfaces, true, true, true);
+                backupsToKeep, javaContainerLayout, javaTextLayout, javaTextSurfaces, true, true, true, true, "auto", Map.of(), true, true);
+    }
+
+    /** The same configuration with strict publication switched on or off. */
+    public TwilightConfig withStrict(boolean value) {
+        return new TwilightConfig(vanillaOverride, value, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
+                providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
+                autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy, backupsToKeep,
+                javaContainerLayout, javaTextLayout, javaTextSurfaces, bedrockBiomeMatching, javaGlyphTint,
+                javaTranslations, javaTextLayers, nametagBackground, providerSources, datapackSources, sendPackToBedrock);
     }
 
     public static TwilightConfig read(FileConfiguration source, Path serverRoot) {
@@ -112,8 +153,27 @@ public record TwilightConfig(
                 source.getBoolean("ui.java-text-surfaces", true),
                 source.getBoolean("world.bedrock-biome-matching", true),
                 source.getBoolean("ui.java-glyph-tint", true),
-                source.getBoolean("ui.java-translations", true)
+                source.getBoolean("ui.java-translations", true),
+                source.getBoolean("ui.java-text-layers", true),
+                source.getString("ui.nametag-background", "auto").toLowerCase(java.util.Locale.ROOT),
+                providerSources(source),
+                source.getBoolean("sources.datapacks", true),
+                source.getBoolean("geyser.send-pack-to-bedrock", true)
         );
+    }
+
+    /** {@code sources.providers}: true (auto), false (off) or a mode per provider. */
+    private static Map<String, String> providerSources(FileConfiguration source) {
+        Map<String, String> modes = new java.util.LinkedHashMap<>();
+        var section = source.getConfigurationSection("sources.providers");
+        if (section == null) return modes;
+        for (String key : section.getKeys(false)) {
+            Object value = section.get(key);
+            String mode = value instanceof Boolean flag ? (flag ? "auto" : "off")
+                    : String.valueOf(value).trim().toLowerCase(java.util.Locale.ROOT);
+            modes.put(key.toLowerCase(java.util.Locale.ROOT).replace("-", ""), mode);
+        }
+        return modes;
     }
 
     private static long boundedTicks(long value, String name) {

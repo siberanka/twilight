@@ -226,7 +226,8 @@ final class SoundCompiler {
                 if (vanillaSounds != null && vanillaSounds.isJsonArray() &&
                         vanillaSounds.getAsJsonArray().asList().equals(custom.sounds())) return false;
             }
-            problem(identifier + " changes a vanilla sound event while vanilla-override is disabled");
+            // Bedrock keeps its own sound for the event; vanilla-override: true replaces it.
+            notices.add(identifier + " changes a vanilla sound event; Bedrock keeps its own sound while vanilla-override is disabled");
             return false;
         } catch (IOException | RuntimeException failure) {
             problem(identifier + " could not be checked against vanilla sounds: " + message(failure));

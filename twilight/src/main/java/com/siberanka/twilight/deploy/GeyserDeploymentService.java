@@ -57,6 +57,14 @@ public final class GeyserDeploymentService {
             Path geyser = resolveGeyserDirectory();
             captureStartupMappings(geyser);
             Map<String, Path> artifacts = collectArtifacts(outputDirectory.toAbsolutePath().normalize());
+            if (artifacts.isEmpty() && !config.sendPackToBedrock()) {
+                // Nothing for Geyser: no item mappings, and the pack is sent by another plugin.
+                Properties previous = loadManifest();
+                for (String old : previous.stringPropertyNames()) Files.deleteIfExists(resolveTarget(geyser, old));
+                storeManifest(new Properties());
+                return new DeploymentResult(true, geyser, null, List.of(),
+                        "The pack is not sent to Bedrock players (geyser.send-pack-to-bedrock: false); nothing to deploy.", false);
+            }
             if (artifacts.isEmpty()) throw new IOException("No validated Twilight artifacts were found in " + outputDirectory);
 
             Properties previous = loadManifest();
@@ -167,7 +175,8 @@ public final class GeyserDeploymentService {
         ensureWithin(dataDirectory, output);
         if (!Files.isDirectory(output) || Files.isSymbolicLink(output)) return Map.of();
         Map<String, Path> files = new LinkedHashMap<>();
-        addArtifact(files, "packs/twilight.zip", output.resolve("pack.zip"), output);
+        // Without sending, Geyser keeps the item mappings but not the pack; a previously deployed pack is removed.
+        if (config.sendPackToBedrock()) addArtifact(files, "packs/twilight.zip", output.resolve("pack.zip"), output);
         collectNamed(files, output.resolve("custom_mappings"), "custom_mappings", true, output);
         collectNamed(files, output.resolve("lang"), "locales/overrides", false, output);
         return files;

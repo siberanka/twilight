@@ -80,6 +80,11 @@ final class TextureSet {
 
     /** Java's missing texture, used where a model leaves a face's texture variable undefined. */
     static final String MISSING = "minecraft:missingno";
+    /**
+     * Textures the current conversion referenced that exist in no pack: Java draws its missing texture for
+     * them, and so does the converted pack. The compiler reports them per item as notices.
+     */
+    static final ThreadLocal<java.util.Set<String>> MISSING_FILES = ThreadLocal.withInitial(java.util.LinkedHashSet::new);
 
     /** The texture file a model's sprite reference stands for: itself, or the file an atlas renames. */
     static String spriteTexture(ResourceIndex resources, String identifier) {
@@ -94,9 +99,13 @@ final class TextureSet {
         var custom = resources.find(path);
         byte[] bytes;
         if (custom.isPresent()) bytes = custom.get().readBytes();
-        else if (path.startsWith("assets/minecraft/textures/") && vanillaAssets != null) {
-            bytes = vanillaAssets.readTexture(path).orElseThrow(() -> new IOException("Missing vanilla texture " + identifier));
-        } else throw new IOException("Missing texture " + identifier);
+        else if (path.startsWith("assets/minecraft/textures/") && vanillaAssets != null
+                && vanillaAssets.readTexture(path).isPresent()) {
+            bytes = vanillaAssets.readTexture(path).orElseThrow();
+        } else {
+            MISSING_FILES.get().add(identifier);
+            return missingTexture();
+        }
         BufferedImage image = PngImages.read(bytes);
         if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) throw new IOException("Invalid PNG " + identifier);
         var metadata = resources.find(path + ".mcmeta");

@@ -1,6 +1,7 @@
 /* Copyright (c) 2026 siberanka. Licensed under the GNU LGPL v3.0 or later. */
 package com.siberanka.twilight.integration.text;
 
+import com.siberanka.twilight.text.LayeredTextLayout;
 import com.siberanka.twilight.text.TextLayout;
 import com.siberanka.twilight.text.TextLayoutTable;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.metadata.EntityMetadata;
@@ -12,6 +13,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.inventory.C
 
 import java.lang.reflect.Method;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -34,6 +36,21 @@ final class TextSurfaces {
 
     private record Accessor(Method getter, Method wither) {}
 
+    /**
+     * @param translations pack strings for argument-free translation keys (null: none)
+     * @param title        container titles: Java darkens their uncoloured images
+     * @param layers       turns the layers of a line that moves back over itself into the component to send,
+     *                     or null when the surface's UI cannot show layers (see {@link LayeredTextLayout})
+     */
+    record Options(Function<String, String> translations, boolean title, Function<List<Object>, Object> layers,
+                   int linesPerUnit, boolean shadows) {
+        static final Options NONE = new Options(null, false, null, 1, false);
+
+        Options(Function<String, String> translations, boolean title, Function<List<Object>, Object> layers) {
+            this(translations, title, layers, 1, false);
+        }
+    }
+
     private TextSurfaces() {}
 
     static ClientboundOpenScreenPacket openScreen(ClientboundOpenScreenPacket packet, TextLayoutTable table,
@@ -44,13 +61,21 @@ final class TextSurfaces {
     static ClientboundOpenScreenPacket openScreen(ClientboundOpenScreenPacket packet, TextLayoutTable table,
                                                   boolean pocket, Function<String, String> translations)
             throws ReflectiveOperationException {
+        return openScreen(packet, table, pocket, translations, null);
+    }
+
+    /** @param layers see {@link Options#layers()}; chest screens only (the generated chest UI shows them) */
+    static ClientboundOpenScreenPacket openScreen(ClientboundOpenScreenPacket packet, TextLayoutTable table,
+                                                  boolean pocket, Function<String, String> translations,
+                                                  Function<List<Object>, Object> layers)
+            throws ReflectiveOperationException {
         if (pocket) return substitute(packet, table, "Title", true);
         if (!CHEST_SCREENS.contains(packet.getType())) {
             // Bedrock draws these screens with its own layout; relative positions still follow Java.
             return rewrite(packet, table, translations, true, TextLayout.Mode.LEFT, "Title");
         }
         try {
-            return rewrite(packet, table, translations, true, TextLayout.Mode.CONTAINER, "Title");
+            return rewrite(packet, table, new Options(translations, true, layers), TextLayout.Mode.CONTAINER, "Title");
         } catch (ReflectiveOperationException | RuntimeException layoutFailure) {
             return originOnly(packet, table, "Title");
         }
@@ -82,7 +107,7 @@ final class TextSurfaces {
 
     static <P> P rewrite(P packet, TextLayoutTable table, TextLayout.Mode mode, String... properties)
             throws ReflectiveOperationException {
-        return rewrite(packet, table, null, mode, properties);
+        return rewrite(packet, table, Options.NONE, mode, properties);
     }
 
     /** @param translations pack strings for argument-free translation keys, laid out like text (null: none) */
@@ -92,14 +117,19 @@ final class TextSurfaces {
     }
 
     /** @param title container titles: Java darkens their uncoloured images */
-    @SuppressWarnings("unchecked")
     static <P> P rewrite(P packet, TextLayoutTable table, Function<String, String> translations, boolean title,
                          TextLayout.Mode mode, String... properties) throws ReflectiveOperationException {
+        return rewrite(packet, table, new Options(translations, title, null), mode, properties);
+    }
+
+    @SuppressWarnings("unchecked")
+    static <P> P rewrite(P packet, TextLayoutTable table, Options options, TextLayout.Mode mode, String... properties)
+            throws ReflectiveOperationException {
         P current = packet;
         for (String property : properties) {
             Accessor accessor = accessor(packet.getClass(), property);
             Object value = accessor.getter.invoke(current);
-            Object laidOut = layoutValue(value, table, mode, translations, title);
+            Object laidOut = layoutValue(value, table, mode, options);
             if (laidOut != value) current = (P) accessor.wither.invoke(current, laidOut);
         }
         return current;
@@ -119,6 +149,15 @@ final class TextSurfaces {
         return substituted == value ? packet : (P) accessor.wither.invoke(packet, substituted);
     }
 
+    /** Puts plain (zero-width) text in front of a component property, if the packet carries it. */
+    @SuppressWarnings("unchecked")
+    static <P> P prepend(P packet, String property, String text) throws ReflectiveOperationException {
+        Accessor accessor = accessor(packet.getClass(), property);
+        Object value = accessor.getter.invoke(packet);
+        if (!AdventureTextLayout.isComponent(value)) return packet;
+        return (P) accessor.wither.invoke(packet, AdventureTextLayout.prepend(value, text));
+    }
+
     @SuppressWarnings("unchecked")
     static <P> P originOnly(P packet, TextLayoutTable table, String property) throws ReflectiveOperationException {
         Accessor accessor = accessor(packet.getClass(), property);
@@ -129,7 +168,7 @@ final class TextSurfaces {
     /** Lays out a component, a plain string or an optional component; returns the same instance if unchanged. */
     static Object layoutValue(Object value, TextLayoutTable table, TextLayout.Mode mode)
             throws ReflectiveOperationException {
-        return layoutValue(value, table, mode, null);
+        return layoutValue(value, table, mode, Options.NONE);
     }
 
     static Object layoutValue(Object value, TextLayoutTable table, TextLayout.Mode mode,
@@ -139,17 +178,32 @@ final class TextSurfaces {
 
     static Object layoutValue(Object value, TextLayoutTable table, TextLayout.Mode mode,
                               Function<String, String> translations, boolean title) throws ReflectiveOperationException {
+        return layoutValue(value, table, mode, new Options(translations, title, null));
+    }
+
+    static Object layoutValue(Object value, TextLayoutTable table, TextLayout.Mode mode, Options options)
+            throws ReflectiveOperationException {
         if (value == null) return null;
         if (value instanceof String text) return AdventureTextLayout.layout(table, text, mode);
         if (value instanceof Optional<?> optional) {
             if (optional.isEmpty()) return value;
             Object inner = optional.get();
             if (!AdventureTextLayout.isComponent(inner)) return value;
-            Object laidOut = AdventureTextLayout.layout(table, inner, mode, translations, title);
+            Object laidOut = layoutComponent(inner, table, mode, options);
             return laidOut == inner ? value : Optional.of(laidOut);
         }
-        return AdventureTextLayout.isComponent(value)
-                ? AdventureTextLayout.layout(table, value, mode, translations, title) : value;
+        return AdventureTextLayout.isComponent(value) ? layoutComponent(value, table, mode, options) : value;
+    }
+
+    private static Object layoutComponent(Object component, TextLayoutTable table, TextLayout.Mode mode, Options options)
+            throws ReflectiveOperationException {
+        if (options.layers() != null && mode != TextLayout.Mode.LEFT) {
+            List<Object> layers = AdventureTextLayout.layered(table, component, mode, options.translations(), options.title(),
+                    options.linesPerUnit(), options.shadows());
+            Object encoded = layers == null ? null : options.layers().apply(layers);
+            if (encoded != null) return encoded;
+        }
+        return AdventureTextLayout.layout(table, component, mode, options.translations(), options.title());
     }
 
     private static Accessor accessor(Class<?> type, String property) throws NoSuchMethodException {

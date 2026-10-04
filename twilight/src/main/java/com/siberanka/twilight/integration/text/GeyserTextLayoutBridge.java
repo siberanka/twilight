@@ -2,6 +2,7 @@
 package com.siberanka.twilight.integration.text;
 
 import com.google.gson.JsonParser;
+import com.siberanka.twilight.text.LayerEncoding;
 import com.siberanka.twilight.text.TextLayout;
 import com.siberanka.twilight.text.TextLayoutTable;
 import org.geysermc.geyser.api.GeyserApi;
@@ -71,13 +72,15 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
         this.registrar = EventRegistrar.of(owner);
         surface(ClientboundOpenScreenPacket.class, this::openScreen);
         if (!allSurfaces) return;
-        surface(ClientboundSystemChatPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), packet.isOverlay() ? TextLayout.Mode.CENTERED : TextLayout.Mode.LEFT, "Content"));
+        surface(ClientboundSystemChatPacket.class, (session, packet, table) -> packet.isOverlay()
+                ? TextSurfaces.rewrite(packet, table, hud(session, TextLayoutTable.ACTIONBAR_LAYERS), TextLayout.Mode.CENTERED, "Content")
+                : TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.LEFT, "Content"));
         surface(ClientboundPlayerChatPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.LEFT, "Content", "UnsignedContent", "Name", "TargetName"));
         surface(ClientboundDisguisedChatPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.LEFT, "Message", "Name", "TargetName"));
-        surface(ClientboundSetActionBarTextPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.CENTERED, "Text"));
+        surface(ClientboundSetActionBarTextPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, hud(session, TextLayoutTable.ACTIONBAR_LAYERS), TextLayout.Mode.CENTERED, "Text"));
         surface(ClientboundSetTitleTextPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.CENTERED, "Text"));
         surface(ClientboundSetSubtitleTextPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.CENTERED, "Text"));
-        surface(ClientboundBossEventPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.CENTERED, "Title"));
+        surface(ClientboundBossEventPacket.class, this::bossBar);
         surface(ClientboundSetObjectivePacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.CENTERED, "DisplayName"));
         surface(ClientboundSetPlayerTeamPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.LEFT, "DisplayName", "PlayerPrefix", "PlayerSuffix"));
         surface(ClientboundSetScorePacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.LEFT, "Display"));
@@ -142,6 +145,90 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
         return key -> keys.contains(key) ? org.geysermc.geyser.text.MinecraftLocale.getLocaleString(key, locale) : null;
     }
 
+    /** Colour of every boss bar per session (titles arrive without it after the first packet). */
+    private final Map<String, String> bossBarColours = new ConcurrentHashMap<>();
+
+    private ClientboundBossEventPacket bossBar(GeyserSession session, ClientboundBossEventPacket packet,
+                                               TextLayoutTable table) throws ReflectiveOperationException {
+        String key = session.javaUuid() + "/" + packet.getUuid();
+        if (packet.getAction() == org.geysermc.mcprotocollib.protocol.data.game.BossBarAction.REMOVE) {
+            bossBarColours.remove(key);
+        } else if (packet.getColor() != null) {
+            bossBarColours.put(key, BOSS_BAR_COLOURS.get(packet.getColor().ordinal()));
+        }
+        boolean hidden = table.bossBarHidden(bossBarColours.getOrDefault(key, ""));
+        String lead = hidden ? LayerEncoding.HIDDEN_BAR : "";
+        java.util.function.Function<List<Object>, Object> encode = layers(session, table, TextLayoutTable.BOSS_LAYERS, lead);
+        boolean[] layered = {false};
+        java.util.function.Function<List<Object>, Object> tracked = encode == null ? null : components -> {
+            Object encoded = encode.apply(components);
+            layered[0] = encoded != null;
+            return encoded;
+        };
+        TextSurfaces.Options options = new TextSurfaces.Options(translations(session), false, tracked, 1, true);
+        ClientboundBossEventPacket laidOut = TextSurfaces.rewrite(packet, table, options, TextLayout.Mode.CENTERED, "Title");
+        // Layered titles carry the marker in their first block; others get it in front.
+        return !hidden || layered[0] ? laidOut : TextSurfaces.prepend(laidOut, "Title", LayerEncoding.HIDDEN_BAR);
+    }
+
+    /** Java's boss bar colour names in protocol order. */
+    private static final List<String> BOSS_BAR_COLOURS = List.of("pink", "blue", "red", "green", "yellow", "purple", "white");
+
+    /** Action bar and boss bar options: the generated HUD shows layered lines. */
+    private TextSurfaces.Options hud(GeyserSession session, String surface) {
+        // The action bar label is centred vertically: half of every added line moves it up.
+        int lines = TextLayoutTable.ACTIONBAR_LAYERS.equals(surface) ? 2 : 1;
+        return new TextSurfaces.Options(translations(session), false, layers(session, table, surface, ""), lines, true);
+    }
+
+    /**
+     * Encodes the layers of a line for a surface whose generated UI shows them, or null. The result is
+     * plain text that Geyser converts to exactly the encoded bytes (checked with Geyser's own conversion,
+     * otherwise the line keeps the single-label layout).
+     */
+    private java.util.function.Function<List<Object>, Object> layers(GeyserSession session, TextLayoutTable current,
+                                                                       String surface, String lead) {
+        if (current == null || !current.layers(surface)) return null;
+        boolean bossBar = TextLayoutTable.BOSS_LAYERS.equals(surface);
+        int block = LayerEncoding.BLOCK_BYTES.get(surface);
+        int characters = bossBar ? LayerEncoding.BOSS_CHARACTERS : Integer.MAX_VALUE;
+        String locale = session.locale() == null ? "en_us" : session.locale();
+        return components -> {
+            try {
+                List<String> legacy = new ArrayList<>();
+                for (Object layer : components) legacy.add(GeyserMessages.convert(layer, locale, false));
+                String encoded = LayerEncoding.encode(legacy, block, characters, lead);
+                // Geyser escapes percent signs in boss bar names, which would move the block boundaries.
+                if (encoded == null || bossBar && encoded.indexOf('%') >= 0) return null;
+                Object candidate = AdventureTextLayout.plainText(components.getFirst(), encoded);
+                return ("\u00a7r" + encoded).equals(GeyserMessages.convert(candidate, locale, true)) ? candidate : null;
+            } catch (ReflectiveOperationException | RuntimeException failure) {
+                logOnce(LayerEncoding.class, failure);
+                return null;
+            }
+        };
+    }
+
+    /** Geyser's Java-to-Bedrock text conversion, resolved by name (Geyser may relocate Adventure). */
+    private static final class GeyserMessages {
+        private static final Map<String, java.lang.reflect.Method> METHODS = new ConcurrentHashMap<>();
+
+        static String convert(Object component, String locale, boolean leadingReset) throws ReflectiveOperationException {
+            String name = leadingReset ? "convertMessage" : "convertMessageRaw";
+            java.lang.reflect.Method method = METHODS.get(name);
+            if (method == null) {
+                for (java.lang.reflect.Method candidate : org.geysermc.geyser.translator.text.MessageTranslator.class.getMethods()) {
+                    Class<?>[] parameters = candidate.getParameterTypes();
+                    if (candidate.getName().equals(name) && parameters.length == 2 && parameters[1] == String.class
+                            && parameters[0].isInstance(component)) method = candidate;
+                }
+                if (method == null) throw new NoSuchMethodException("MessageTranslator." + name);
+                METHODS.put(name, method);
+            }
+            return (String) method.invoke(null, component, locale);
+        }
+    }
+
     static TextLayoutTable readTable(Path pack) throws IOException {
         if (!Files.isRegularFile(pack)) return null;
         try (ZipFile zip = new ZipFile(pack.toFile())) {
@@ -167,7 +254,8 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
         // The touch layout keeps its centred native title; only glyph substitution applies there.
         var profile = session.getClientData() == null ? null : session.getClientData().getUiProfile();
         boolean pocket = profile != null && "POCKET".equals(profile.toString());
-        return TextSurfaces.openScreen(packet, table, pocket, translations(session));
+        return TextSurfaces.openScreen(packet, table, pocket, translations(session),
+                layers(session, table, TextLayoutTable.CHEST_LAYERS, ""));
     }
 
     private void logOnce(Class<?> type, Throwable failure) {

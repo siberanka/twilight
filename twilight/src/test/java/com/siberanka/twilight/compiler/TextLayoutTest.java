@@ -288,8 +288,10 @@ class TextLayoutTest {
         assertFalse(table.lookup(null, 0xE022).visible());
         assertEquals(1f, table.lookup(null, 0xE022).advance());
         assertFalse(table.lookup(null, 0xE023).visible(), "the bar cannot be drawn but keeps its advance");
-        assertEquals(1, compiled.problems().size(), compiled.problems().toString());
-        assertTrue(compiled.problems().getFirst().contains("oversized"), compiled.problems().toString());
+        // The visible bar is a notice, not a problem: what follows it keeps Java's position.
+        assertTrue(compiled.problems().isEmpty(), compiled.problems().toString());
+        assertTrue(compiled.notices().stream().anyMatch(n -> n.contains("larger than Bedrock's glyph cell")),
+                compiled.notices().toString());
     }
 
     @Test

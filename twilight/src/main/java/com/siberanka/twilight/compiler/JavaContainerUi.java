@@ -6,6 +6,7 @@ package com.siberanka.twilight.compiler;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.siberanka.twilight.text.LayerEncoding;
 import com.siberanka.twilight.text.TextLayoutTable;
 
 /**
@@ -80,12 +81,23 @@ final class JavaContainerUi {
      *                   start Java's origin {@link TextLayoutTable#ORIGIN} units after the label
      */
     static JsonObject chestScreen(boolean textLayout) {
+        return chestScreen(textLayout, false);
+    }
+
+    /**
+     * @param layers also show layered titles (a negative space back over an image) in one label per
+     *               layer, see {@link LayerLabels}
+     */
+    static JsonObject chestScreen(boolean textLayout, boolean layers) {
         int origin = textLayout ? TextLayoutTable.ORIGIN : 0;
         JsonObject root = new JsonObject();
         root.addProperty("namespace", "chest");
 
+        // Layer labels space lines one unit apart; Bedrock centres a line's glyphs in that unit, which lifts
+        // the first line by half the removed spacing (measured 4 October 2026): the offset puts it back.
+        double lift = layers ? LayerLabels.FIRST_LINE_LIFT : 0;
         JsonObject label = new JsonObject();
-        label.add(OFFSET_VARIABLE + "|default", titleOffset(LARGE_CHEST_GRID, origin));
+        label.add(OFFSET_VARIABLE + "|default", titleOffset(LARGE_CHEST_GRID, origin, lift));
         label.addProperty("offset", OFFSET_VARIABLE);
         // Java never wraps or clips a container title.
         label.add("size", array("default", "default"));
@@ -94,10 +106,38 @@ final class JavaContainerUi {
         JsonArray colour = new JsonArray();
         for (int index = 0; index < 3; index++) colour.add(channel);
         label.add("color", colour);
+        LayerLabels.Source title = LayerLabels.Source.variable("$container_title", LayerLabels.CHEST_EMPTY);
+        int block = LayerEncoding.BLOCK_BYTES.get(TextLayoutTable.CHEST_LAYERS);
+        if (layers) LayerLabels.showBlock(label, title, 0, block);
         root.add("chest_label", label);
 
-        root.add("small_chest_panel_top_half", topHalf(SMALL_CHEST_PANEL, SMALL_CHEST_GRID, origin));
-        root.add("large_chest_panel_top_half", topHalf(LARGE_CHEST_PANEL, LARGE_CHEST_GRID, origin));
+        JsonObject small = topHalf(SMALL_CHEST_PANEL, SMALL_CHEST_GRID, origin, lift);
+        JsonObject large = topHalf(LARGE_CHEST_PANEL, LARGE_CHEST_GRID, origin, lift);
+        if (layers) {
+            // One panel at the title label's position, drawn on the title's layer; its labels follow in order.
+            JsonObject template = new JsonObject();
+            template.addProperty("anchor_from", "top_left");
+            template.addProperty("anchor_to", "top_left");
+            template.add("size", array("default", "default"));
+            template.add("color", colour.deepCopy());
+            JsonObject panel = new JsonObject();
+            panel.addProperty("type", "panel");
+            panel.addProperty("anchor_from", "top_left");
+            panel.addProperty("anchor_to", "top_left");
+            panel.addProperty("offset", OFFSET_VARIABLE);
+            panel.addProperty("layer", TITLE_LAYER);
+            panel.add("controls", LayerLabels.layerLabels("twilight_title", template, title, block));
+            root.add("twilight_title_layers", panel);
+            JsonObject reference = new JsonObject();
+            reference.add("twilight_title_layers@chest.twilight_title_layers", new JsonObject());
+            JsonArray controls = new JsonArray();
+            controls.add(reference);
+            // Inserted first: the lower layers are drawn before the vanilla label with the top layer.
+            small.add("modifications", LayerLabels.insertFront(controls));
+            large.add("modifications", LayerLabels.insertFront(controls.deepCopy()));
+        }
+        root.add("small_chest_panel_top_half", small);
+        root.add("large_chest_panel_top_half", large);
         // Variables flow to every descendant; ender chest, shulker box and barrel panels inherit these.
         for (String panel : new String[]{"small_chest_panel", "large_chest_panel"}) {
             JsonObject screen = new JsonObject();
@@ -160,8 +200,16 @@ final class JavaContainerUi {
     }
 
     static JsonArray titleOffset(int[] grid, int origin) {
-        return array(grid[0] + JAVA_TITLE_RIGHT_OF_SLOT_FRAME - origin,
-                grid[1] - JAVA_TITLE_ABOVE_SLOT_FRAME - BEDROCK_LABEL_TEXT_TOP);
+        return titleOffset(grid, origin, 0);
+    }
+
+    /** @param lift units Bedrock raises the first line of a label with layer line spacing */
+    static JsonArray titleOffset(int[] grid, int origin, double lift) {
+        JsonArray offset = array(grid[0] + JAVA_TITLE_RIGHT_OF_SLOT_FRAME - origin);
+        int y = grid[1] - JAVA_TITLE_ABOVE_SLOT_FRAME - BEDROCK_LABEL_TEXT_TOP;
+        if (lift == 0) offset.add(y);
+        else offset.add(y + lift);
+        return offset;
     }
 
     /**
@@ -172,10 +220,10 @@ final class JavaContainerUi {
         return array(vanilla[0], vanilla[1] - (JAVA_INVENTORY_GAP - BEDROCK_INVENTORY_GAP));
     }
 
-    private static JsonObject topHalf(int[] panel, int[] grid, int origin) {
+    private static JsonObject topHalf(int[] panel, int[] grid, int origin, double lift) {
         JsonObject half = new JsonObject();
         half.add("offset", panelOffset(panel));
-        half.add(OFFSET_VARIABLE, titleOffset(grid, origin));
+        half.add(OFFSET_VARIABLE, titleOffset(grid, origin, lift));
         return half;
     }
 

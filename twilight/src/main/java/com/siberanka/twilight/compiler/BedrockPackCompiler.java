@@ -47,6 +47,9 @@ public final class BedrockPackCompiler {
     private final Path dataDirectory;
     private final TwilightConfig config;
     private final String minecraftVersion;
+    private Map<String, Map<String, ?>> serverBiomes = Map.of();
+    private Set<String> currentBiomes = Set.of();
+    private boolean nameplatePlugin;
 
     public BedrockPackCompiler(Path dataDirectory, TwilightConfig config) {
         this(dataDirectory, config, null);
@@ -56,6 +59,27 @@ public final class BedrockPackCompiler {
         this.dataDirectory = dataDirectory.toAbsolutePath().normalize();
         this.config = config;
         this.minecraftVersion = minecraftVersion;
+    }
+
+    /**
+     * Custom biomes of the running server's registry (datapack and plugin biomes, such as
+     * RealisticSeasons' seasonal ones) as Java biome definitions; their looks get Bedrock biome slots.
+     */
+    public BedrockPackCompiler withServerBiomes(Map<String, Map<String, ?>> biomes) {
+        return withServerBiomes(biomes, Set.of());
+    }
+
+    /** @param current biomes a seasons plugin shows now: their looks get slots first */
+    public BedrockPackCompiler withServerBiomes(Map<String, Map<String, ?>> biomes, Set<String> current) {
+        this.serverBiomes = Map.copyOf(biomes);
+        this.currentBiomes = Set.copyOf(current);
+        return this;
+    }
+
+    /** A nameplate plugin draws its own tag backgrounds (ui.nametag-background: auto hides Bedrock's box). */
+    public BedrockPackCompiler withNameplatePlugin(boolean value) {
+        this.nameplatePlugin = value;
+        return this;
     }
 
     public BuildResult build(List<ContentSource> sources, List<CustomItemDescriptor> liveItems) throws IOException {
@@ -81,6 +105,7 @@ public final class BedrockPackCompiler {
         int converted = 0, threeDimensional = 0;
 
         for (ItemCandidate candidate : candidates) {
+            TextureSet.MISSING_FILES.get().clear();
             try {
                 // A custom selector may show a vanilla model (menu buttons often use a barrier).
                 boolean customSelector = candidate.customModelData().isPresent() || !candidate.predicates().isEmpty();
@@ -166,10 +191,19 @@ public final class BedrockPackCompiler {
                 textureData.add(iconKey, iconEntry);
                 addMapping(mappedItems, candidate, identifier, iconKey, model.handheld());
                 converted++;
+                if (!TextureSet.MISSING_FILES.get().isEmpty()) {
+                    notices.add(candidate.baseItem() + " -> " + candidate.visualModels() + ": textures that exist in no pack "
+                            + "show Java's missing texture, as on Java: " + TextureSet.MISSING_FILES.get());
+                }
+            } catch (JavaModelResolver.MissingModelException missing) {
+                // Broken content Java tolerates: it draws its missing model; Bedrock keeps the base item.
+                notices.add(candidate.baseItem() + " -> " + candidate.visualModels() + ": " + missing.getMessage()
+                        + "; Java draws its missing model, Bedrock keeps the base item");
             } catch (Exception failure) {
                 problems.add(candidate.baseItem() + " -> " + candidate.visualModels() + ": " + failure.getMessage());
             }
         }
+        TextureSet.MISSING_FILES.remove();
 
         displays.finish(packFiles);
         BitmapFontCompiler.Result fonts;
@@ -192,21 +226,49 @@ public final class BedrockPackCompiler {
         if (vanillaAssets != null) {
             // Server-side lookup table for the biome bridge; Bedrock ignores the file.
             try {
-                packFiles.put(com.siberanka.twilight.world.BiomeMatcher.PATH,
-                        jsonBytes(VanillaBiomes.read(vanillaAssets).toJson()));
+                com.siberanka.twilight.world.BiomeMatcher matcher = VanillaBiomes.read(vanillaAssets);
+                packFiles.put(com.siberanka.twilight.world.BiomeMatcher.PATH, jsonBytes(matcher.toJson()));
+                if (config.bedrockBiomeMatching()) {
+                    var slots = com.siberanka.twilight.world.BiomeSlots.assign(
+                            CustomBiomes.read(resources, serverBiomes, matcher), matcher.vanilla().values(), currentBiomes);
+                    if (!slots.isEmpty()) packFiles.putAll(slots.packFiles());
+                }
             } catch (IOException | RuntimeException failure) {
                 notices.add("vanilla biome appearances are unavailable; custom biomes keep Geyser's fallback: "
                         + failure.getMessage());
             }
         }
-        if (fonts.layout() != null && !config.javaContainerLayout()) {
+        // Lines that move back over themselves (text on a background) need one label per layer in the UI.
+        java.util.Set<String> layerSurfaces = new java.util.TreeSet<>();
+        if (fonts.layout() != null && config.javaTextLayers()) {
+            if (config.javaContainerLayout()) layerSurfaces.add(TextLayoutTable.CHEST_LAYERS);
+            if (config.javaTextSurfaces()) {
+                layerSurfaces.add(TextLayoutTable.ACTIONBAR_LAYERS);
+                layerSurfaces.add(TextLayoutTable.BOSS_LAYERS);
+            }
+        }
+        if (fonts.layout() != null) {
+            TextLayoutTable table = fonts.layout();
             // Bedrock's own chest UI keeps its title label at the left edge: no origin to reach.
-            packFiles.put(TextLayoutTable.PATH, fonts.layout().withContainerOrigin(0)
-                    .toJson().toString().getBytes(StandardCharsets.UTF_8));
+            if (!config.javaContainerLayout()) table = table.withContainerOrigin(0);
+            if (layerSurfaces.contains(TextLayoutTable.BOSS_LAYERS)) table = table.withHiddenBossBars(BossBars.hidden(resources));
+            packFiles.put(TextLayoutTable.PATH, table.withLayers(layerSurfaces).toJson().toString()
+                    .getBytes(StandardCharsets.UTF_8));
         }
         if (config.javaContainerLayout()) {
-            packFiles.put(JavaContainerUi.PATH, jsonBytes(JavaContainerUi.chestScreen(fonts.layout() != null)));
+            packFiles.put(JavaContainerUi.PATH, jsonBytes(JavaContainerUi.chestScreen(fonts.layout() != null,
+                    layerSurfaces.contains(TextLayoutTable.CHEST_LAYERS))));
             packFiles.put(JavaContainerUi.COMMON_PATH, jsonBytes(JavaContainerUi.commonScreen()));
+        }
+        if (layerSurfaces.contains(TextLayoutTable.BOSS_LAYERS)) {
+            packFiles.put(JavaHudUi.PATH, jsonBytes(JavaHudUi.hudScreen()));
+            packFiles.put(JavaHudUi.CLEAR_TEXTURE + ".png", TextureSet.png(
+                    new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)));
+        }
+
+        String background = config.nametagBackground();
+        if ("hidden".equals(background) || "auto".equals(background) && nameplatePlugin) {
+            packFiles.put(NametagMaterial.PATH, NametagMaterial.hiddenBackground());
         }
 
         if (converted == 0 && !candidates.isEmpty() && !problems.isEmpty()) throw new IOException("No custom item could be converted; first problem: " + problems.get(0));

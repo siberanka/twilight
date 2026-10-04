@@ -239,13 +239,32 @@ class BedrockPackCompilerTest {
                         """.getBytes(StandardCharsets.UTF_8),
                 "assets/minecraft/textures/colormap/grass.png", png.toByteArray(),
                 "assets/minecraft/textures/colormap/foliage.png", png.toByteArray()));
-        BuildResult result = new BedrockPackCompiler(data, config(), "26.2").build(List.of(
+        write(source, "data/demo/worldgen/biome/blossom_vale.json", """
+                {"temperature":0.7,"downfall":0.8,"has_precipitation":true,
+                 "effects":{"grass_color":"#f29ac0","foliage_color":"#e36fa4","water_color":"#5db7ef"},
+                 "attributes":{"minecraft:visual/sky_color":"#9cc8ff","minecraft:visual/fog_color":"#ffd8ec"}}
+                """);
+        // RealisticSeasons registers its seasonal biomes at runtime: they come from the server registry.
+        Map<String, Map<String, ?>> registry = Map.of("realisticseasons:plains_winter", Map.of("temperature", 0.05,
+                "downfall", 0.4, "effects", Map.of("grass_color", 0xB8D0E1, "foliage_color", 0xB8D0E1)));
+        BuildResult result = new BedrockPackCompiler(data, config(), "26.2").withServerBiomes(registry)
+                .withNameplatePlugin(true).build(List.of(
                 new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
         try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
             var table = com.siberanka.twilight.world.BiomeMatcher.fromJson(read(zip, com.siberanka.twilight.world.BiomeMatcher.PATH));
             assertEquals(java.util.Set.of("minecraft:plains", "minecraft:swamp"), table.vanilla().keySet());
             assertEquals(0x6A7039, table.vanilla().get("minecraft:swamp").grass());
             assertEquals(0x3F76E4, table.vanilla().get("minecraft:plains").water());
+            var slots = com.siberanka.twilight.world.BiomeSlots.fromJson(read(zip, com.siberanka.twilight.world.BiomeSlots.PATH));
+            assertEquals(List.of(List.of("demo:blossom_vale"), List.of("realisticseasons:plains_winter")),
+                    slots.slots().stream().map(com.siberanka.twilight.world.BiomeSlots.Slot::biomes).toList());
+            assertEquals(2, slots.slots().get(1).look().precipitation(), "a cold seasonal biome snows");
+            JsonObject grass = read(zip, "biomes/taiga_hills.client_biome.json").getAsJsonObject("minecraft:client_biome")
+                    .getAsJsonObject("components").getAsJsonObject("minecraft:grass_appearance");
+            assertEquals("#f29ac0", grass.get("color").getAsString());
+            assertNotNull(zip.getEntry("fogs/twilight_desert_hills.json"));
+            JsonObject material = read(zip, "materials/ui3D.material").getAsJsonObject("materials").getAsJsonObject("name_tag");
+            assertEquals("One", material.get("blendDst").getAsString(), "CustomNameplates draws its own tag backgrounds");
         }
     }
 
@@ -774,9 +793,11 @@ class BedrockPackCompilerTest {
         write(source, "assets/minecraft/models/item/stick.json", """
                 {"parent":"minecraft:item/handheld","overrides":[
                   {"predicate":{"custom_model_data":1},"model":"demo:item/good"},
-                  {"predicate":{"custom_model_data":2},"model":"demo:item/missing"}
+                  {"predicate":{"custom_model_data":2},"model":"demo:item/broken"}
                 ]}
                 """);
+        // Unreadable content fails strict publication (a model that exists nowhere is Java's missing model instead).
+        write(source, "assets/demo/models/item/broken.json", "{not json");
         ConversionException failure = assertThrows(ConversionException.class,
                 () -> compiler.build(List.of(pack), List.of()));
         assertEquals(1, failure.problems().size());
@@ -841,14 +862,17 @@ class BedrockPackCompilerTest {
         }
         ImageIO.write(guiImage, "PNG", source.resolve("assets/demo/textures/font/gui.png").toFile());
 
-        assertThrows(ConversionException.class, () -> new BedrockPackCompiler(root.resolve("mixed-font-strict"), config()).build(
-                List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of()));
+        // With the text layout the oversized GUI image only loses its picture; strict publication still passes.
+        BuildResult strict = new BedrockPackCompiler(root.resolve("mixed-font-strict"), config()).build(
+                List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
+        assertTrue(strict.problems().isEmpty(), strict.problems().toString());
         TwilightConfig diagnostic = new TwilightConfig(false, false, false, false, 40, 100, 10_000_000, 10_000,
                 false, false, List.of(), "auto", false, false, 3);
         BuildResult result = new BedrockPackCompiler(root.resolve("mixed-font-height-data"), diagnostic).build(
                 List.of(new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
         assertEquals(1, result.glyphs());
-        assertTrue(result.problems().stream().anyMatch(p -> p.contains("Bedrock UI adapter")));
+        assertTrue(Files.readString(result.outputDirectory().resolve("build-report.json"))
+                .contains("larger than Bedrock's glyph cell"));
 
         try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
             BufferedImage page = ImageIO.read(zip.getInputStream(zip.getEntry("font/glyph_E0.png")));

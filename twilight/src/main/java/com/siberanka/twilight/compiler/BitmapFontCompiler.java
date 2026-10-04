@@ -71,6 +71,9 @@ final class BitmapFontCompiler {
     private final Set<String> unsupportedBaselineProviders = new HashSet<>();
     private final Set<String> vanillaFallbackTextures = new HashSet<>();
     private int namedFonts;
+    /** Named fonts drawn from Java's own sheets at their vanilla size: vertical shift (units down), or null if mixed. */
+    private final Map<String, Integer> nativeFonts = new HashMap<>();
+    private final Set<String> mixedNativeFonts = new HashSet<>();
     private int namedGlyphs;
 
     BitmapFontCompiler(ResourceIndex resources, VanillaAssetCache vanillaAssets) {
@@ -282,6 +285,15 @@ final class BitmapFontCompiler {
                 row.getAsString().codePoints().filter(codePoint -> codePoint != 0)
                         .forEach(codePoint -> target.put(codePoint, NATIVE_TEXT));
             }
+            // At the sheet's vanilla height the characters keep Java's ordinary advances (only shifted vertically).
+            boolean accented = textureIdentifier.endsWith("/accented.png");
+            int vanillaHeight = accented ? 12 : 8, vanillaAscent = accented ? 10 : 7;
+            if (integer(provider, "height", 8) != vanillaHeight) mixedNativeFonts.add(font);
+            else {
+                int shift = vanillaAscent - integer(provider, "ascent", vanillaAscent);
+                Integer previous = nativeFonts.putIfAbsent(font, shift);
+                if (previous != null && previous != shift) mixedNativeFonts.add(font);
+            }
             return;
         }
         String texturePath = texturePath(textureIdentifier);
@@ -370,8 +382,13 @@ final class BitmapFontCompiler {
                             cellWidth, cellHeight) > FAINT_ALPHA;
                 }
             }
-            if (visible || !textLayout) {
+            if (!textLayout) {
                 problem("oversized bitmap glyphs require a Bedrock UI adapter", providerKey,
+                        font + " -> " + textureIdentifier + " (" + displayWidth + "x" + declaredHeight + ")");
+            } else if (visible) {
+                // Screen-sized overlays (fades, crate backdrops): the layout keeps their advance, so what
+                // follows them stays at Java's position; only the overlay itself is missing on Bedrock.
+                notice("glyphs larger than Bedrock's glyph cell are left out; text after them keeps Java's position",
                         font + " -> " + textureIdentifier + " (" + displayWidth + "x" + declaredHeight + ")");
             }
             return;
@@ -717,7 +734,11 @@ final class BitmapFontCompiler {
                 usableShades.put(original, copy);
             }
         });
-        return new TextLayoutTable(fonts, spacerFirst, SPACER_COUNT, TextLayoutTable.ORIGIN, textAdvances, usableShades);
+        Map<String, Integer> native_ = new TreeMap<>(nativeFonts);
+        native_.keySet().removeAll(mixedNativeFonts);
+        native_.remove(TextLayoutTable.DEFAULT_FONT);
+        return new TextLayoutTable(fonts, spacerFirst, SPACER_COUNT, TextLayoutTable.ORIGIN, textAdvances, usableShades)
+                .withNativeFonts(native_);
     }
 
     /** First inked column and inked width of each glyph cell, as Bedrock measures them (alpha above zero). */

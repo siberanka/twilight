@@ -83,6 +83,33 @@ class AdventureTextLayoutTest {
     }
 
     @Test
+    void textMovedBackOverAnImageBecomesStyledLayers() throws Exception {
+        // ItemsAdder style: a 176-wide image, 100 one-unit steps back, bold aqua text inherited from a parent.
+        Component title = Component.text().append(Component.text("\u1F03", NamedTextColor.WHITE))
+                .append(Component.text("\u4E03".repeat(100)))
+                .append(Component.text().color(NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+                        .append(Component.text("Shop")))
+                .build();
+        TextLayoutTable table = new TextLayoutTable(TABLE.fonts(), 0xF800, 32, TextLayoutTable.ORIGIN,
+                Map.of((int) 'S', 6f, (int) 'h', 6f, (int) 'o', 6f, (int) 'p', 6f));
+        List<Object> layers = AdventureTextLayout.layered(table, title, TextLayout.Mode.CONTAINER, null, true);
+        assertNotNull(layers);
+        assertEquals(2, layers.size());
+        assertTrue(text(layers.get(0)).contains("\uF700"));
+        TextComponent shop = ((Component) layers.get(1)).children().stream().map(TextComponent.class::cast)
+                .filter(child -> child.content().contains("Shop")).findFirst().orElseThrow();
+        assertEquals(NamedTextColor.AQUA, shop.color(), "inherited colour");
+        assertTrue(shop.hasDecoration(net.kyori.adventure.text.format.TextDecoration.BOLD), "inherited bold");
+        for (Component child : ((Component) layers.get(1)).children()) {
+            String content = ((TextComponent) child).content();
+            if (content.codePoints().anyMatch(table::isSpacer)) assertFalse(child.hasDecoration(
+                    net.kyori.adventure.text.format.TextDecoration.BOLD), "spacers stay unstyled");
+        }
+        // Without a move back the line stays a single label.
+        assertNull(AdventureTextLayout.layered(table, Component.text("\u1F03 Shop"), TextLayout.Mode.CONTAINER, null, true));
+    }
+
+    @Test
     void touchLayoutGetsGlyphSubstitutionWithoutSpacers() throws Exception {
         // Bedrock's pocket chest title is a centred label unrelated to Java geometry: no origin spacers.
         Component title = Component.text("\u4E03\u4E03\u1F03 Shop", NamedTextColor.WHITE);

@@ -1,6 +1,7 @@
 /* Copyright (c) 2026 siberanka. Licensed under the GNU LGPL v3.0 or later. */
 package com.siberanka.twilight.integration.text;
 
+import com.siberanka.twilight.text.LayeredTextLayout;
 import com.siberanka.twilight.text.TextLayout;
 import com.siberanka.twilight.text.TextLayoutTable;
 
@@ -102,6 +103,72 @@ final class AdventureTextLayout {
             return text.substring(0, end);
         }
         return "";
+    }
+
+    /**
+     * The line as Bedrock layers when Java moves back over earlier characters (see {@link LayeredTextLayout}):
+     * one component per layer, each a flat list of runs carrying their source component's full style
+     * (spacer runs are unstyled). Null when the line fits one layer or cannot be layered.
+     */
+    static List<Object> layered(TextLayoutTable table, Object component, TextLayout.Mode mode,
+                                Function<String, String> translations, boolean title) throws ReflectiveOperationException {
+        return layered(table, component, mode, translations, title, 1);
+    }
+
+    /** @param linesPerUnit label lines per unit of vertical shift, see {@link LayeredTextLayout#layout} */
+    static List<Object> layered(TextLayoutTable table, Object component, TextLayout.Mode mode,
+                                Function<String, String> translations, boolean title, int linesPerUnit)
+            throws ReflectiveOperationException {
+        return layered(table, component, mode, translations, title, linesPerUnit, false);
+    }
+
+    /** @param shadows see {@link LayeredTextLayout#layout(TextLayoutTable, List, TextLayout.Mode, int, boolean)} */
+    static List<Object> layered(TextLayoutTable table, Object component, TextLayout.Mode mode,
+                                Function<String, String> translations, boolean title, int linesPerUnit,
+                                boolean shadows) throws ReflectiveOperationException {
+        Adventure adventure = Adventure.of(component);
+        List<TextLayout.Segment> segments = new ArrayList<>(segments(adventure, component, translations, title));
+        List<Object> styles = new ArrayList<>();
+        effectiveStyles(adventure, component, null, styles, translations);
+        if (shadows) {
+            for (int index = 0; index < segments.size(); index++) {
+                segments.set(index, segments.get(index).withShadowless(adventure.shadowless(styles.get(index))));
+            }
+        }
+        LayeredTextLayout.Result result = LayeredTextLayout.layout(table, segments, mode, linesPerUnit, shadows);
+        if (result == null) return null;
+        List<Object> layers = new ArrayList<>();
+        for (int index = 0; index < result.count(); index++) {
+            List<LayeredTextLayout.Run> runs = result.layers().get(index);
+            // Leading newlines move the layer down; unstyled, before any formatting code of the layer.
+            Object root = adventure.text("\n".repeat(result.lines().get(index)));
+            for (LayeredTextLayout.Run run : runs) {
+                Object text = adventure.text(run.text());
+                root = adventure.append(root, run.segment() < 0 ? text : adventure.withStyle(text, styles.get(run.segment())));
+            }
+            layers.add(root);
+        }
+        return layers;
+    }
+
+    /** {@code text} followed by the component (an unstyled parent, so the component keeps its style). */
+    static Object prepend(Object component, String text) throws ReflectiveOperationException {
+        Adventure adventure = Adventure.of(component);
+        return adventure.append(adventure.text(text), component);
+    }
+
+    /** Plain text in the component family of {@code sample} (relocated Adventure or not). */
+    static Object plainText(Object sample, String text) throws ReflectiveOperationException {
+        return Adventure.of(sample).text(text);
+    }
+
+    /** Pre-order like {@link #collect}: each segment's style with everything it inherits. */
+    private static void effectiveStyles(Adventure adventure, Object component, Object inherited, List<Object> styles,
+                                        Function<String, String> translations) throws ReflectiveOperationException {
+        Object style = adventure.inherit(adventure.style.invoke(component), inherited);
+        styles.add(style);
+        if (!adventure.isText(component) && adventure.translated(component, translations) == null) return;
+        for (Object child : adventure.children(component)) effectiveStyles(adventure, child, style, styles, translations);
     }
 
     /** Glyph substitution only (touch layouts). */
@@ -234,6 +301,39 @@ final class AdventureTextLayout {
         String font(Object value, String inherited) throws ReflectiveOperationException {
             Object key = font.invoke(style.invoke(value));
             return key == null ? inherited : (String) keyString.invoke(key);
+        }
+
+        /** {@code own} with every property it leaves unset taken from {@code parent} (null: none). */
+        Object inherit(Object own, Object parent) throws ReflectiveOperationException {
+            if (parent == null) return own;
+            Class<?> styleType = this.style.getReturnType();
+            Class<?> strategy = Class.forName(styleType.getName() + "$Merge$Strategy", false, styleType.getClassLoader());
+            Object ifAbsent = null;
+            for (Object constant : strategy.getEnumConstants()) {
+                if (((Enum<?>) constant).name().equals("IF_ABSENT_ON_TARGET")) ifAbsent = constant;
+            }
+            return styleType.getMethod("merge", styleType, strategy).invoke(own, parent, ifAbsent);
+        }
+
+        /** A text component with exactly {@code style}. */
+        Object withStyle(Object text, Object style) throws ReflectiveOperationException {
+            return component.getMethod("style", this.style.getReturnType()).invoke(text, style);
+        }
+
+        /** Whether a (merged) style draws no shadow: a transparent shadow colour (Adventure 4.18+). */
+        boolean shadowless(Object style) throws ReflectiveOperationException {
+            Method method;
+            try {
+                method = style.getClass().getMethod("shadowColor");
+            } catch (NoSuchMethodException older) {
+                return false;
+            }
+            method.setAccessible(true);
+            Object colour = method.invoke(style);
+            if (colour == null) return false;
+            Method value = colour.getClass().getMethod("value");
+            value.setAccessible(true);
+            return (((Number) value.invoke(colour)).intValue() >>> 24) == 0;
         }
 
         /** Whether the component sets its own text colour. */

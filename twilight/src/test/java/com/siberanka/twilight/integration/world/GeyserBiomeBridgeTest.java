@@ -46,6 +46,31 @@ class GeyserBiomeBridgeTest {
     }
 
     @Test
+    void customBiomesTakeTheirSlotOrTheClosestSlotLook() throws Exception {
+        var blossom = new com.siberanka.twilight.world.BiomeLook(0xF29AC0, 0xE36FA4, 0x5DB7EF, 0x2A5C8A, 0xFFD8EC,
+                0x9CC8FF, 0.7f, 0.8f, 1);
+        var slots = new com.siberanka.twilight.world.BiomeSlots(List.of(
+                new com.siberanka.twilight.world.BiomeSlots.Slot(19, "taiga_hills", blossom, List.of("demo:blossom_vale"))));
+        Map<String, Integer> identifiers = new HashMap<>(Map.of("minecraft:plains", 1, "minecraft:snowy_plains", 12,
+                "minecraft:nether_wastes", 8));
+        var pink = NbtMap.builder().putFloat("temperature", 0.7f).putFloat("downfall", 0.8f)
+                .putCompound("effects", NbtMap.builder().putInt("grass_color", 0xF09CC2).putInt("foliage_color", 0xE070A0)
+                        .putInt("water_color", 0x5DB7EF).build())
+                .putCompound("attributes", NbtMap.builder().putString("minecraft:visual/fog_color", "#ffd8ec").build()).build();
+        var packet = new ClientboundRegistryDataPacket(Key.key("minecraft", "worldgen/biome"), List.of(
+                new RegistryEntry(Key.key("demo", "blossom_vale"), pink),
+                // Added after the pack was built: a near copy of the slot's look.
+                new RegistryEntry(Key.key("demo", "blossom_edge"), pink),
+                new RegistryEntry(Key.key("terralith", "glacial_chasm"), NbtMap.builder()
+                        .putFloat("temperature", -0.7f).putFloat("downfall", 0.5f).build())));
+        Map<String, String> added = GeyserBiomeBridge.register(packet, MATCHER, slots, identifiers);
+        assertEquals(Map.of("demo:blossom_vale", "taiga_hills", "demo:blossom_edge", "taiga_hills",
+                "terralith:glacial_chasm", "minecraft:snowy_plains"), added);
+        assertEquals(19, identifiers.get("demo:blossom_vale"));
+        assertEquals(19, identifiers.get("demo:blossom_edge"));
+    }
+
+    @Test
     void ignoresOtherRegistries() throws Exception {
         Map<String, Integer> identifiers = new HashMap<>(Map.of("minecraft:plains", 1));
         var packet = new ClientboundRegistryDataPacket(Key.key("minecraft", "dimension_type"), List.of(

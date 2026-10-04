@@ -13,17 +13,58 @@ HUDs. These are acceptance obligations, not a count of passing tests.
 
 ## Visual acceptance tests
 
-The [UI campaign](docs/UI_CAMPAIGN_2026-10-04.md) opened 104 real menus of two
-servers on Java and Bedrock: every window and 97 title bands match Java; the rest
-are differences of Bedrock's own text font. An original-art style suite covers the
-same menu techniques with publishable captures, including titles Java darkens and
-layered titles, which are not reproduced yet. The same report covers complete
-builds of six real servers and custom datapack biomes. The locally built
-[1.0.0-pre.7 JAR and checksum](artifacts/) accompany the source. Full visual parity
-is not established.
+Every capture below is original art or a vanilla scene from the isolated test
+server, taken on 4 October 2026 with the 1.0.0-pre.8 build on Java 26.2 and Bedrock
+1.26.5203.0 (Geyser 2.11.3). The animations alternate the Java and the Bedrock frame
+of the same menu: nothing moves because the art lands on the same pixels. Details,
+measurements and hashes are in [stacked images, nameplates and exact biomes](docs/LAYERS_BIOMES_2026-10-04.md).
 
-All screenshots below were captured on 4 October 2026 with the release build. Older
-reports keep their measurements:
+<table>
+  <tr>
+    <th>Stacked images: panel, banner, badge and text</th>
+    <th>Translucent highlight over the slots</th>
+  </tr>
+  <tr>
+    <td><img src="docs/images/acceptance/2026-10-04-layers/menus/stacked-four.gif" alt="Animation alternating the Java and Bedrock frames of a menu with four stacked images; nothing moves" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-layers/menus/highlight-row.gif" alt="Animation alternating Java and Bedrock: a translucent bar over the first slot row and icons over the header" width="100%"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Boss bar and action bar text drawn over images</th>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/acceptance/2026-10-04-layers/hud.png" alt="Java and Bedrock side by side: gold text over coins on the boss bar and bold text over icons on the action bar" width="100%"></td>
+  </tr>
+  <tr>
+    <th colspan="2">Nameplate: a text display riding a named villager (the vehicle's own name is hidden, as on Java)</th>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/acceptance/2026-10-04-layers/nameplate.png" alt="Java and Bedrock side by side: badge image and gold text above a villager without a name tag box" width="100%"></td>
+  </tr>
+  <tr>
+    <th>Custom datapack biome in its exact colours</th>
+    <th>Biome changes reach Bedrock without a rejoin</th>
+  </tr>
+  <tr>
+    <td><img src="docs/images/acceptance/2026-10-04-layers/biome.png" alt="Java and Bedrock side by side: grass of a custom biome in the same colour" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-layers/biome-live.gif" alt="Animation: a grid of 25 custom biomes on Bedrock changing colours after each fillbiome" width="100%"></td>
+  </tr>
+</table>
+
+Further side-by-side menus:
+[layered title](docs/images/acceptance/2026-10-04-layers/menus/layered-bold.png),
+[title without a colour](docs/images/acceptance/2026-10-04-layers/menus/header-uncoloured.png),
+[white title](docs/images/acceptance/2026-10-04-layers/menus/header-white.png),
+[icons and spaces](docs/images/acceptance/2026-10-04-layers/menus/icon-row.png),
+[negative-height shifts](docs/images/acceptance/2026-10-04-layers/menus/negative-height.png),
+[hex text](docs/images/acceptance/2026-10-04-layers/menus/hex-text.png) and
+[bold text](docs/images/acceptance/2026-10-04-layers/menus/bold-text.png). All nine
+styles land at offset 0, 0 in GUI units. Complete strict builds of seven production
+servers passed with the default configuration. The [UI campaign](docs/UI_CAMPAIGN_2026-10-04.md)
+covers 104 real menus of two servers (measurements only). The locally built
+[1.0.0-pre.8 JAR and checksum](artifacts/) accompany the source. Full visual parity
+is not established; known differences are listed in the report.
+
+Older reports keep their measurements:
 [real content](docs/REAL_CONTENT_REVIEW.md),
 [cloud anchors](docs/CLOUD_ANCHORS_2026-09-29.md),
 [mount heights](docs/DISPLAY_SEATS_2026-09-29.md),
@@ -35,39 +76,13 @@ reports keep their measurements:
 [text layout](docs/TEXT_LAYOUT_2026-10-03.md) and
 [text surfaces](docs/TEXT_SURFACES_2026-10-04.md).
 
-<table>
-  <tr><th>Java - menu title without a colour</th><th>Bedrock</th></tr>
-  <tr>
-    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/header-uncoloured-java.png" alt="Java draws the header image of an uncoloured title darkened" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/header-uncoloured-bedrock.png" alt="Bedrock shows the same darkened header at the same position" width="100%"></td>
-  </tr>
-  <tr><th>Java - white title</th><th>Bedrock</th></tr>
-  <tr>
-    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/header-white-java.png" alt="Java header image with a white title colour" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/header-white-bedrock.png" alt="Bedrock header image at the same position and colours" width="100%"></td>
-  </tr>
-  <tr><th>Java - icons, spaces and text</th><th>Bedrock</th></tr>
-  <tr>
-    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/icon-row-java.png" alt="Java title with coin and gem icons separated by space providers and coloured text" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/icon-row-bedrock.png" alt="Bedrock title with the icons and text at Java's positions" width="100%"></td>
-  </tr>
-  <tr><th>Java - layered title</th><th>Bedrock - not reproduced yet</th></tr>
-  <tr>
-    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/layered-bold-java.png" alt="Java draws a banner over the header and text inside it" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/layered-bold-bedrock.png" alt="Bedrock draws the banner after the header because text cannot move left" width="100%"></td>
-  </tr>
-  <tr><th>Java - datapack biome</th><th>Bedrock - closest vanilla biome</th></tr>
-  <tr>
-    <td><img src="docs/images/acceptance/2026-10-04-biomes/java.png" alt="Java grass in a custom datapack biome" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-10-04-biomes/bedrock-mapped.png" alt="Bedrock grass in the colours of the closest vanilla biome instead of the ocean fallback" width="100%"></td>
-  </tr>
-</table>
-
 ## Requirements
 
 - Java 21 or newer
 - Spigot, Paper, or Folia 1.21.4 or newer
 - Geyser with custom content enabled for generated mappings and packs
+- Bedrock clients of the current release; Twilight targets the newest Bedrock and Java versions first
+  (tested with Java 26.2 and Bedrock 1.26.5203.0) and older clients as far as Geyser supports them
 
 The release artifact is one server plugin: `Twilight.jar`. Fabric client support has ended.
 
@@ -79,13 +94,19 @@ The runtime collector inspects recipe results, online player inventories, modern
 
 ## Installation
 
-1. Put `Twilight.jar` in the server's `plugins` directory.
-2. Start the server once and review `plugins/Twilight/config.yml`.
-3. Keep `vanilla-override: false` unless replacing vanilla presentation is intentional.
-4. Run `/twilight scan`, then `/twilight convert`.
-5. Review `plugins/Twilight/reports`, `plugins/Twilight/logs`, and `plugins/Twilight/build/current`.
+1. Put `Twilight.jar` in the server's `plugins` directory and start the server. Nothing has to be
+   configured: Twilight finds the providers, builds, deploys to Geyser and reloads it.
+2. Optionally review `plugins/Twilight/config.yml`:
+   - `sources.providers`: per provider `auto` (default), `generated` (only the pack the provider
+     generates), `contents` (only its working folders) or `false`; `sources.datapacks` and
+     `sources.additional` for world datapacks and further packs.
+   - `geyser.send-pack-to-bedrock: false` when another plugin or a proxy sends the pack: every build is
+     also written to `plugins/Twilight/export` (`Twilight.mcpack` and Geyser item mappings).
+   - Keep `vanilla-override: false` unless replacing vanilla presentation is intentional.
+3. `/twilight scan` and `/twilight convert` run the same steps by hand. Results are in
+   `plugins/Twilight/reports`, `plugins/Twilight/logs` and `plugins/Twilight/build/current`.
 
-With default automation enabled, Twilight performs a delayed conversion after server/provider loading, deploys a validated build to the local Geyser directory, and reports a required server restart when item mappings differ from the startup set. `/geyser reload` cannot rebuild the item registry; unchanged mappings permit a controlled resource reload. A failed strict build never replaces the last known-good output.
+With default automation enabled, Twilight performs a delayed conversion after server/provider loading, deploys a validated build to the local Geyser directory, and reports a required server restart when item mappings differ from the startup set. `/geyser reload` cannot rebuild the item registry; unchanged mappings permit a controlled resource reload. A failed strict build never replaces the last known-good output; when no pack is deployed yet, the first build deploys without the reported content so Bedrock players are never left without a pack. No setting has to be changed for this: the defaults build, deploy and reload on their own.
 
 ## Commands
 
@@ -108,11 +129,12 @@ Each operation writes a dedicated UTF-8 log under `plugins/Twilight/logs`, for e
 - Layered 2D textures are composed without smoothing. Java cuboids remain volumetric Bedrock geometry with separate first/third-person left/right and head transforms. Handheld presentation follows the resolved Java model parent, while authored hand translation, rotation, and scale are preserved without implicit fitting.
 - Single-layer texture-only bows and crossbows reuse Bedrock's native pose, pull geometry, and animation controllers. Volumetric legacy pull stages retain separate Java geometry and display transforms behind one runtime-selected Bedrock attachable. Crossbow arrow/rocket loads and fishing-rod cast models become explicit Geyser predicates, preserving their distinct states.
 - Supported bitmap providers use adaptive 16-to-512-pixel cells with measured Java height/ascent alignment. Atlas growth preserves authored display dimensions; overflow beyond the supported bounds and custom spacing fail strict conversion. Six metric probes, 36 real glyphs and six further UI/HUD images were compared in both clients. Chest titles use Java font metrics (spacing, negative shifts, bearings and remapped characters); fractional sampling remains a limitation. Large atlases also increase memory use; see the wide glyph review. Named fonts contribute only globally safe, collision-free BMP private-use glyphs.
-- Text is laid out for Bedrock players with Java font metrics (`ui.java-text-layout: true`): fonts from all packs are combined like Java, spacing and negative-shift characters become invisible spacers, and characters Java remaps or named fonts use receive private-use aliases. Chest titles, chat, action bar, titles, boss bars, scoreboards, entity names and text displays are covered (`ui.java-text-surfaces: true`); item names and lore are not. Titles without a colour show their images darkened like Java (`ui.java-glyph-tint: true`), and the packs' translations reach Bedrock players (`ui.java-translations: true`). A glyph directly after text without a space can still differ by a unit, and layers moved back over an earlier image are not reproduced.
-- Datapack and plugin biomes are shown on Bedrock as the vanilla biome with the closest grass, foliage, water and fog colours instead of Geyser's ocean fallback (`world.bedrock-biome-matching: true`).
+- Text is laid out for Bedrock players with Java font metrics (`ui.java-text-layout: true`): fonts from all packs are combined like Java, spacing and negative-shift characters become invisible spacers, and characters Java remaps or named fonts use receive private-use aliases. Chest titles, chat, action bar, titles, boss bars, scoreboards, entity names and text displays are covered (`ui.java-text-surfaces: true`); item names and lore are not. Titles without a colour show their images darkened like Java (`ui.java-glyph-tint: true`), and the packs' translations reach Bedrock players (`ui.java-translations: true`). Text and images moved back over earlier ones (stacked menu art, CustomNameplates backgrounds) get one Bedrock label per layer in chest titles, the action bar and boss bars (`ui.java-text-layers: true`). A glyph directly after text without a space can still differ by a unit.
+- Datapack and plugin biomes keep their exact grass, foliage, water, fog and sky colours and their climate on Bedrock: the pack redefines 25 Bedrock biomes that only old worlds use. With more custom looks, the current RealisticSeasons season goes first and the rest show as the closest vanilla biome or slot; biome changes (`/fillbiome`, seasons) reach Bedrock players without a rejoin (`world.bedrock-biome-matching: true`).
+- Ridden players and mobs hide their Bedrock name like Java, so nameplate plugins show only their plate, and Bedrock's dark name tag box is hidden when CustomNameplates draws its own backgrounds (`ui.nametag-background: auto`).
 - Desktop chest screens receive Java's container layout (`ui.java-container-layout: true`): unwrapped titles, Java label positions and drawing order, and Java slot spacing for 1 to 6 rows. Twilight merges partial UI definitions instead of replacing Bedrock UI files; other containers and touch layouts stay vanilla.
 - With `vanilla-override: false`, normal Unicode cells in the Java default font never replace Bedrock's vanilla glyphs; the text layout gives them private-use aliases instead. Characters drawn from Java's own font sheets stay ordinary Bedrock text.
-- Texture atlas sprite renames (for example ItemsAdder's `ia:<number>` sprites) and protected PNGs with broken checksums are resolved like Java. Faces whose texture variable no model defines use Java's missing texture. Content Java rejects as well is reported as a notice in `build-report.json` instead of stopping a strict build.
+- Texture atlas sprite renames (for example ItemsAdder's `ia:<number>` sprites) and protected PNGs with broken checksums are resolved like Java. Faces whose texture variable no model defines use Java's missing texture. Content Java rejects or shows broken is converted the way Java shows it (missing textures and models, screen-sized overlay glyphs, vanilla sounds changed without `vanilla-override`) and reported as a notice in `build-report.json` instead of stopping a strict build.
 - Explicit `minecraft:` texture references missing from a custom pack can be resolved from a version-matched Mojang client JAR cached under `plugins/Twilight/cache`. Manifest metadata, size, and SHA-1 are verified before use; this never registers vanilla models as custom content.
 - Layered Java `sounds.json` registries, file/event references, OGG assets, weights, pitch, volume, streaming, and attenuation are converted to Bedrock sound definitions. Explicit vanilla sound dependencies use the same version-matched, hash-verified Mojang asset chain.
 - Vanilla items without a custom definition are never registered. `vanilla-override` defaults to `false`.

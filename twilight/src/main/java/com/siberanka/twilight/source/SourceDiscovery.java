@@ -47,12 +47,16 @@ public final class SourceDiscovery {
                     for (Path pluginDirectory : children.filter(Files::isDirectory).toList()) {
                         String provider = pluginDirectory.getFileName().toString().toLowerCase(Locale.ROOT);
                         if (!PROVIDERS.contains(provider)) continue;
-                        discoverProvider(provider, pluginDirectory, found, seen);
-                        if (provider.equals("itemsadder")) discoverRenamedItemsAdderOutput(pluginDirectory, found, seen);
+                        String mode = config.sourceMode(provider);
+                        if (mode.equals("off")) continue;
+                        discoverProvider(provider, mode, pluginDirectory, found, seen);
+                        if (provider.equals("itemsadder") && !mode.equals("contents")) {
+                            discoverRenamedItemsAdderOutput(pluginDirectory, found, seen);
+                        }
                     }
                 }
             }
-            for (Path world : worlds) discoverDatapacks(world, found, seen);
+            if (config.datapackSources()) for (Path world : worlds) discoverDatapacks(world, found, seen);
         }
         for (Path additional : config.additionalSources()) {
             addIfPack("configured", ContentSource.Kind.RESOURCE_PACK, additional, 900, found, seen);
@@ -62,7 +66,13 @@ public final class SourceDiscovery {
         return List.copyOf(found);
     }
 
-    private void discoverProvider(String provider, Path directory, List<ContentSource> found, Set<Path> seen) throws IOException {
+    /**
+     * @param mode {@code auto}: the generated pack Java players receive outranks the working folders, which fill
+     *             gaps; {@code generated}: only the generated pack; {@code contents}: only the working folders.
+     *             Item and model metadata are read in every mode.
+     */
+    private void discoverProvider(String provider, String mode, Path directory, List<ContentSource> found,
+                                  Set<Path> seen) throws IOException {
         try (var paths = Files.walk(directory, 6)) {
             for (Path path : paths.toList()) {
                 if (Files.isSymbolicLink(path) || ignored(directory, path)) continue;
@@ -76,6 +86,7 @@ public final class SourceDiscovery {
                         && !insidePack(path, directory);
                 boolean modelSource = Files.isDirectory(path) && path.getParent() != null &&
                         path.getParent().equals(directory) && (name.equals("blueprints") || name.equals("models"));
+                if (knownArchive && mode.equals("contents") || packDirectory && mode.equals("generated")) continue;
                 if (knownArchive || packDirectory) {
                     ContentSource.Kind kind = provider.equals("realisticseasons")
                             ? ContentSource.Kind.SEASONAL_PACK : ContentSource.Kind.RESOURCE_PACK;

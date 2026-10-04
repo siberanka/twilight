@@ -28,7 +28,11 @@ class TextureSetTest {
             assertEquals(8, atlas.height());
             assertEquals(Color.BLUE.getRGB(), ImageIO.read(new ByteArrayInputStream(atlas.png())).getRGB(0,0));
             assertEquals(Color.BLUE.getRGB(), TextureSet.layeredIcon(index, List.of("minecraft:block/fire_0"), vanilla).getRGB(0,0));
-            assertThrows(java.io.IOException.class, () -> TextureSet.atlas(index, List.of("unknown:block/fire_0"), vanilla));
+            // A texture that exists in no pack is Java's missing texture, recorded for the build report.
+            TextureSet.MISSING_FILES.get().clear();
+            var missing = TextureSet.atlas(index, List.of("unknown:block/fire_0"), vanilla);
+            assertEquals(0xFF000000, ImageIO.read(new ByteArrayInputStream(missing.png())).getRGB(0, 0));
+            assertTrue(TextureSet.MISSING_FILES.get().contains("unknown:block/fire_0"));
         }
     }
 

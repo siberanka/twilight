@@ -15,7 +15,27 @@ generation:
   download-vanilla-assets: true
 
 sources:
+  # Find the content Java players receive without any setup: every installed
+  # provider below is read from its own folders, and its own settings decide
+  # which pack it sends (for example ItemsAdder's hosting or Nexo's dispatch).
   auto-discover: true
+  # Per provider: true or auto (the generated pack Java players receive, with
+  # the provider's working folders filling gaps), generated (only the generated
+  # pack), contents (only the working folders, e.g. ItemsAdder's contents) or
+  # false/off (not read). Providers that are not listed are read automatically.
+  providers:
+    itemsadder: auto
+    nexo: auto
+    craftengine: auto
+    oraxen: auto
+    bettermodel: auto
+    modelengine: auto
+    customnameplates: auto
+    betterhud: auto
+    realisticseasons: auto
+  # Datapacks of the server's worlds (custom biomes, item models and fonts).
+  datapacks: true
+  # More resource packs or datapacks (folders or ZIPs), relative to the server.
   additional: []
 
 geyser:
@@ -23,6 +43,11 @@ geyser:
   deploy-after-build: true
   reload-after-deploy: true
   backups-to-keep: 3
+  # Let Geyser send the pack to Bedrock players. Every build is also written to
+  # plugins/Twilight/export (Twilight.mcpack and Geyser item mappings); turn this
+  # off when another plugin or a proxy sends that pack instead. Item mappings
+  # are still deployed to a local Geyser.
+  send-pack-to-bedrock: true
 
 ui:
   # Desktop chest screens use Java's container layout: the title is unwrapped,
@@ -47,6 +72,19 @@ ui:
   # laid-out glyphs on free private-use pages, used by such titles. Titles that
   # set a colour (usually white) are unaffected. Changing it requires a rebuild.
   java-glyph-tint: true
+  # Java draws text that moves back over earlier text or images (a banner over a
+  # header, a name over its nameplate background) on top of it. Bedrock labels
+  # only move forward: chest titles, the action bar and boss bars get up to four
+  # stacked labels, filled per player, so such lines overlap exactly as on Java,
+  # including vertical font shifts and text drawn without a shadow. Boss bars
+  # whose sprites the Java pack makes transparent stay hidden. Requires Geyser.
+  # Changing it requires a rebuild.
+  java-text-layers: true
+  # Bedrock draws a dark box behind every name tag. Java text displays choose
+  # their own background, and nameplate plugins make it transparent and draw
+  # images instead. auto: hide the box when CustomNameplates' name tags are on;
+  # hidden: always hide it; bedrock: keep it. Changing it requires a rebuild.
+  nametag-background: auto
   # Render Java text for Bedrock players with the resource packs' translations:
   # names of datapack and plugin content, and overrides such as a hidden
   # inventory label or an image as the ender chest title. Requires Geyser.
@@ -55,7 +93,11 @@ ui:
 world:
   # Geyser shows biomes it does not know (datapack biomes such as Terralith or
   # Incendium, and plugin biomes such as RealisticSeasons' seasonal ones) as the
-  # dimension's fallback biome. Show each as the vanilla biome with the closest
-  # grass, foliage, water and fog colours and precipitation instead. Requires
-  # Geyser and the vanilla client cache (generation.download-vanilla-assets).
+  # dimension's fallback biome. The pack redefines Bedrock biomes that only old
+  # worlds use with the exact grass, foliage, water, fog and sky colours and the
+  # climate of the server's custom biomes (25 looks; with more, the looks the
+  # vanilla biomes approximate worst). Every other custom biome shows as the
+  # closest vanilla biome or redefined look. Other plugins' packets are never
+  # changed. Requires Geyser and the vanilla client cache
+  # (generation.download-vanilla-assets); changes need a rebuild.
   bedrock-biome-matching: true
