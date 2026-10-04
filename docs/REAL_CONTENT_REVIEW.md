@@ -1,5 +1,7 @@
 # Real-content visual review — 2026-09-27
 
+> The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
+
 Twilight 1.0.0-pre.3 was tested with real tools, weapons, emoji, and menu images
 from the operator's BoxPVP-v2 and Survival-v5 installations. Survival-v3 was not
 present. The operator authorized publication of the reviewed screenshots below.
@@ -40,18 +42,18 @@ Strict conversion rejected those GUI glyphs instead of publishing a degraded men
 
 | Original model | Java reference | Bedrock final capture | Observation |
 |---|---|---|---|
-| `terraria:auto_generated/tin_axe` | [Java](images/acceptance/2026-09-27/java-box-axe-third.png) | [Bedrock](images/acceptance/2026-09-27/bedrock-final-box-axe-third.png) | Visible; edge-on holding direction is broadly similar, grip/scale parity unaccepted. |
-| `itemsadder:auto_generated/spinel_pickaxe` | [Java](images/acceptance/2026-09-27/java-box-pickaxe-third.png) | [Bedrock](images/acceptance/2026-09-27/bedrock-final-box-pickaxe-third.png) | Visible; flat item pose and exact grip remain unaccepted. |
-| `terraria:auto_generated/adamantite_sword` | [Java](images/acceptance/2026-09-27/java-box-sword-third.png) | [Bedrock](images/acceptance/2026-09-27/bedrock-final-box-sword-third.png) | Visible; exact pose/scale parity remains unaccepted. |
-| `ender_dragonset:axe` | [Java](images/acceptance/2026-09-27/java-survival-axe-third.png) | [Bedrock](images/acceptance/2026-09-27/bedrock-final-survival-axe-third.png) | Local third-person silhouette and downward orientation broadly agree. Full multi-view acceptance remains open. |
-| `mythic_weapons:pickaxe` | [Java](images/acceptance/2026-09-27/java-survival-pickaxe-third.png) | [Bedrock](images/acceptance/2026-09-27/bedrock-final-survival-pickaxe-third.png) | Broken/repeated texture segments improved; local third-person orientation broadly agrees. First-person differs. |
-| `gearforge_nature:sword` | [Java](images/acceptance/2026-09-27/java-survival-sword-third.png) | [Bedrock](images/acceptance/2026-09-27/bedrock-final-survival-sword-third.png) | Local third-person silhouette broadly agrees; animation parity is not implemented. |
+| `terraria:auto_generated/tin_axe` | Java | Bedrock | Visible; edge-on holding direction is broadly similar, grip/scale parity unaccepted. |
+| `itemsadder:auto_generated/spinel_pickaxe` | Java | Bedrock | Visible; flat item pose and exact grip remain unaccepted. |
+| `terraria:auto_generated/adamantite_sword` | Java | Bedrock | Visible; exact pose/scale parity remains unaccepted. |
+| `ender_dragonset:axe` | Java | Bedrock | Local third-person silhouette and downward orientation broadly agree. Full multi-view acceptance remains open. |
+| `mythic_weapons:pickaxe` | Java | Bedrock | Broken/repeated texture segments improved; local third-person orientation broadly agrees. First-person differs. |
+| `gearforge_nature:sword` | Java | Bedrock | Local third-person silhouette broadly agrees; animation parity is not implemented. |
 
 ### Pickaxe texture correction
 
 | Before final cuboid/UV/frame fixes | Final converted pack |
 |---|---|
-| ![Before: repeated/broken texture segments](images/acceptance/2026-09-27/bedrock-survival-pickaxe-third.png) | ![After: continuous pickaxe texture](images/acceptance/2026-09-27/bedrock-final-survival-pickaxe-third.png) |
+| Before: repeated/broken texture segments | After: continuous pickaxe texture |
 
 This fixes rotated element X/Y signs, face UV rotation, omitted Java UV defaults,
 and static sampling of the first authored animation frame. Animated textures do
@@ -62,7 +64,7 @@ local third-person pose, so observer presentation is still an open check.
 
 | Unchanged Java reference | Bedrock final pack — failed parity |
 |---|---|
-| ![Java first-person pickaxe](images/acceptance/2026-09-27/java-survival-pickaxe-first.png) | ![Bedrock pickaxe has a different first-person angle and framing](images/acceptance/2026-09-27/bedrock-final-survival-pickaxe-first.png) |
+| Java first-person pickaxe | Bedrock pickaxe has a different first-person angle and framing |
 
 ## Emoji and GUI probes
 
@@ -74,7 +76,7 @@ Therefore inline emoji alignment is **blocked**, not passed.
 
 | Java chat reference | Bedrock chat attempt — blocked |
 |---|---|
-| ![Java inline emoji reference](images/acceptance/2026-09-27/java-chat.png) | ![Bedrock chat UI absent during the probe](images/acceptance/2026-09-27/bedrock-final-chat-blocked.png) |
+| Java inline emoji reference | Bedrock chat UI absent during the probe |
 
 The menu probes put each original glyph in a plain 54-slot inventory title.
 These are font-rendering probes, not complete production plugin menus: production
@@ -84,12 +86,12 @@ production menu layout.
 
 | BoxPVP blank-menu glyph | Survival lands-menu glyph |
 |---|---|
-| ![Java blank-menu title probe](images/acceptance/2026-09-27/java-box-ui.png) | ![Java lands-menu title probe](images/acceptance/2026-09-27/java-survival-ui.png) |
+| Java blank-menu title probe | Java lands-menu title probe |
 
 Their declared display sizes are 192×170 and 236×245, which cannot fit a Bedrock
 16-pixel Unicode cell while retaining Java layout. Strict conversion now reports
 `oversized bitmap glyphs require a Bedrock UI adapter`. Custom spacing also
-requires a layout adapter. A [Bedrock inventory attempt](images/acceptance/2026-09-27/bedrock-final-ui-blocked.png)
+requires a layout adapter. A Bedrock inventory attempt
 showed no inventory UI; full GUI acceptance is unsupported/blocked.
 
 ## Live display bridge follow-up
@@ -101,7 +103,7 @@ MythicMobs integration), with 105 display entities in the Bedrock session.
 
 | Java attack pose | Bedrock attack pose |
 |---|---|
-| ![Java original model attack](images/acceptance/2026-09-27/java-model-attack-bridge.png) | ![Bedrock converted model attack](images/acceptance/2026-09-27/bedrock-model-attack-bridge.png) |
+| Java original model attack | Bedrock converted model attack |
 
 These are separate captures of the same looping animation, not synchronized
 frames. Model assembly and attack movement are observed; exact timing, lighting,
@@ -127,7 +129,7 @@ control pigs without an attached model are not counted as passing model probes.
 
 | Java, frozen ModelEngine attack | Bedrock, same frozen attack and camera position |
 |---|---|
-| ![Java ModelEngine attack](images/acceptance/2026-09-28/java-modelengine-attack.png) | ![Bedrock ModelEngine attack](images/acceptance/2026-09-28/bedrock-modelengine-attack.png) |
+| Java ModelEngine attack | Bedrock ModelEngine attack |
 
 The provider animation clock was frozen at approximately 0.20 seconds for this
 pose comparison. The low pose intersects the platform in both clients. Different
@@ -136,7 +138,7 @@ the sampled pose, not complete animation timing, fire animation, or tint parity.
 
 | Java, MythicMobs with ModelEngine | Bedrock, same stationary MythicMobs carrier |
 |---|---|
-| ![Java MythicMobs ModelEngine](images/acceptance/2026-09-28/java-mythic-modelengine-idle.png) | ![Bedrock MythicMobs ModelEngine](images/acceptance/2026-09-28/bedrock-mythic-modelengine-idle.png) |
+| Java MythicMobs ModelEngine | Bedrock MythicMobs ModelEngine |
 
 The front-facing centered model is the new MythicMobs spawn. Idle captures were
 not synchronized to the same animation frame. All four saved test-player death
@@ -164,7 +166,7 @@ This confirms item-resource conversion, not entity rig conversion. This initial 
 
 | Java stationary model/control scene | Bedrock after fresh join — custom models absent |
 |---|---|
-| ![Java BetterModel and MythicMobs stationary scene](images/acceptance/2026-09-27/java-model-final.png) | ![Bedrock control pigs visible but custom salamanders absent](images/acceptance/2026-09-27/bedrock-model-front-final.png) |
+| Java BetterModel and MythicMobs stationary scene | Bedrock control pigs visible but custom salamanders absent |
 
 The camera positions differ slightly, but both face the stationary test area.
 The two control pigs provide a visible scene reference. Both test players had

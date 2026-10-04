@@ -1,5 +1,7 @@
 # Java title layout for Bedrock chest screens - 3 October 2026
 
+> The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
+
 > Later change (1.0.0-pre.6): the layout now also covers chat, the action bar,
 > titles, boss bars, scoreboards, entity names and other container titles, and no
 > longer requires the container layout. See the
@@ -60,9 +62,9 @@ capture to Java, in GUI units: title band only, and the whole menu window.
 | Barrel (27) | private-use image `` | 0, 0 (pixel-identical band) | 0, 0 |
 
 Before this layout, the same barrel menu was one unit to the right
-([Bedrock before](images/acceptance/2026-10-03-text-layout/before-barrel-27-bedrock.png)).
-Now: [Java](images/acceptance/2026-10-03-text-layout/barrel-27-java.png) and
-[Bedrock](images/acceptance/2026-10-03-text-layout/barrel-27-bedrock.png).
+(Bedrock before).
+Now: Java and
+Bedrock.
 The other five menus use third-party GUI art and are published as measurements
 only ([measurements](images/acceptance/2026-10-03-text-layout/measurements.json),
 [hashes](images/acceptance/2026-10-03-text-layout/sha256.json)).

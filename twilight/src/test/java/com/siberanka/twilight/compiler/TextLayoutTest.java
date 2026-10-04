@@ -210,6 +210,41 @@ class TextLayoutTest {
     }
 
     @Test
+    void uncolouredContainerTitlesUseDarkenedCopies() throws Exception {
+        // Java multiplies glyph images by the text colour; a menu title without one is drawn at 0x404040.
+        image("icon", 8, 8, 0, 8);
+        font("""
+                {"providers":[{"type":"bitmap","file":"demo:font/icon.png","ascent":7,"height":8,"chars":["\\ue010"]}]}""");
+        Compiled compiled = compile(config(true));
+        assertTrue(compiled.problems().isEmpty(), compiled.problems().toString());
+        TextLayoutTable table = compiled.table();
+        TextLayoutTable.Entry icon = table.lookup(null, 0xE010);
+        int dark = table.shade(icon.bedrock());
+        assertTrue(dark >= 0xE200 && dark <= 0xF8FF && dark != icon.bedrock(), Integer.toHexString(dark));
+        assertTrue(icon.wide() >= 0 && table.shade(icon.wide()) >= 0, "the widened glyph is darkened too");
+
+        BufferedImage page = ImageIO.read(new java.io.ByteArrayInputStream(
+                compiled.files().get("font/glyph_%02X.png".formatted(dark >>> 8))));
+        int cell = page.getWidth() / 16, cellX = (dark & 15) * cell, cellY = (dark >>> 4 & 15) * cell;
+        java.util.Set<Integer> colours = new java.util.HashSet<>();
+        for (int y = 0; y < cell; y++) for (int x = 0; x < cell; x++) {
+            int argb = page.getRGB(cellX + x, cellY + y);
+            if (argb >>> 24 == 0xFF) colours.add(argb);
+        }
+        assertEquals(java.util.Set.of(0xFF400040), colours, "magenta multiplied by 0x404040");
+
+        String plain = TextLayout.layout(table, List.of(new TextLayout.Segment("\ue010\ue010", null))).texts().getFirst();
+        String darkened = TextLayout.layout(table, List.of(new TextLayout.Segment("\ue010\ue010", null, false, true)))
+                .texts().getFirst();
+        assertEquals(plain.replace(Character.toString(icon.bedrock()), Character.toString(dark)), darkened);
+        // A colour code ends the uncoloured part and a reset restores it, like Java's legacy formatting.
+        String mixed = TextLayout.layout(table, List.of(new TextLayout.Segment("\u00a7f\ue010\u00a7r\ue010", null, false,
+                true))).texts().getFirst();
+        assertTrue(mixed.indexOf(icon.bedrock()) >= 0 && mixed.indexOf(icon.bedrock()) < mixed.indexOf(dark), mixed);
+        assertEquals(-1, table.shade(table.spacer(2)), "spacers are invisible either way");
+    }
+
+    @Test
     void javaFontSheetsStayBedrockTextInsteadOfImageAliases() throws Exception {
         // CustomNameplates-style shifted text: a named font reusing Java's own font sheets (absent here,
         // as on servers without the vanilla cache) next to a real icon. Copying thousands of letters as

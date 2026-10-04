@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 /**
  * Applies {@link TextLayout} to an Adventure component tree without linking against
@@ -44,7 +45,7 @@ final class AdventureTextLayout {
     /** @param substituteOnly touch layout: replace glyphs without Java positioning (see {@link TextLayout#substitute}) */
     static Object layoutTitle(TextLayoutTable table, Object title, boolean substituteOnly)
             throws ReflectiveOperationException {
-        return substituteOnly ? substitute(table, title) : layout(table, title, TextLayout.Mode.CONTAINER);
+        return substituteOnly ? substitute(table, title, true) : layout(table, title, TextLayout.Mode.CONTAINER, null, true);
     }
 
     /**
@@ -53,23 +54,66 @@ final class AdventureTextLayout {
      */
     static Object layout(TextLayoutTable table, Object component, TextLayout.Mode mode)
             throws ReflectiveOperationException {
+        return layout(table, component, mode, null);
+    }
+
+    /**
+     * @param translations the string Java players see for a translation key that resource packs define,
+     *                     or null (such argument-free translatable components are laid out as text)
+     */
+    static Object layout(TextLayoutTable table, Object component, TextLayout.Mode mode,
+                         Function<String, String> translations) throws ReflectiveOperationException {
+        return layout(table, component, mode, translations, false);
+    }
+
+    /** @param title a container title, whose uncoloured images Java darkens (see {@link TextLayoutTable#shade}) */
+    static Object layout(TextLayoutTable table, Object component, TextLayout.Mode mode,
+                         Function<String, String> translations, boolean title) throws ReflectiveOperationException {
         Adventure adventure = Adventure.of(component);
-        List<TextLayout.Segment> segments = segments(adventure, component);
+        List<TextLayout.Segment> segments = segments(adventure, component, translations, title);
         TextLayout.Result result = TextLayout.layout(table, segments, mode);
         boolean origin = mode == TextLayout.Mode.CONTAINER && table.containerOrigin() > 0;
         if (result.customCharacters() == 0 && !origin) return component;
-        Object rebuilt = rebuild(adventure, component, result.texts(), new int[]{0});
-        if (result.suffix().isEmpty()) return rebuilt;
-        // An unstyled wrapper keeps the padding free of the text's own style (bold changes advances).
-        return adventure.append(adventure.append(adventure.text(""), rebuilt), adventure.text(result.suffix()));
+        List<String> texts = new ArrayList<>(result.texts());
+        String lead = boldLead(table, segments, texts);
+        Object rebuilt = rebuild(adventure, component, texts, new int[]{0}, translations);
+        if (result.suffix().isEmpty() && lead.isEmpty()) return rebuilt;
+        // An unstyled wrapper keeps the padding free of the text's own style: Bedrock widens bold spacers.
+        Object wrapper = adventure.text("");
+        if (!lead.isEmpty()) wrapper = adventure.append(wrapper, adventure.text(lead));
+        wrapper = adventure.append(wrapper, rebuilt);
+        return result.suffix().isEmpty() ? wrapper : adventure.append(wrapper, adventure.text(result.suffix()));
+    }
+
+    /**
+     * Removes the spacers that start a line inside bold text and returns them, so they can precede the
+     * component unstyled (Bedrock draws bold spacers wider, moving the whole line).
+     */
+    private static String boldLead(TextLayoutTable table, List<TextLayout.Segment> segments, List<String> texts) {
+        for (int index = 0; index < texts.size(); index++) {
+            String text = texts.get(index);
+            if (text.isEmpty()) continue;
+            if (!segments.get(index).bold() || segments.get(index).text() == null) return "";
+            int end = 0;
+            while (end < text.length() && table.isSpacer(text.codePointAt(end))) {
+                end += Character.charCount(text.codePointAt(end));
+            }
+            texts.set(index, text.substring(end));
+            return text.substring(0, end);
+        }
+        return "";
     }
 
     /** Glyph substitution only (touch layouts). */
     static Object substitute(TextLayoutTable table, Object component) throws ReflectiveOperationException {
+        return substitute(table, component, false);
+    }
+
+    static Object substitute(TextLayoutTable table, Object component, boolean title) throws ReflectiveOperationException {
         Adventure adventure = Adventure.of(component);
-        TextLayout.Result result = TextLayout.substitute(table, segments(adventure, component));
+        TextLayout.Result result = TextLayout.substitute(table, segments(adventure, component, null, title));
         if (result.customCharacters() == 0) return component;
-        return rebuild(adventure, component, result.texts(), new int[]{0});
+        return rebuild(adventure, component, result.texts(), new int[]{0}, null);
     }
 
     /** Lays out plain default-font text, such as the signed content of a player chat message. */
@@ -85,50 +129,60 @@ final class AdventureTextLayout {
         return adventure.append(adventure.text(origin), title);
     }
 
-    private static List<TextLayout.Segment> segments(Adventure adventure, Object component)
+    private static List<TextLayout.Segment> segments(Adventure adventure, Object component,
+                                                     Function<String, String> translations, boolean title)
             throws ReflectiveOperationException {
         List<TextLayout.Segment> segments = new ArrayList<>();
-        collect(adventure, component, null, false, segments);
+        // A title's text is uncoloured (shaded) until a component sets a colour.
+        collect(adventure, component, null, false, !title, segments, translations);
         return segments;
     }
 
     /** Pre-order: a text component's content precedes its children; other components are opaque. */
     private static void collect(Adventure adventure, Object component, String inheritedFont, boolean inheritedBold,
-                                List<TextLayout.Segment> segments) throws ReflectiveOperationException {
+                                boolean inheritedColour, List<TextLayout.Segment> segments,
+                                Function<String, String> translations) throws ReflectiveOperationException {
         String font = adventure.font(component, inheritedFont);
         boolean bold = adventure.bold(component, inheritedBold);
-        if (!adventure.isText(component)) {
-            segments.add(new TextLayout.Segment(null, font, bold));
+        boolean coloured = inheritedColour || adventure.coloured(component);
+        String translated = adventure.translated(component, translations);
+        if (!adventure.isText(component) && translated == null) {
+            segments.add(new TextLayout.Segment(null, font, bold, !coloured));
             return;
         }
-        segments.add(new TextLayout.Segment(adventure.content(component), font, bold));
-        for (Object child : adventure.children(component)) collect(adventure, child, font, bold, segments);
+        segments.add(new TextLayout.Segment(translated != null ? translated : adventure.content(component), font, bold,
+                !coloured));
+        for (Object child : adventure.children(component)) {
+            collect(adventure, child, font, bold, coloured, segments, translations);
+        }
     }
 
-    private static Object rebuild(Adventure adventure, Object component, List<String> texts, int[] cursor)
-            throws ReflectiveOperationException {
+    private static Object rebuild(Adventure adventure, Object component, List<String> texts, int[] cursor,
+                                  Function<String, String> translations) throws ReflectiveOperationException {
         String replacement = texts.get(cursor[0]++);
-        if (!adventure.isText(component)) {
+        boolean translated = adventure.translated(component, translations) != null;
+        if (!adventure.isText(component) && !translated) {
             return replacement.isEmpty() ? component : adventure.append(adventure.text(replacement), component);
         }
-        Object rebuilt = replacement.equals(adventure.content(component)) ? component
+        Object rebuilt = translated ? adventure.styled(adventure.text(replacement), component)
+                : replacement.equals(adventure.content(component)) ? component
                 : adventure.withContent(component, replacement);
         List<?> children = adventure.children(component);
         if (children.isEmpty()) return rebuilt;
         List<Object> replaced = new ArrayList<>(children.size());
         boolean changed = false;
         for (Object child : children) {
-            Object next = rebuild(adventure, child, texts, cursor);
+            Object next = rebuild(adventure, child, texts, cursor, translations);
             changed |= next != child;
             replaced.add(next);
         }
-        return changed ? adventure.withChildren(rebuilt, replaced) : rebuilt;
+        return changed || translated ? adventure.withChildren(rebuilt, replaced) : rebuilt;
     }
 
     /** Adventure access through the (possibly relocated) runtime classes of a component. */
     record Adventure(Class<?> component, Class<?> textComponent, Method children, Method withChildren,
                      Method style, Method font, Method keyString, Method content, Method withContent,
-                     Method text, Method append, Method decoration, Object boldDecoration) {
+                     Method text, Method append, Method decoration, Object boldDecoration, Method color) {
         static Adventure of(Object sample) throws ReflectiveOperationException {
             Adventure cached = ADVENTURE.get(sample.getClass());
             if (cached != null) return cached;
@@ -151,16 +205,40 @@ final class AdventureTextLayout {
                     component.getMethod("style"), style.getMethod("font"), key.getMethod("asString"),
                     textComponent.getMethod("content"), textComponent.getMethod("content", String.class),
                     component.getMethod("text", String.class), component.getMethod("append", component),
-                    style.getMethod("decoration", decorations), bold);
+                    style.getMethod("decoration", decorations), bold, style.getMethod("color"));
             ADVENTURE.put(sample.getClass(), adventure);
             return adventure;
         }
 
         boolean isText(Object value) { return textComponent.isInstance(value); }
 
+        /** The pack string of an argument-free translatable component, or null. */
+        String translated(Object value, Function<String, String> translations) throws ReflectiveOperationException {
+            if (translations == null || isText(value)) return null;
+            Class<?> type = value.getClass();
+            Method key = null, arguments = null;
+            for (Class<?> contract : type.getInterfaces()) {
+                if (!contract.getName().endsWith(".text.TranslatableComponent")) continue;
+                key = contract.getMethod("key");
+                arguments = contract.getMethod("arguments");
+            }
+            if (key == null || !((List<?>) arguments.invoke(value)).isEmpty()) return null;
+            return translations.apply((String) key.invoke(value));
+        }
+
+        /** A text component carrying {@code source}'s style. */
+        Object styled(Object text, Object source) throws ReflectiveOperationException {
+            return component.getMethod("style", this.style.getReturnType()).invoke(text, this.style.invoke(source));
+        }
+
         String font(Object value, String inherited) throws ReflectiveOperationException {
             Object key = font.invoke(style.invoke(value));
             return key == null ? inherited : (String) keyString.invoke(key);
+        }
+
+        /** Whether the component sets its own text colour. */
+        boolean coloured(Object value) throws ReflectiveOperationException {
+            return color.invoke(style.invoke(value)) != null;
         }
 
         /** Whether Java renders the component bold: TRUE/FALSE set it, NOT_SET inherits. */

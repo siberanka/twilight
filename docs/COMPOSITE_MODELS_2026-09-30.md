@@ -1,5 +1,7 @@
 # New samples and composite transforms — 30 September–1 October 2026
 
+> The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
+
 New real-source samples exposed a conversion defect: static composite children
 lost their individual Java display transforms. BetterModel's `demon_knight`
 head contains 27 child models with different `fixed` rotations. Merging their
@@ -42,8 +44,8 @@ its full build hash in [results.json](images/acceptance/2026-09-30-composites/re
 
 | Java reference | Bedrock before | Bedrock after |
 | --- | --- | --- |
-| ![Java demon knight](images/acceptance/2026-09-30-composites/bettermodel-demon_knight-idle-java.png) | ![Detached head parts before correction](images/acceptance/2026-09-30-composites/before-bettermodel-demon_knight-idle-bedrock.png) | ![Assembled head after correction](images/acceptance/2026-09-30-composites/bettermodel-demon_knight-idle-bedrock.png) |
-| ![Java blue wizard](images/acceptance/2026-09-30-composites/bettermodel-blue_wizard-idle-java.png) | ![Incorrect head tilt before correction](images/acceptance/2026-09-30-composites/before-bettermodel-blue_wizard-idle-bedrock.png) | ![Corrected child pose](images/acceptance/2026-09-30-composites/bettermodel-blue_wizard-idle-bedrock.png) |
+| Java demon knight | Detached head parts before correction | Assembled head after correction |
+| Java blue wizard | Incorrect head tilt before correction | Corrected child pose |
 
 | Sample | Checks | Observed result |
 | --- | --- | --- |
@@ -71,7 +73,7 @@ Neither source was modified to make the test pass.
 
 | Java inventory | Bedrock inventory |
 | --- | --- |
-| ![36 Java references including two missing-texture cells](images/acceptance/2026-09-30-composites/inventory-new36-java.png) | ![35 rendered previews and one unmapped paper item](images/acceptance/2026-09-30-composites/inventory-new36-bedrock.png) |
+| 36 Java references including two missing-texture cells | 35 rendered previews and one unmapped paper item |
 
 World cameras used the same commanded positions and directions in the two
 clients. Client aspect ratios, UI scales and renderers differ. After-fix

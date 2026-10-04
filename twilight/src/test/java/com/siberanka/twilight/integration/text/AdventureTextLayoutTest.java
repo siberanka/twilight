@@ -40,6 +40,49 @@ class AdventureTextLayoutTest {
     }
 
     @Test
+    void onlyUncolouredContainerTitlesAreDarkened() throws Exception {
+        TextLayoutTable shaded = new TextLayoutTable(TABLE.fonts(), 0xF800, 32, TextLayoutTable.ORIGIN, Map.of(),
+                Map.of(0xF700, 0xF701));
+        Component uncoloured = Component.text("\u4E03\u4E03\u1F03");
+        assertTrue(text(AdventureTextLayout.layoutTitle(shaded, uncoloured)).contains("\uF701"));
+        assertTrue(text(AdventureTextLayout.layoutTitle(shaded, uncoloured, true)).contains("\uF701"), "touch layout");
+        // A colour anywhere up the tree replaces Java's default title colour.
+        Component white = Component.text().color(NamedTextColor.WHITE).append(uncoloured).build();
+        assertTrue(text(AdventureTextLayout.layoutTitle(shaded, white)).contains("\uF700"));
+        // Other surfaces default to white text: nothing is darkened.
+        assertTrue(text(AdventureTextLayout.layout(shaded, uncoloured, TextLayout.Mode.LEFT)).contains("\uF700"));
+    }
+
+    private static String text(Object component) {
+        StringBuilder out = new StringBuilder();
+        java.util.ArrayDeque<Component> pending = new java.util.ArrayDeque<>(List.of((Component) component));
+        while (!pending.isEmpty()) {
+            Component next = pending.pop();
+            if (next instanceof TextComponent text) out.append(text.content());
+            List<Component> children = new java.util.ArrayList<>(next.children());
+            java.util.Collections.reverse(children);
+            children.forEach(pending::push);
+        }
+        return out.toString();
+    }
+
+    @Test
+    void originSpacersOfBoldTitlesStayUnstyled() throws Exception {
+        // '&b&lShop' as Paper deserializes it: Bedrock draws bold spacers wider, which moved the whole title.
+        Component title = Component.text("Shop", NamedTextColor.AQUA, net.kyori.adventure.text.format.TextDecoration.BOLD);
+        Component laidOut = (Component) AdventureTextLayout.layoutTitle(TABLE, title);
+        TextComponent lead = (TextComponent) laidOut.children().getFirst();
+        TextComponent bold = (TextComponent) laidOut.children().get(1);
+        assertEquals(net.kyori.adventure.text.format.TextDecoration.State.NOT_SET,
+                laidOut.decoration(net.kyori.adventure.text.format.TextDecoration.BOLD));
+        assertFalse(lead.content().isEmpty());
+        assertTrue(lead.content().codePoints().allMatch(TABLE::isSpacer), lead.content());
+        assertEquals("Shop", bold.content());
+        assertTrue(bold.hasDecoration(net.kyori.adventure.text.format.TextDecoration.BOLD));
+        assertEquals(TextLayout.layout(TABLE, "Shop").texts().getFirst(), lead.content() + bold.content());
+    }
+
+    @Test
     void touchLayoutGetsGlyphSubstitutionWithoutSpacers() throws Exception {
         // Bedrock's pocket chest title is a centred label unrelated to Java geometry: no origin spacers.
         Component title = Component.text("\u4E03\u4E03\u1F03 Shop", NamedTextColor.WHITE);
@@ -67,6 +110,28 @@ class AdventureTextLayoutTest {
         assertSame(chest, laidOut.children().getFirst());
         int advance = spacers.codePoints().map(cp -> cp - 0xF800 + 2).sum();
         assertEquals(TextLayoutTable.ORIGIN, advance, "translations start at Java's title origin");
+    }
+
+    @Test
+    void packTranslationsAreLaidOutLikeText() throws Exception {
+        // A resource pack turns container.enderchest into a GUI image; Java players see that image.
+        java.util.function.Function<String, String> translations =
+                key -> key.equals("container.enderchest") ? "\u00a7f\u1F03" : null;
+        Component title = Component.translatable("container.enderchest", NamedTextColor.DARK_GRAY);
+        Component laidOut = (Component) AdventureTextLayout.layout(TABLE, title, TextLayout.Mode.CONTAINER, translations);
+        assertTrue(laidOut instanceof TextComponent, laidOut.getClass().getName());
+        String content = ((TextComponent) laidOut).content();
+        // The colour code keeps its place; the origin spacers follow it, then the image.
+        assertTrue(content.startsWith("\u00a7f") && content.endsWith("\uF700"), content);
+        assertEquals(NamedTextColor.DARK_GRAY, laidOut.color());
+
+        // Keys the packs do not define, and components with arguments, stay translatable for Geyser.
+        Component vanilla = Component.translatable("container.chest");
+        assertSame(vanilla, ((Component) AdventureTextLayout.layout(TABLE, vanilla, TextLayout.Mode.CONTAINER, translations))
+                .children().getFirst());
+        Component withArgument = Component.translatable("container.enderchest", Component.text("x"));
+        assertSame(withArgument, ((Component) AdventureTextLayout.layout(TABLE, withArgument, TextLayout.Mode.CONTAINER,
+                translations)).children().getFirst());
     }
 
     @Test

@@ -1,5 +1,7 @@
 # Extended real-content checks — 29–30 September 2026
 
+> The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
+
 **Automatic conversion is not lossless.** The extended run found and corrected
 inventory preview rendering and one source-discovery blocker, but custom menu layouts, animated textures and
 several source dependencies still prevent full Java/Bedrock parity.
@@ -31,7 +33,7 @@ passed **77 tests across 18 suites**.
 
 | Java: 36 source examples | Bedrock: automatic model previews |
 |---|---|
-| ![Java inventory](images/acceptance/2026-09-30-inventory/inventory-36-java.png) | ![Bedrock inventory](images/acceptance/2026-09-30-inventory/inventory-36-bedrock.png) |
+| Java inventory | Bedrock inventory |
 
 The [slot list and measurements](images/acceptance/2026-09-30-inventory/measurements.json)
 identify every sample. The final fixture includes 70 BetterModel definitions and
@@ -129,8 +131,8 @@ under `ai/`; they do not require repeated manual reading of client dialogs.
 
 | Skills background probe: Java | Skills background probe: Bedrock (unsupported) |
 |---|---|
-| ![Java abilities background](images/acceptance/2026-09-30-inventory/ui-abilities_menu-java.png) | ![Bedrock missing background](images/acceptance/2026-09-30-inventory/ui-abilities_menu-bedrock.png) |
+| Java abilities background | Bedrock missing background |
 
 | Stationary MythicMobs model: Java | Stationary MythicMobs model: Bedrock |
 |---|---|
-| ![Java salamander](images/acceptance/2026-09-30-inventory/mythic-salamander-java.png) | ![Bedrock salamander](images/acceptance/2026-09-30-inventory/mythic-salamander-bedrock.png) |
+| Java salamander | Bedrock salamander |

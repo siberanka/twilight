@@ -1,5 +1,7 @@
 # Wide bitmap glyphs and UI images - 2 October 2026
 
+> The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
+
 Twilight now enlarges a Unicode atlas cell when a Java bitmap needs more space.
 It preserves the authored display dimensions instead of shrinking a wide rank
 or menu image into a 16-pixel cell. The formerly omitted 41-by-9 rank and six
@@ -19,7 +21,7 @@ In the tested Bedrock client, one texture pixel remains one GUI unit. The cell
 origin relative to ordinary text is `4 - cellSize / 2`; placing the bitmap at
 `cellSize / 2 + 3 - ascent` therefore reproduces Java's `7 - ascent` top offset.
 Six equal 9-by-9 probes on different page sizes confirmed this relationship.
-The [native calibration capture](images/acceptance/2026-10-02-wide-fonts/native-calibration-bedrock.png)
+The native calibration capture
 is diagnostic evidence, separate from the compiler-output screenshots below.
 The diagnostic pages were removed before acceptance of actual compiler output.
 
@@ -72,15 +74,15 @@ coverage, not hundreds of individually verified visual passes.
 
 | Test | Java | Bedrock |
 | --- | --- | --- |
-| Six metric probes | [Reference](images/acceptance/2026-10-02-wide-fonts/probes-java.png) | [Converted](images/acceptance/2026-10-02-wide-fonts/probes-bedrock.png) |
-| 36 real glyphs, including wide rank | [Reference](images/acceptance/2026-10-02-wide-fonts/real-java.png) | [All visible](images/acceptance/2026-10-02-wide-fonts/real-bedrock.png) |
-| Barrel image in chat | [Reference](images/acceptance/2026-10-02-wide-fonts/wide-1-java.png) | [Converted](images/acceptance/2026-10-02-wide-fonts/wide-1-bedrock.png) |
-| Portrait | [Reference](images/acceptance/2026-10-02-wide-fonts/wide-2-java.png) | [Converted](images/acceptance/2026-10-02-wide-fonts/wide-2-bedrock.png) |
-| Negative-ascent HUD image | [Reference](images/acceptance/2026-10-02-wide-fonts/wide-3-java.png) | [Sampling difference](images/acceptance/2026-10-02-wide-fonts/wide-3-bedrock.png) |
-| Lands image | [Reference](images/acceptance/2026-10-02-wide-fonts/wide-4-java.png) | [Left padding differs](images/acceptance/2026-10-02-wide-fonts/wide-4-bedrock.png) |
-| Leaderboard image | [Reference](images/acceptance/2026-10-02-wide-fonts/wide-5-java.png) | [Converted](images/acceptance/2026-10-02-wide-fonts/wide-5-bedrock.png) |
-| Exit banner | [Reference](images/acceptance/2026-10-02-wide-fonts/wide-6-java.png) | [Sampling difference](images/acceptance/2026-10-02-wide-fonts/wide-6-bedrock.png) |
-| Actual 36-item inventory with barrel title | [Darkened image overlays slots](images/acceptance/2026-10-02-wide-fonts/menu-java.png) | [Title image clipped by native label](images/acceptance/2026-10-02-wide-fonts/menu-bedrock.png) |
+| Six metric probes | Reference | Converted |
+| 36 real glyphs, including wide rank | Reference | All visible |
+| Barrel image in chat | Reference | Converted |
+| Portrait | Reference | Converted |
+| Negative-ascent HUD image | Reference | Sampling difference |
+| Lands image | Reference | Left padding differs |
+| Leaderboard image | Reference | Converted |
+| Exit banner | Reference | Sampling difference |
+| Actual 36-item inventory with barrel title | Darkened image overlays slots | Title image clipped by native label |
 
 The inventory pair is a **recorded failure**, not successful custom-menu
 adaptation. The glyph works in chat but exceeds the native title label's space.

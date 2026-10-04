@@ -41,6 +41,12 @@ final class BitmapFontCompiler {
     private static final int LAST_ALIAS_PAGE = 0xF8;
     /** Wide variants (one invisible trailing column) are generated for glyphs up to this cell size. */
     private static final int MAX_WIDE_CELL = 64;
+    /**
+     * Java multiplies bitmap glyphs by the text colour and draws a container title without one at
+     * 0x404040, darkening its images. Bedrock never tints private-use glyphs, so such titles use
+     * copies pre-multiplied by this channel value.
+     */
+    static final int TITLE_SHADE = 0x40;
     /** Oversized images whose most opaque pixel stays at or below this alpha are spacing, not art. */
     private static final int FAINT_ALPHA = 25;
     /** A bitmap drawn this far above or below the line is the off-screen spacing idiom, not an image. */
@@ -54,6 +60,7 @@ final class BitmapFontCompiler {
     private final VanillaAssetCache vanillaAssets;
     private final boolean vanillaOverride;
     private final boolean textLayout;
+    private final boolean shadedCopies;
     private final Map<String, ProblemBucket> problemGroups = new LinkedHashMap<>();
     // Content Java itself rejects: Bedrock already matches Java, so it is reported without failing a build.
     private final Map<String, ProblemBucket> noticeGroups = new LinkedHashMap<>();
@@ -76,6 +83,13 @@ final class BitmapFontCompiler {
 
     BitmapFontCompiler(ResourceIndex resources, VanillaAssetCache vanillaAssets, boolean vanillaOverride,
                        boolean textLayout) {
+        this(resources, vanillaAssets, vanillaOverride, textLayout, false);
+    }
+
+    /** @param shadedCopies give laid-out glyphs copies darkened like Java's uncoloured container titles */
+    BitmapFontCompiler(ResourceIndex resources, VanillaAssetCache vanillaAssets, boolean vanillaOverride,
+                       boolean textLayout, boolean shadedCopies) {
+        this.shadedCopies = shadedCopies && textLayout;
         this.resources = resources;
         this.vanillaAssets = vanillaAssets;
         this.vanillaOverride = vanillaOverride;
@@ -107,6 +121,7 @@ final class BitmapFontCompiler {
         int spacerPage = layoutActive ? freePage(Set.of()) : -1;
         Map<Integer, Integer> aliases = layoutActive ? allocateAliases(spacerPage) : Map.of();
         Map<Integer, Integer> wide = layoutActive ? allocateWideVariants(spacerPage) : Map.of();
+        Map<Integer, Integer> shades = layoutActive && shadedCopies ? allocateShades(spacerPage, wide) : Map.of();
 
         Map<Integer, List<Glyph>> pages = new LinkedHashMap<>();
         glyphs.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry ->
@@ -120,7 +135,7 @@ final class BitmapFontCompiler {
         TextLayoutTable table = null;
         if (layoutActive) {
             packFiles.put("font/glyph_%02X.png".formatted(spacerPage), TextureSet.png(spacerPage()));
-            table = layoutTable(wide, ink, spacerPage << 8, vanillaTextAdvances());
+            table = layoutTable(wide, shades, ink, spacerPage << 8, vanillaTextAdvances());
             packFiles.put(TextLayoutTable.PATH, table.toJson().toString().getBytes(StandardCharsets.UTF_8));
         }
         List<String> problems = new ArrayList<>(problemGroups.entrySet().stream()
@@ -129,7 +144,7 @@ final class BitmapFontCompiler {
                 " supplementary-plane glyph(s) cannot be represented by Bedrock BMP pages");
         if (!unsupportedBaselineProviders.isEmpty()) problems.add(unsupportedBaselineProviders.size() +
                 " invalid Java bitmap height/ascent provider(s) were skipped");
-        int direct = glyphs.size() - aliases.size() - wide.size();
+        int direct = glyphs.size() - aliases.size() - wide.size() - shades.size();
         List<String> notices = noticeGroups.entrySet().stream()
                 .map(entry -> entry.getValue().format(entry.getKey())).toList();
         return new Result(direct, pages.size(), vanillaFallbackTextures.size(), namedFonts, namedGlyphs,
@@ -551,6 +566,74 @@ final class BitmapFontCompiler {
         return variants;
     }
 
+    /**
+     * Darkened copies of every laid-out glyph and wide variant, used by container titles without a
+     * colour (see {@link #TITLE_SHADE}). They take the private-use pages left after aliases and wide
+     * variants, largest cells first; glyphs left over keep Bedrock's undarkened image. Returns
+     * glyph -> copy.
+     */
+    private Map<Integer, Integer> allocateShades(int spacerPage, Map<Integer, Integer> wide) {
+        Set<Integer> laidOut = new java.util.TreeSet<>();
+        layoutSources.values().forEach(sources -> sources.values().forEach(source -> {
+            int code = source instanceof AliasRequest request ? request.bedrock : source instanceof Integer direct ? direct : -1;
+            if (code >= 0 && glyphs.containsKey(code)) laidOut.add(code);
+        }));
+        for (int code : List.copyOf(laidOut)) {
+            Integer variant = wide.get(code);
+            if (variant != null) laidOut.add(variant);
+        }
+        List<Integer> ordered = laidOut.stream().sorted(Comparator.comparingInt((Integer codePoint) ->
+                -glyphs.get(codePoint).cellSize()).thenComparingInt(codePoint -> codePoint)).toList();
+        Map<Integer, Integer> shades = new TreeMap<>();
+        Map<ShadeKey, Integer> shared = new HashMap<>();
+        Map<BufferedImage, BufferedImage> darkened = new java.util.IdentityHashMap<>();
+        Set<Integer> reserved = new HashSet<>(Set.of(spacerPage));
+        int page = -1, slot = 256, missing = 0;
+        for (int codePoint : ordered) {
+            Glyph glyph = glyphs.get(codePoint);
+            ShadeKey key = new ShadeKey(GlyphKey.of(glyph), glyph.trailingMarker());
+            Integer existing = shared.get(key);
+            if (existing != null) {
+                shades.put(codePoint, existing);
+                continue;
+            }
+            if (slot > 255) {
+                page = freePage(reserved);
+                if (page < 0) {
+                    missing = ordered.size() - shades.size();
+                    break;
+                }
+                reserved.add(page);
+                slot = 0;
+            }
+            int copy = page << 8 | slot++;
+            glyphs.put(copy, glyph.withCodePoint(copy).withImage(darkened.computeIfAbsent(glyph.image(),
+                    BitmapFontCompiler::shade)));
+            shades.put(codePoint, copy);
+            shared.put(key, copy);
+        }
+        if (missing > 0) notice("container titles without a colour keep some images undarkened on Bedrock: "
+                + "the private-use glyph pages are full", missing + " glyphs");
+        return shades;
+    }
+
+    private record ShadeKey(GlyphKey glyph, boolean trailingMarker) {}
+
+    /** The texture as Java draws it with the {@link #TITLE_SHADE} colour: each channel multiplied, alpha kept. */
+    static BufferedImage shade(BufferedImage source) {
+        BufferedImage shaded = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < source.getHeight(); y++) {
+            for (int x = 0; x < source.getWidth(); x++) {
+                int argb = source.getRGB(x, y);
+                int red = ((argb >>> 16 & 0xFF) * TITLE_SHADE + 127) / 255;
+                int green = ((argb >>> 8 & 0xFF) * TITLE_SHADE + 127) / 255;
+                int blue = ((argb & 0xFF) * TITLE_SHADE + 127) / 255;
+                shaded.setRGB(x, y, argb & 0xFF000000 | red << 16 | green << 8 | blue);
+            }
+        }
+        return shaded;
+    }
+
     private int freePage(Set<Integer> reserved) {
         Set<Integer> used = new HashSet<>();
         glyphs.keySet().forEach(codePoint -> used.add(codePoint >>> 8));
@@ -602,8 +685,8 @@ final class BitmapFontCompiler {
         return advances;
     }
 
-    private TextLayoutTable layoutTable(Map<Integer, Integer> wide, Map<Integer, int[]> ink, int spacerFirst,
-                                        Map<Integer, Float> textAdvances) {
+    private TextLayoutTable layoutTable(Map<Integer, Integer> wide, Map<Integer, Integer> shades,
+                                        Map<Integer, int[]> ink, int spacerFirst, Map<Integer, Float> textAdvances) {
         Map<String, Map<Integer, TextLayoutTable.Entry>> fonts = new TreeMap<>();
         layoutSources.forEach((font, sources) -> {
             Map<Integer, TextLayoutTable.Entry> entries = new TreeMap<>();
@@ -626,7 +709,15 @@ final class BitmapFontCompiler {
             });
             if (!entries.isEmpty()) fonts.put(font, entries);
         });
-        return new TextLayoutTable(fonts, spacerFirst, SPACER_COUNT, TextLayoutTable.ORIGIN, textAdvances);
+        // Only copies whose ink matches the original: the layout positions both alike.
+        Map<Integer, Integer> usableShades = new TreeMap<>();
+        shades.forEach((original, copy) -> {
+            int[] columns = ink.get(original), shaded = ink.get(copy);
+            if (columns != null && shaded != null && columns[0] == shaded[0] && columns[1] == shaded[1]) {
+                usableShades.put(original, copy);
+            }
+        });
+        return new TextLayoutTable(fonts, spacerFirst, SPACER_COUNT, TextLayoutTable.ORIGIN, textAdvances, usableShades);
     }
 
     /** First inked column and inked width of each glyph cell, as Bedrock measures them (alpha above zero). */
@@ -880,6 +971,11 @@ final class BitmapFontCompiler {
         Glyph withCodePoint(int alias) {
             return new Glyph(alias, image, x, y, width, height, declaredHeight, declaredAscent, cellSize, javaAdvance,
                     trailingMarker);
+        }
+
+        Glyph withImage(BufferedImage replacement) {
+            return new Glyph(codePoint, replacement, x, y, width, height, declaredHeight, declaredAscent, cellSize,
+                    javaAdvance, trailingMarker);
         }
 
         Glyph withTrailingMarker() {

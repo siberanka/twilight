@@ -14,7 +14,8 @@ import java.util.Set;
 
 public final class SourceDiscovery {
     private static final Set<String> PROVIDERS = Set.of(
-            "itemsadder", "craftengine", "nexo", "oraxen", "bettermodel", "modelengine", "realisticseasons"
+            "itemsadder", "craftengine", "nexo", "oraxen", "bettermodel", "modelengine", "realisticseasons",
+            "customnameplates", "betterhud"
     );
     private static final Set<String> PACK_NAMES = Set.of(
             "generated.zip", "resource_pack.zip", "resourcepack.zip", "pack.zip", "build.zip", "resource pack.zip"
@@ -23,10 +24,10 @@ public final class SourceDiscovery {
             "cache", ".cache", "data", ".data", "contents", "content", "resources"
     );
     /**
-     * Never content: ItemsAdder's copies of the vanilla client assets (they would shadow the
-     * server's packs with vanilla definitions) and temporary build folders that outlive builds.
+     * Never content: ItemsAdder's and Nexo's copies of the vanilla client assets (they would shadow
+     * the server's packs with vanilla definitions) and temporary build folders that outlive builds.
      */
-    private static final Set<String> IGNORED_DIRECTORIES = Set.of("vanilla_assets", "tmp", "temp", ".tmp");
+    private static final Set<String> IGNORED_DIRECTORIES = Set.of("vanilla_assets", ".assetcache", "tmp", "temp", ".tmp");
 
     private final Path serverRoot;
     private final TwilightConfig config;
@@ -56,6 +57,7 @@ public final class SourceDiscovery {
         for (Path additional : config.additionalSources()) {
             addIfPack("configured", ContentSource.Kind.RESOURCE_PACK, additional, 900, found, seen);
         }
+        demoteUndeliveredPacks(found);
         found.sort(Comparator.comparingInt(ContentSource::priority).thenComparing(source -> source.path().toString()));
         return List.copyOf(found);
     }
@@ -110,7 +112,35 @@ public final class SourceDiscovery {
                 }
             }
         }
-        if (newest != null) add("itemsadder", ContentSource.Kind.RESOURCE_PACK, newest, providerPriority("itemsadder"), found, seen);
+        if (newest != null) add("itemsadder", ContentSource.Kind.RESOURCE_PACK, newest, providerPriority("itemsadder") + 90, found, seen);
+    }
+
+    /**
+     * Java players only receive packs from providers that run and send them. A provider folder
+     * whose plugin is not installed is leftover data, and a provider whose settings disable sending
+     * (when another running provider sends a generated pack) is not what players see. Such sources
+     * keep filling gaps, but at the lowest priority, so the delivered pack wins where they disagree.
+     */
+    private void demoteUndeliveredPacks(List<ContentSource> found) {
+        Path plugins = serverRoot.resolve("plugins");
+        Set<String> providers = new HashSet<>();
+        for (ContentSource source : found) {
+            if (source.kind() == ContentSource.Kind.RESOURCE_PACK && PROVIDERS.contains(source.provider())) providers.add(source.provider());
+        }
+        Set<String> notInstalled = new HashSet<>(), notSending = new HashSet<>();
+        for (String provider : providers) {
+            if (!ProviderDelivery.installed(plugins, provider)) notInstalled.add(provider);
+            else if (!ProviderDelivery.delivers(plugins, provider)) notSending.add(provider);
+        }
+        boolean deliveredArchive = found.stream().anyMatch(source -> source.kind() == ContentSource.Kind.RESOURCE_PACK
+                && PROVIDERS.contains(source.provider()) && !notInstalled.contains(source.provider())
+                && !notSending.contains(source.provider()) && Files.isRegularFile(source.path())
+                && source.priority() >= providerPriority(source.provider()) + 90);
+        Set<String> demoted = new HashSet<>(notInstalled);
+        if (deliveredArchive) demoted.addAll(notSending);
+        if (demoted.isEmpty()) return;
+        found.replaceAll(source -> source.kind() == ContentSource.Kind.RESOURCE_PACK && demoted.contains(source.provider())
+                ? new ContentSource(source.provider(), source.kind(), source.path(), source.priority() - 500) : source);
     }
 
     private static boolean ignored(Path providerRoot, Path path) {
@@ -161,9 +191,14 @@ public final class SourceDiscovery {
         };
     }
 
+    /**
+     * A provider's generated archive is exactly what Java players download, so it outranks the
+     * provider's working folders (authored contents, data and caches can be stale or partial);
+     * those folders still supply files the archive lacks.
+     */
     private static int sourcePriority(String provider, Path providerRoot, Path source, boolean archive) {
         int base = providerPriority(provider);
-        if (archive) return base;
+        if (archive) return base + 90;
         Path relative = providerRoot.relativize(source);
         for (Path part : relative) {
             String name = part.toString().toLowerCase(Locale.ROOT);

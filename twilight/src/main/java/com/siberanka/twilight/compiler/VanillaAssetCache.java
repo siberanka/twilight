@@ -88,6 +88,19 @@ final class VanillaAssetCache implements AutoCloseable {
         return readEntry(normalized, MAXIMUM_MODEL_BYTES);
     }
 
+    /** Vanilla data-pack files (for example {@code data/minecraft/worldgen/biome/}) below a prefix. */
+    java.util.List<String> dataEntries(String prefix) throws IOException {
+        if (!prefix.startsWith("data/minecraft/") || prefix.contains("..")) throw new IOException("Not vanilla data: " + prefix);
+        ensureOpen();
+        return archive.stream().map(ZipEntry::getName).filter(name -> name.startsWith(prefix) && !name.endsWith("/"))
+                .sorted().toList();
+    }
+
+    Optional<byte[]> readData(String logicalPath) throws IOException {
+        if (!logicalPath.startsWith("data/minecraft/") || logicalPath.contains("..")) throw new IOException("Not vanilla data: " + logicalPath);
+        return readEntry(logicalPath, MAXIMUM_MODEL_BYTES);
+    }
+
     Optional<byte[]> readModel(String logicalPath) throws IOException {
         String normalized = logicalPath.replace('\\', '/');
         if (!normalized.startsWith("assets/minecraft/models/") || !normalized.endsWith(".json") ||

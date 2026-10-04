@@ -1,5 +1,7 @@
 # Cloud-mounted display height and lighting — 29 September 2026
 
+> The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
+
 The potion basket now retains its colors above the original stone platform.
 Twilight corrects the attachment height of item displays riding Java area-effect
 clouds. This applies automatically to matching entities, independently of model
@@ -67,5 +69,5 @@ remains owned by its creators; the source asset packs are not redistributed.
 
 | Java | Bedrock |
 |---|---|
-| ![Basket noon Java](images/acceptance/2026-09-29-seats/basket-noon-java.png) | ![Basket noon Bedrock](images/acceptance/2026-09-29-seats/basket-noon-bedrock.png) |
-| ![Basket midnight Java](images/acceptance/2026-09-29-seats/basket-midnight-java.png) | ![Basket midnight Bedrock](images/acceptance/2026-09-29-seats/basket-midnight-bedrock.png) |
+| Basket noon Java | Basket noon Bedrock |
+| Basket midnight Java | Basket midnight Bedrock |

@@ -1,0 +1,210 @@
+{
+  "server": "style-suite (original art)",
+  "published": [
+    "header-uncoloured",
+    "header-white",
+    "layered-bold",
+    "icon-row",
+    "negative-height",
+    "hex-text",
+    "bold-text"
+  ],
+  "menus": [
+    {
+      "id": "header-uncoloured",
+      "plugin": "style-suite",
+      "size": 27,
+      "title": "'\\ue5f0\\ue500'",
+      "technique": "header panel above the chest, no title colour (Java darkens images)",
+      "comparison": {
+        "name": "st1-header-uncoloured",
+        "size": 27,
+        "bestShift": [
+          0,
+          0
+        ],
+        "bestError": 7.28,
+        "unshiftedError": 7.28,
+        "titleShift": [
+          0,
+          0
+        ],
+        "titleError": 0.26,
+        "structureShift": [
+          0,
+          0
+        ],
+        "brightnessRatio": 0.708,
+        "artError": 0.2
+      }
+    },
+    {
+      "id": "header-white",
+      "plugin": "style-suite",
+      "size": 27,
+      "title": "'\\xa7f\\ue5f0\\ue500'",
+      "technique": "the same header with a white title colour",
+      "comparison": {
+        "name": "st1-header-white",
+        "size": 27,
+        "bestShift": [
+          0,
+          0
+        ],
+        "bestError": 6.93,
+        "unshiftedError": 6.93,
+        "titleShift": [
+          0,
+          0
+        ],
+        "titleError": 0.26,
+        "structureShift": [
+          0,
+          0
+        ],
+        "brightnessRatio": 0.863,
+        "artError": 0.2
+      }
+    },
+    {
+      "id": "layered-bold",
+      "plugin": "style-suite",
+      "size": 54,
+      "title": "'\\xa7f\\ue5f0\\ue500\\ue5f3\\ue501 \\xa76\\xa7lMARKET'",
+      "technique": "banner moved back over the header with a negative space, then bold text",
+      "comparison": {
+        "name": "st1-layered-bold",
+        "size": 54,
+        "bestShift": [
+          0,
+          0
+        ],
+        "bestError": 7.81,
+        "unshiftedError": 7.81,
+        "titleShift": [
+          0,
+          0
+        ],
+        "titleError": 8.96,
+        "structureShift": [
+          0,
+          0
+        ],
+        "brightnessRatio": 0.858,
+        "artError": 2.9
+      }
+    },
+    {
+      "id": "icon-row",
+      "plugin": "style-suite",
+      "size": 27,
+      "title": "'\\xa7f\\ue502\\ue5f2\\ue503\\ue5f1\\ue502 \\xa7eCoins: \\xa7a250 \\xa7f\\ue503'",
+      "technique": "icons separated by +4/-1 space providers, mixed with coloured text",
+      "comparison": {
+        "name": "st1-icon-row",
+        "size": 27,
+        "bestShift": [
+          0,
+          0
+        ],
+        "bestError": 14.65,
+        "unshiftedError": 14.65,
+        "titleShift": [
+          0,
+          0
+        ],
+        "titleError": 2.84,
+        "structureShift": [
+          0,
+          0
+        ],
+        "brightnessRatio": 0.738,
+        "artError": 30.6
+      }
+    },
+    {
+      "id": "negative-height",
+      "plugin": "style-suite",
+      "size": 36,
+      "title": "'\\xa7f\\ue5e0\\ue5e0\\ue5e0\\ue5e0\\ue5e0\\ue5e0\\ue5e0\\ue5e0\\ue500'",
+      "technique": "eight Jobs-style negative-height shift glyphs, then the header",
+      "comparison": {
+        "name": "st1-negative-height",
+        "size": 36,
+        "bestShift": [
+          0,
+          0
+        ],
+        "bestError": 7.1,
+        "unshiftedError": 7.1,
+        "titleShift": [
+          0,
+          0
+        ],
+        "titleError": 0.0,
+        "structureShift": [
+          0,
+          0
+        ],
+        "brightnessRatio": 0.872,
+        "artError": 0.4
+      }
+    },
+    {
+      "id": "hex-text",
+      "plugin": "style-suite",
+      "size": 27,
+      "title": "'\\xa7x\\xa7f\\xa7f\\xa7a\\xa7a\\xa70\\xa70Gold Vault \\xa77- \\xa7bStorage'",
+      "technique": "hex and legacy colours, text only",
+      "comparison": {
+        "name": "st1-hex-text",
+        "size": 27,
+        "bestShift": [
+          0,
+          0
+        ],
+        "bestError": 14.56,
+        "unshiftedError": 14.56,
+        "titleShift": [
+          0,
+          0
+        ],
+        "titleError": 1.08,
+        "structureShift": [
+          0,
+          0
+        ],
+        "brightnessRatio": 0.739,
+        "artError": 30.1
+      }
+    },
+    {
+      "id": "bold-text",
+      "plugin": "style-suite",
+      "size": 36,
+      "title": "'\\xa7b\\xa7lTOURNAMENTS'",
+      "technique": "bold text title",
+      "comparison": {
+        "name": "st1-bold-text",
+        "size": 36,
+        "bestShift": [
+          0,
+          0
+        ],
+        "bestError": 14.77,
+        "unshiftedError": 14.77,
+        "titleShift": [
+          0,
+          0
+        ],
+        "titleError": 1.0,
+        "structureShift": [
+          0,
+          0
+        ],
+        "brightnessRatio": 0.733,
+        "artError": 30.4
+      }
+    }
+  ]
+}

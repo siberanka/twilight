@@ -2,6 +2,35 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.7 - 2026-10-04
+
+- Treat each provider's generated pack (CraftEngine `resource_pack.zip`,
+  ItemsAdder output, Nexo/Oraxen packs) as what Java players receive: it now
+  outranks the provider's working folders. Packs of providers that are not
+  installed, or whose settings do not send them while another provider sends a
+  generated pack, only fill gaps. Discover CustomNameplates and BetterHUD packs
+  and ignore Nexo's vanilla asset cache.
+- Show datapack and plugin biomes on Bedrock as the vanilla biome with the
+  closest grass, foliage, water and fog colours and precipitation, instead of
+  Geyser's ocean fallback (`world.bedrock-biome-matching`).
+- Merge the resource packs' `lang` files like Java and give them to Geyser, so
+  Bedrock players see the names of datapack and plugin content and translation
+  overrides such as an image as the ender chest title or a hidden inventory label
+  (`ui.java-translations`).
+- Darken the images of container titles without a colour code as Java does
+  (Java multiplies glyphs by the default title colour 0x404040; Bedrock never
+  tints resource-pack glyphs), using pre-darkened copies (`ui.java-glyph-tint`).
+- Keep the origin spacers of bold titles unstyled; Bedrock drew them wider and
+  moved bold titles about four units to the right. Legacy colour codes inside
+  laid-out text no longer take space.
+- Keep a blank inventory label blank on Bedrock (Bedrock treated an empty
+  translation as missing).
+- Verify the UI conversion with 104 menus of two real servers and an original-art
+  style suite: every window and 97 of 104 title bands match Java; layers moved back
+  over an earlier image remain unsupported. Complete builds of six real servers and
+  a live custom-biome scene are in the [UI campaign](docs/UI_CAMPAIGN_2026-10-04.md).
+  Older screenshots were retired in favour of current captures. 156 tests pass.
+
 ## 1.0.0-pre.6 - 2026-10-04
 
 - Lay out Java text on every Bedrock text surface: chat, action bar, titles,

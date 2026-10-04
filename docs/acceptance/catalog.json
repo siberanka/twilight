@@ -26,7 +26,8 @@
         "multiple providers together"
       ],
       "existingEvidence": [
-        "docs/TEXT_SURFACES_2026-10-04.md"
+        "docs/TEXT_SURFACES_2026-10-04.md",
+        "docs/UI_CAMPAIGN_2026-10-04.md"
       ]
     },
     {
@@ -42,7 +43,8 @@
         "provider disabled"
       ],
       "existingEvidence": [
-        "docs/TEXT_SURFACES_2026-10-04.md"
+        "docs/TEXT_SURFACES_2026-10-04.md",
+        "docs/UI_CAMPAIGN_2026-10-04.md"
       ]
     },
     {
@@ -365,7 +367,8 @@
       ],
       "existingEvidence": [
         "docs/TEXT_LAYOUT_2026-10-03.md",
-        "docs/TEXT_SURFACES_2026-10-04.md"
+        "docs/TEXT_SURFACES_2026-10-04.md",
+        "docs/UI_CAMPAIGN_2026-10-04.md"
       ]
     },
     {
@@ -381,7 +384,8 @@
         "invalid size 53"
       ],
       "existingEvidence": [
-        "docs/TEXT_LAYOUT_2026-10-03.md"
+        "docs/TEXT_LAYOUT_2026-10-03.md",
+        "docs/UI_CAMPAIGN_2026-10-04.md"
       ]
     },
     {
@@ -401,7 +405,8 @@
       "existingEvidence": [
         "docs/WIDE_GLYPHS_2026-10-02.md",
         "docs/CONTAINER_LAYOUT_2026-10-03.md",
-        "docs/TEXT_LAYOUT_2026-10-03.md"
+        "docs/TEXT_LAYOUT_2026-10-03.md",
+        "docs/UI_CAMPAIGN_2026-10-04.md"
       ]
     },
     {
@@ -538,7 +543,7 @@
     {
       "id": "world.extended",
       "area": "world",
-      "status": "planned",
+      "status": "partial",
       "scenarios": [
         "mob armor",
         "custom paintings",
@@ -547,7 +552,9 @@
         "waypoint icons",
         "vanilla resource overrides opt-in"
       ],
-      "existingEvidence": []
+      "existingEvidence": [
+        "docs/UI_CAMPAIGN_2026-10-04.md"
+      ]
     },
     {
       "id": "sound.events",

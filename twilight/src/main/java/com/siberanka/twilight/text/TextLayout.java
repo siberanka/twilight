@@ -52,10 +52,16 @@ public final class TextLayout {
      * Text in render order; {@code text == null} marks a component Twilight cannot measure.
      *
      * @param bold Java widens bold characters by one unit; such lines are not width-corrected
+     * @param shaded a container title's text without a colour: Java darkens its images (see
+     *               {@link TextLayoutTable#shade}); legacy colour codes in the text end it, {@code \u00a7r} restores it
      */
-    public record Segment(String text, String font, boolean bold) {
+    public record Segment(String text, String font, boolean bold, boolean shaded) {
         public Segment(String text, String font) {
             this(text, font, false);
+        }
+
+        public Segment(String text, String font, boolean bold) {
+            this(text, font, bold, false);
         }
     }
 
@@ -111,7 +117,7 @@ public final class TextLayout {
                 layout.javaWidthKnown = false;
                 layout.align(out, 0);
             } else {
-                layout.text(out, segment.text(), segment.font());
+                layout.text(out, segment.text(), segment.font(), segment.shaded());
             }
         }
         String suffix = last == null ? "" : layout.endLine(null);
@@ -130,12 +136,23 @@ public final class TextLayout {
         for (Segment segment : segments) {
             if (segment.text() == null) { texts.add(""); continue; }
             StringBuilder out = new StringBuilder();
-            for (int codePoint : segment.text().codePoints().toArray()) {
+            boolean shaded = segment.shaded();
+            int[] codePoints = segment.text().codePoints().toArray();
+            for (int index = 0; index < codePoints.length; index++) {
+                int codePoint = codePoints[index];
+                if (codePoint == '\u00a7' && index + 1 < codePoints.length) {
+                    shaded = shading(codePoints[index + 1], shaded, segment.shaded());
+                    out.appendCodePoint(codePoint).appendCodePoint(codePoints[++index]);
+                    continue;
+                }
                 TextLayoutTable.Entry entry = table.lookup(segment.font(), codePoint);
                 if (entry == null) out.appendCodePoint(codePoint);
                 else {
                     custom++;
-                    if (entry.visible()) out.appendCodePoint(entry.bedrock());
+                    if (entry.visible()) {
+                        int copy = shaded ? table.shade(entry.bedrock()) : -1;
+                        out.appendCodePoint(copy >= 0 ? copy : entry.bedrock());
+                    }
                 }
             }
             texts.add(out.toString());
@@ -154,12 +171,27 @@ public final class TextLayout {
         return result.texts().getFirst() + result.suffix();
     }
 
-    private void text(StringBuilder out, String content, String font) {
-        content.codePoints().forEach(codePoint -> {
+    /** Whether text after the legacy code {@code code} is still uncoloured title text. */
+    private static boolean shading(int code, boolean current, boolean initial) {
+        if (code == 'r' || code == 'R') return initial;
+        return Character.digit(code, 16) >= 0 ? false : current;
+    }
+
+    private void text(StringBuilder out, String content, String font, boolean initiallyShaded) {
+        int[] codePoints = content.codePoints().toArray();
+        boolean shaded = initiallyShaded;
+        for (int index = 0; index < codePoints.length; index++) {
+            int codePoint = codePoints[index];
+            if (codePoint == '\u00a7' && index + 1 < codePoints.length) {
+                // Legacy formatting codes (pack translations use them) take no space on either client.
+                shaded = shading(codePoints[index + 1], shaded, initiallyShaded);
+                out.appendCodePoint(codePoint).appendCodePoint(codePoints[++index]);
+                continue;
+            }
             if (codePoint == '\n' && mode != Mode.CONTAINER) {
                 out.append(endLine(out)).append('\n');
                 startLine(out);
-                return;
+                continue;
             }
             TextLayoutTable.Entry entry = table.lookup(font, codePoint);
             if (entry == null && codePoint == ' ' && (font == null || TextLayoutTable.DEFAULT_FONT.equals(font))) {
@@ -183,12 +215,19 @@ public final class TextLayout {
                 align(out, entry.left() - 1);
                 lastGlyphOutput = out;
                 lastGlyphIndex = out.length();
-                lastGlyphWide = entry.wide();
-                out.appendCodePoint(entry.bedrock());
+                int copy = shaded ? table.shade(entry.bedrock()) : -1;
+                if (copy >= 0) {
+                    // The widened glyph must be darkened too; without a darkened variant it stays narrow.
+                    lastGlyphWide = entry.wide() < 0 ? -1 : table.shade(entry.wide());
+                    out.appendCodePoint(copy);
+                } else {
+                    lastGlyphWide = entry.wide();
+                    out.appendCodePoint(entry.bedrock());
+                }
                 javaWidth += entry.advance();
                 delta += entry.width() + 1 - entry.advance();
             }
-        });
+        }
     }
 
     private void startLine(StringBuilder out) {

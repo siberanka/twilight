@@ -65,6 +65,8 @@ public final class TwilightPlugin extends JavaPlugin {
     private ProviderHookManager providerHooks;
     private AutoCloseable displayBridge;
     private com.siberanka.twilight.integration.text.GeyserTextLayoutBridge textBridge;
+    private com.siberanka.twilight.integration.world.GeyserBiomeBridge biomeBridge;
+    private com.siberanka.twilight.integration.text.GeyserLanguageBridge languageBridge;
 
     @Override
     public void onEnable() {
@@ -83,6 +85,22 @@ public final class TwilightPlugin extends JavaPlugin {
                         deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger());
             } catch (Exception | LinkageError failure) {
                 getLogger().log(Level.SEVERE, "Live item-display bridge is unavailable; model animation parity is not supported.", failure);
+            }
+            if (config.javaTranslations()) {
+                try {
+                    languageBridge = com.siberanka.twilight.integration.text.GeyserLanguageBridge.create(this,
+                            deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger());
+                } catch (Exception | LinkageError failure) {
+                    getLogger().log(Level.WARNING, "Resource-pack translations are unavailable for this Geyser build.", failure);
+                }
+            }
+            if (config.bedrockBiomeMatching()) {
+                try {
+                    biomeBridge = com.siberanka.twilight.integration.world.GeyserBiomeBridge.create(this,
+                            deployment.resolveGeyserDirectory().resolve("packs/twilight.zip"), getLogger());
+                } catch (Exception | LinkageError failure) {
+                    getLogger().log(Level.WARNING, "Custom biome matching is unavailable for this Geyser build.", failure);
+                }
             }
             if (config.javaTextLayout()) {
                 try {
@@ -118,6 +136,14 @@ public final class TwilightPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (languageBridge != null) {
+            try { languageBridge.close(); }
+            catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close translations", failure); }
+        }
+        if (biomeBridge != null) {
+            try { biomeBridge.close(); }
+            catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close biome matching", failure); }
+        }
         if (textBridge != null) {
             try { textBridge.close(); }
             catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close text layout", failure); }

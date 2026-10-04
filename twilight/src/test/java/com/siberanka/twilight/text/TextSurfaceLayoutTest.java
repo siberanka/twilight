@@ -105,6 +105,16 @@ class TextSurfaceLayoutTest {
     }
 
     @Test
+    void legacyFormattingCodesTakeNoSpace() {
+        // Pack translations carry legacy codes ("\u00a7f" before an image); both clients draw them with no advance.
+        String laidOut = TextLayout.layout(TABLE, "\u00a7f\uE002\uE011\u00a7cH", TextLayout.Mode.LEFT);
+        assertTrue(laidOut.startsWith("\u00a7f"), laidOut);
+        assertTrue(laidOut.contains("\u00a7cH"), laidOut);
+        assertEquals(TextLayout.layout(TABLE, "\uE002\uE011H", TextLayout.Mode.LEFT),
+                laidOut.replace("\u00a7f", "").replace("\u00a7c", ""));
+    }
+
+    @Test
     void chestTitlesWithoutTheContainerOriginUseTheLeftLayout() {
         TextLayoutTable plain = TABLE.withContainerOrigin(0);
         assertEquals(0, plain.containerOrigin());

@@ -26,7 +26,9 @@ import java.util.zip.ZipFile;
  * {@code <data-root>/cache/vanilla/<version>} (system property {@code twilight.audit.minecraftVersion}).
  */
 public final class ServerBuildAuditMain {
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+    private static final Gson GSON = new GsonBuilder().registerTypeAdapter(java.time.Instant.class,
+            (com.google.gson.JsonSerializer<java.time.Instant>) (value, type, context) -> new com.google.gson.JsonPrimitive(value.toString()))
+            .setPrettyPrinting().disableHtmlEscaping().create();
 
     private ServerBuildAuditMain() {}
 
@@ -48,6 +50,10 @@ public final class ServerBuildAuditMain {
                 Set<Path> worlds = WorldLayout.discover(root, Set.of());
                 List<ContentSource> sources = new SourceDiscovery(root, config).discover(worlds);
                 result.addProperty("sources", sources.size());
+                java.util.Map<String, Integer> providers = new java.util.TreeMap<>();
+                for (ContentSource source : sources) providers.merge(source.provider() + " " + source.kind(), 1, Integer::sum);
+                result.add("source_kinds", GSON.toJsonTree(providers));
+                result.add("content", GSON.toJsonTree(new com.siberanka.twilight.source.ContentInspector(config).inspect(sources)));
                 // One data directory: the shared vanilla cache is reused, each build replaces the previous output.
                 Path data = dataRoot;
                 long started = System.nanoTime();

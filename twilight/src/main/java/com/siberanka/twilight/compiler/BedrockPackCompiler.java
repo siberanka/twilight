@@ -177,16 +177,28 @@ public final class BedrockPackCompiler {
         boolean textLayout = config.javaTextLayout();
         SoundCompiler.Result sounds;
         if (vanillaAssets == null) {
-            fonts = new BitmapFontCompiler(resources, null, config.vanillaOverride(), textLayout).compile(packFiles);
+            fonts = new BitmapFontCompiler(resources, null, config.vanillaOverride(), textLayout, config.javaGlyphTint()).compile(packFiles);
             sounds = new SoundCompiler(resources, config.vanillaOverride(), null).compile(packFiles);
         } else {
-            fonts = new BitmapFontCompiler(resources, vanillaAssets, config.vanillaOverride(), textLayout).compile(packFiles);
+            fonts = new BitmapFontCompiler(resources, vanillaAssets, config.vanillaOverride(), textLayout, config.javaGlyphTint()).compile(packFiles);
             sounds = new SoundCompiler(resources, config.vanillaOverride(), vanillaAssets).compile(packFiles);
         }
         problems.addAll(fonts.problems());
         problems.addAll(sounds.problems());
         notices.addAll(fonts.notices());
         notices.addAll(sounds.notices());
+        LanguageCompiler.Result languages = LanguageCompiler.compile(resources, packFiles);
+        languages.problems().forEach(problem -> notices.add("language file is malformed and ignored, as on Java: " + problem));
+        if (vanillaAssets != null) {
+            // Server-side lookup table for the biome bridge; Bedrock ignores the file.
+            try {
+                packFiles.put(com.siberanka.twilight.world.BiomeMatcher.PATH,
+                        jsonBytes(VanillaBiomes.read(vanillaAssets).toJson()));
+            } catch (IOException | RuntimeException failure) {
+                notices.add("vanilla biome appearances are unavailable; custom biomes keep Geyser's fallback: "
+                        + failure.getMessage());
+            }
+        }
         if (fonts.layout() != null && !config.javaContainerLayout()) {
             // Bedrock's own chest UI keeps its title label at the left edge: no origin to reach.
             packFiles.put(TextLayoutTable.PATH, fonts.layout().withContainerOrigin(0)
@@ -241,6 +253,8 @@ public final class BedrockPackCompiler {
         report.addProperty("skipped", candidates.size() - converted);
         report.add("problems", GSON.toJsonTree(problems));
         report.add("notices", GSON.toJsonTree(notices));
+        report.addProperty("language_locales", languages.locales());
+        report.addProperty("language_strings", languages.strings());
         report.addProperty("vanilla_override", config.vanillaOverride());
         Files.write(staging.resolve("build-report.json"), jsonBytes(report));
         validate(pack, mappings, converted);

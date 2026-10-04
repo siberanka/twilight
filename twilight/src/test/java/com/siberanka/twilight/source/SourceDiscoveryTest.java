@@ -33,10 +33,12 @@ class SourceDiscoveryTest {
     }
 
     @Test
-    void providerAuthoredAssetsOverrideCachesAndGeneratedPackIsOnlyFallback() throws Exception {
+    void generatedPackIsAuthoritativeAndWorkingFoldersFillGaps() throws Exception {
+        // Java players download the generated pack; working folders may hold stale copies (real case:
+        // 2022 item models in ItemsAdder's data/resource_pack next to a 2026 generated.zip).
         Path provider = Files.createDirectories(root.resolve("plugins/ItemsAdder"));
         Path generated = Files.createDirectories(provider.resolve("output"));
-        Files.write(generated.resolve("generated.zip"), emptyZip());
+        Files.write(generated.resolve("generated.zip"), zipWith("assets/demo/models/item/shared.json", "{\"layer\":\"generated\"}"));
         Path cache = Files.createDirectories(provider.resolve("storage/cache/resource_pack/assets/demo"));
         Files.writeString(cache.resolve("cached.json"), "{}");
         Files.createDirectories(cache.resolve("models/item"));
@@ -60,15 +62,16 @@ class SourceDiscoveryTest {
         ContentSource cachedSource = source(sources, "resource_pack", "storage");
         ContentSource dataSource = source(sources, "resource_pack", "data");
         ContentSource authoredSource = source(sources, "resourcepack", "contents");
-        assertTrue(generatedSource.priority() < cachedSource.priority());
         assertTrue(cachedSource.priority() < dataSource.priority());
         assertTrue(dataSource.priority() < authoredSource.priority());
+        assertTrue(authoredSource.priority() < generatedSource.priority());
         assertTrue(sources.stream().anyMatch(source -> source.kind() == ContentSource.Kind.PROVIDER_DATA &&
                 source.path().getFileName().toString().equalsIgnoreCase("contents")));
         try (ResourceIndex resources = ResourceIndex.build(sources, config)) {
-            assertEquals("{\"layer\":\"contents\"}", resources.find("assets/demo/models/item/shared.json")
+            assertEquals("{\"layer\":\"generated\"}", resources.find("assets/demo/models/item/shared.json")
                     .orElseThrow().readUtf8());
             assertTrue(resources.find("provider-data/itemsadder/contents/example/configs/items.yml").isPresent());
+            assertTrue(resources.find("assets/demo/authored.json").isPresent(), "working folders fill gaps");
         }
     }
 
@@ -116,6 +119,119 @@ class SourceDiscoveryTest {
         List<ContentSource> standard = new SourceDiscovery(root, config).discover(Set.of());
         assertEquals(List.of("generated.zip"), standard.stream().map(source -> source.path().getFileName().toString())
                 .filter(name -> name.endsWith(".zip")).toList());
+    }
+
+    @Test
+    void discoversNameplateAndHudPacksAndIgnoresNexoVanillaCache() throws Exception {
+        // CustomNameplates keeps its pack in ResourcePack/ and resourcepack.zip when not merged into another
+        // provider; Nexo caches vanilla client assets under pack/.assetCache/<version>.
+        Path nameplates = Files.createDirectories(root.resolve("plugins/CustomNameplates/ResourcePack/assets/nameplates/font"));
+        Files.writeString(nameplates.resolve("default.json"), "{\"providers\":[]}");
+        Files.writeString(root.resolve("plugins/CustomNameplates/ResourcePack/pack.mcmeta"), "{}");
+        Files.write(root.resolve("plugins/CustomNameplates/resourcepack.zip"), emptyZip());
+        Path hud = Files.createDirectories(root.resolve("plugins/BetterHud/build/assets/betterhud"));
+        Files.writeString(hud.getParent().getParent().resolve("pack.mcmeta"), "{}");
+        Path nexoCache = Files.createDirectories(root.resolve("plugins/Nexo/pack/.assetCache/1.21.4/assets/minecraft"));
+        Files.writeString(nexoCache.getParent().getParent().resolve("pack.mcmeta"), "{}");
+        Files.write(root.resolve("plugins/Nexo/pack/pack.zip"), emptyZip());
+
+        TwilightConfig config = new TwilightConfig(false, true, true, true, 40, 100, 10_000_000, 1000,
+                true, true, List.of(), "auto", false, false, 3);
+        List<ContentSource> sources = new SourceDiscovery(root, config).discover(Set.of());
+        Path real = root.toRealPath();
+        List<String> found = sources.stream().map(source -> source.provider() + ":" + real.relativize(source.path())
+                .toString().replace('\\', '/')).toList();
+        assertTrue(found.contains("customnameplates:plugins/CustomNameplates/ResourcePack"), found.toString());
+        assertTrue(found.contains("customnameplates:plugins/CustomNameplates/resourcepack.zip"), found.toString());
+        assertTrue(found.contains("betterhud:plugins/BetterHud/build"), found.toString());
+        assertTrue(found.contains("nexo:plugins/Nexo/pack/pack.zip"), found.toString());
+        assertTrue(found.stream().noneMatch(path -> path.contains(".assetCache")), found.toString());
+    }
+
+    @Test
+    void undeliveredProviderPacksLoseToTheDeliveredPack() throws Exception {
+        // Real Survival setup: ItemsAdder hosting disabled (no-host) while CraftEngine sends its pack,
+        // which already holds the converted ItemsAdder content; 29 characters differ between the two.
+        Files.createDirectories(root.resolve("plugins/ItemsAdder/output"));
+        Files.write(root.resolve("plugins/ItemsAdder_4.0.18.jar"), new byte[0]);
+        Files.write(root.resolve("plugins/craft-engine-paper-plugin-26.7.4.jar"), new byte[0]);
+        Files.write(root.resolve("plugins/ItemsAdder/output/generated.zip"),
+                zipWith("assets/minecraft/font/default.json", "{\"from\":\"itemsadder\"}"));
+        Files.writeString(root.resolve("plugins/ItemsAdder/config.yml"), """
+                resource-pack:
+                  hosting:
+                    no-host:
+                      enabled: true # players get the pack elsewhere
+                    self-host:
+                      enabled: false
+                """);
+        Files.createDirectories(root.resolve("plugins/CraftEngine/generated"));
+        Files.write(root.resolve("plugins/CraftEngine/generated/resource_pack.zip"),
+                zipWith("assets/minecraft/font/default.json", "{\"from\":\"craftengine\"}"));
+        Files.writeString(root.resolve("plugins/CraftEngine/config.yml"), """
+                resource-pack:
+                  delivery:
+                    send-on-join: true
+                """);
+        TwilightConfig config = new TwilightConfig(false, true, true, true, 40, 100, 10_000_000, 1000,
+                true, true, List.of(), "auto", false, false, 3);
+        List<ContentSource> sources = new SourceDiscovery(root, config).discover(Set.of());
+        try (ResourceIndex resources = ResourceIndex.build(sources, config)) {
+            assertEquals("{\"from\":\"craftengine\"}", resources.find("assets/minecraft/font/default.json").orElseThrow().readUtf8());
+        }
+
+        // Without another delivering pack, ItemsAdder's own output stays authoritative.
+        Files.delete(root.resolve("plugins/CraftEngine/generated/resource_pack.zip"));
+        List<ContentSource> alone = new SourceDiscovery(root, config).discover(Set.of());
+        assertTrue(alone.stream().allMatch(source -> source.priority() >= 600), alone.toString());
+    }
+
+    @Test
+    void providerFoldersWithoutTheirPluginOnlyFillGaps() throws Exception {
+        // Real Survival/SkyBlock: an ItemsAdder folder remains after switching to CraftEngine, without the JAR.
+        Files.createDirectories(root.resolve("plugins/ItemsAdder/output"));
+        Files.write(root.resolve("plugins/ItemsAdder/output/generated.zip"),
+                zipWith("assets/minecraft/font/default.json", "{\"from\":\"itemsadder\"}"));
+        Files.createDirectories(root.resolve("plugins/CraftEngine/generated"));
+        Files.write(root.resolve("plugins/craft-engine-paper-plugin-26.7.4.jar"), new byte[0]);
+        Files.write(root.resolve("plugins/CraftEngine/generated/resource_pack.zip"),
+                zipWith("assets/minecraft/font/default.json", "{\"from\":\"craftengine\"}"));
+        TwilightConfig config = new TwilightConfig(false, true, true, true, 40, 100, 10_000_000, 1000,
+                true, true, List.of(), "auto", false, false, 3);
+        List<ContentSource> sources = new SourceDiscovery(root, config).discover(Set.of());
+        ContentSource leftover = sources.stream().filter(source -> source.provider().equals("itemsadder")).findFirst().orElseThrow();
+        assertTrue(leftover.priority() < 600, sources.toString());
+        try (ResourceIndex resources = ResourceIndex.build(sources, config)) {
+            assertEquals("{\"from\":\"craftengine\"}", resources.find("assets/minecraft/font/default.json").orElseThrow().readUtf8());
+        }
+    }
+
+    @Test
+    void readsNestedYamlScalarsWithComments() {
+        var values = ProviderDelivery.scalars("""
+                Pack:
+                  server:
+                    type: "POLYMATH" # host
+                  dispatch:
+                    send_pre_join: false
+                    send_on_join: false
+                list:
+                  - a: b
+                url: 'https://example.invalid/#fragment'
+                """);
+        assertEquals("POLYMATH", values.get("Pack.server.type"));
+        assertEquals("false", values.get("Pack.dispatch.send_on_join"));
+        assertEquals("https://example.invalid/#fragment", values.get("url"));
+    }
+
+    private static byte[] zipWith(String name, String content) throws Exception {
+        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(bytes)) {
+            zip.putNextEntry(new java.util.zip.ZipEntry(name));
+            zip.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            zip.closeEntry();
+        }
+        return bytes.toByteArray();
     }
 
     private static ContentSource source(List<ContentSource> sources, String fileName, String... ancestor) {

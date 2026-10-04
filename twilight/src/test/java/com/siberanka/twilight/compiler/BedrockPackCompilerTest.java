@@ -32,6 +32,7 @@ import java.util.zip.ZipFile;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -217,6 +218,66 @@ class BedrockPackCompilerTest {
         JsonObject report = JsonParser.parseString(Files.readString(result.outputDirectory().resolve("build-report.json")))
                 .getAsJsonObject();
         assertTrue(report.getAsJsonArray("notices").toString().contains("special renderer"), report.toString());
+    }
+
+    @Test
+    void writesTheVanillaBiomeAppearanceTableFromTheClient() throws Exception {
+        Path source = root.resolve("biome-source");
+        write(source, "assets/demo/models/item/x.json", "{}");
+        Path data = root.resolve("biome-data");
+        java.awt.image.BufferedImage map = new java.awt.image.BufferedImage(256, 256, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++) map.setRGB(x, y, 0xFF000000 | x << 16 | y << 8);
+        java.io.ByteArrayOutputStream png = new java.io.ByteArrayOutputStream();
+        ImageIO.write(map, "PNG", png);
+        seedClientCache(data, Map.of(
+                "data/minecraft/worldgen/biome/plains.json", """
+                        {"temperature":0.8,"downfall":0.4,"has_precipitation":true,"effects":{"water_color":4159204}}
+                        """.getBytes(StandardCharsets.UTF_8),
+                "data/minecraft/worldgen/biome/swamp.json", """
+                        {"temperature":0.8,"downfall":0.9,"has_precipitation":true,
+                         "effects":{"water_color":6388580,"grass_color_modifier":"swamp","foliage_color":6975545}}
+                        """.getBytes(StandardCharsets.UTF_8),
+                "assets/minecraft/textures/colormap/grass.png", png.toByteArray(),
+                "assets/minecraft/textures/colormap/foliage.png", png.toByteArray()));
+        BuildResult result = new BedrockPackCompiler(data, config(), "26.2").build(List.of(
+                new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1)), List.of());
+        try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
+            var table = com.siberanka.twilight.world.BiomeMatcher.fromJson(read(zip, com.siberanka.twilight.world.BiomeMatcher.PATH));
+            assertEquals(java.util.Set.of("minecraft:plains", "minecraft:swamp"), table.vanilla().keySet());
+            assertEquals(0x6A7039, table.vanilla().get("minecraft:swamp").grass());
+            assertEquals(0x3F76E4, table.vanilla().get("minecraft:plains").water());
+        }
+    }
+
+    @Test
+    void mergesResourcePackTranslationsLikeJava() throws Exception {
+        Path lower = root.resolve("lang-lower"), upper = root.resolve("lang-upper");
+        write(lower, "assets/dnt/lang/en_us.json", """
+                {"item.dnt.relic":"Relic","container.inventory":"Inventory"}
+                """);
+        write(upper, "assets/minecraft/lang/en_us.json", """
+                {"container.inventory":" ","container.enderchest":"\u00a7f\ue2ab"}
+                """);
+        write(upper, "assets/dnt/lang/tr_tr.json", """
+                {"item.dnt.relic":"Kalinti"}
+                """);
+        write(upper, "assets/broken/lang/de_de.json", "{not json");
+        BuildResult result = new BedrockPackCompiler(root.resolve("lang-data"), config()).build(List.of(
+                new ContentSource("lower", ContentSource.Kind.RESOURCE_PACK, lower, 1),
+                new ContentSource("upper", ContentSource.Kind.RESOURCE_PACK, upper, 2)), List.of());
+        assertTrue(result.problems().isEmpty(), result.problems().toString());
+        try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
+            JsonObject english = read(zip, "twilight/lang/en_us.json");
+            assertEquals(" ", english.get("container.inventory").getAsString(), "the higher pack wins");
+            assertEquals("Relic", english.get("item.dnt.relic").getAsString());
+            assertEquals("Kalinti", read(zip, "twilight/lang/tr_tr.json").get("item.dnt.relic").getAsString());
+            String bedrock = new String(zip.getInputStream(zip.getEntry("texts/en_US.lang")).readAllBytes(), StandardCharsets.UTF_8);
+            assertEquals("container.inventory=\u00a7r\t#\n", bedrock, "a blank label stays blank on Bedrock");
+            assertNull(zip.getEntry("texts/tr_TR.lang"), "no Bedrock UI key overridden in Turkish");
+        }
+        JsonObject report = JsonParser.parseString(Files.readString(result.outputDirectory().resolve("build-report.json")))
+                .getAsJsonObject();
+        assertTrue(report.getAsJsonArray("notices").toString().contains("de_de"), report.toString());
     }
 
     @Test

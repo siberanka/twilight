@@ -41,3 +41,21 @@ ui:
   # bars, scoreboards, entity names and text displays (holograms). Text without
   # custom font characters passes through unchanged. Takes effect on restart.
   java-text-surfaces: true
+  # Java multiplies bitmap glyph images by the text colour, so a menu title
+  # without a colour code (drawn at 0x404040) shows its images darkened. Bedrock
+  # never tints resource-pack glyphs: the pack gets darkened copies of the
+  # laid-out glyphs on free private-use pages, used by such titles. Titles that
+  # set a colour (usually white) are unaffected. Changing it requires a rebuild.
+  java-glyph-tint: true
+  # Render Java text for Bedrock players with the resource packs' translations:
+  # names of datapack and plugin content, and overrides such as a hidden
+  # inventory label or an image as the ender chest title. Requires Geyser.
+  java-translations: true
+
+world:
+  # Geyser shows biomes it does not know (datapack biomes such as Terralith or
+  # Incendium, and plugin biomes such as RealisticSeasons' seasonal ones) as the
+  # dimension's fallback biome. Show each as the vanilla biome with the closest
+  # grass, foliage, water and fog colours and precipitation instead. Requires
+  # Geyser and the vanilla client cache (generation.download-vanilla-assets).
+  bedrock-biome-matching: true

@@ -47,6 +47,7 @@ public final class TextLayoutTable {
     private final int spacerCount;
     private final int containerOrigin;
     private final Map<Integer, Float> textAdvances;
+    private final Map<Integer, Integer> shades;
 
     public TextLayoutTable(Map<String, Map<Integer, Entry>> fonts, int spacerFirst, int spacerCount) {
         this(fonts, spacerFirst, spacerCount, ORIGIN);
@@ -64,6 +65,15 @@ public final class TextLayoutTable {
      */
     public TextLayoutTable(Map<String, Map<Integer, Entry>> fonts, int spacerFirst, int spacerCount,
                            int containerOrigin, Map<Integer, Float> textAdvances) {
+        this(fonts, spacerFirst, spacerCount, containerOrigin, textAdvances, Map.of());
+    }
+
+    /**
+     * @param shades Bedrock glyph -> copy darkened like Java's uncoloured container title (Java multiplies
+     *               glyph images by the text colour, Bedrock never tints private-use glyphs)
+     */
+    public TextLayoutTable(Map<String, Map<Integer, Entry>> fonts, int spacerFirst, int spacerCount,
+                           int containerOrigin, Map<Integer, Float> textAdvances, Map<Integer, Integer> shades) {
         if (containerOrigin != 0 && containerOrigin != ORIGIN) throw new IllegalArgumentException("origin " + containerOrigin);
         Map<String, Map<Integer, Entry>> copy = new TreeMap<>();
         fonts.forEach((font, entries) -> copy.put(font, Collections.unmodifiableMap(new TreeMap<>(entries))));
@@ -72,12 +82,21 @@ public final class TextLayoutTable {
         this.spacerCount = spacerCount;
         this.containerOrigin = containerOrigin;
         this.textAdvances = Collections.unmodifiableMap(new TreeMap<>(textAdvances));
+        this.shades = Collections.unmodifiableMap(new TreeMap<>(shades));
     }
 
     /** Same metrics for a pack whose chest title label does (or does not) start left of Java's origin. */
     public TextLayoutTable withContainerOrigin(int origin) {
-        return new TextLayoutTable(fonts, spacerFirst, spacerCount, origin, textAdvances);
+        return new TextLayoutTable(fonts, spacerFirst, spacerCount, origin, textAdvances, shades);
     }
+
+    /** The darkened copy of a Bedrock glyph for uncoloured container titles, or -1. */
+    public int shade(int bedrock) {
+        Integer copy = shades.get(bedrock);
+        return copy == null ? -1 : copy;
+    }
+
+    public Map<Integer, Integer> shades() { return shades; }
 
     /** Java advance of an ordinary default-font character, or NaN when unknown. */
     public float textAdvance(int codePoint) {
@@ -104,6 +123,11 @@ public final class TextLayoutTable {
     public int spacer(int advance) {
         if (advance < minimumSpacer() || advance > maximumSpacer()) throw new IllegalArgumentException("spacer " + advance);
         return spacerFirst + advance - minimumSpacer();
+    }
+
+    /** Whether a code point is one of the invisible spacers. */
+    public boolean isSpacer(int codePoint) {
+        return codePoint >= spacerFirst && codePoint < spacerFirst + spacerCount;
     }
 
     public int entryCount() { return fonts.values().stream().mapToInt(Map::size).sum(); }
@@ -137,6 +161,12 @@ public final class TextLayoutTable {
                     text.addProperty(Integer.toHexString(codePoint).toUpperCase(java.util.Locale.ROOT), advance));
             root.add("text_advances", text);
         }
+        if (!shades.isEmpty()) {
+            JsonObject shaded = new JsonObject();
+            shades.forEach((glyph, copy) ->
+                    shaded.addProperty(Integer.toHexString(glyph).toUpperCase(java.util.Locale.ROOT), copy));
+            root.add("shades", shaded);
+        }
         return root;
     }
 
@@ -166,8 +196,14 @@ public final class TextLayoutTable {
                 text.put(Integer.parseInt(entry.getKey(), 16), entry.getValue().getAsFloat());
             }
         }
+        Map<Integer, Integer> shades = new LinkedHashMap<>();
+        if (root.has("shades")) {
+            for (var entry : root.getAsJsonObject("shades").entrySet()) {
+                shades.put(Integer.parseInt(entry.getKey(), 16), entry.getValue().getAsInt());
+            }
+        }
         return new TextLayoutTable(fonts, root.get("spacer_first").getAsInt(), root.get("spacer_count").getAsInt(),
-                origin, text);
+                origin, text, shades);
     }
 
 }

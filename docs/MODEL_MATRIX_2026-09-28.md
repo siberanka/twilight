@@ -1,5 +1,7 @@
 # Additional real-model review — 2026-09-28
 
+> The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
+
 **Overall visual acceptance remains incomplete.** All seven additional models produced visible
 Bedrock geometry, but the comparison exposed lighting, particle and orientation
 differences. A successful conversion count is not a successful visual test.
@@ -67,9 +69,9 @@ and [hash manifest](images/acceptance/2026-09-28-matrix/yaw-fix/sha256.json).
 
 | Java heading reference | Bedrock after correction |
 |---|---|
-| ![Owl yaw 0 Java](images/acceptance/2026-09-28-matrix/yaw-fix/owl-yaw-0-java.png) | ![Owl yaw 0 Bedrock](images/acceptance/2026-09-28-matrix/yaw-fix/owl-yaw-0-bedrock.png) |
-| ![Owl yaw 90 Java](images/acceptance/2026-09-28-matrix/yaw-fix/owl-yaw-90-java.png) | ![Owl yaw 90 Bedrock](images/acceptance/2026-09-28-matrix/yaw-fix/owl-yaw-90-bedrock.png) |
-| ![Owl yaw -45 Java](images/acceptance/2026-09-28-matrix/yaw-fix/owl-yaw--45-java.png) | ![Owl yaw -45 Bedrock](images/acceptance/2026-09-28-matrix/yaw-fix/owl-yaw--45-bedrock.png) |
+| Owl yaw 0 Java | Owl yaw 0 Bedrock |
+| Owl yaw 90 Java | Owl yaw 90 Bedrock |
+| Owl yaw -45 Java | Owl yaw -45 Bedrock |
 
 The same new JAR was also rebuilt into the ModelEngine pack (172/172 meshes,
 zero compiler problems), deployed, and tested after a full restart and fresh
@@ -113,25 +115,25 @@ Java is the left column; Bedrock is the right column. See the [machine-readable 
 
 | Java | Bedrock |
 |---|---|
-| ![bear_brown idle Java](images/acceptance/2026-09-28-matrix/modelengine-bear_brown-idle-java.png) | ![bear_brown idle Bedrock](images/acceptance/2026-09-28-matrix/modelengine-bear_brown-idle-bedrock.png) |
-| ![bear_brown attack Java](images/acceptance/2026-09-28-matrix/modelengine-bear_brown-attack-java.png) | ![bear_brown attack Bedrock](images/acceptance/2026-09-28-matrix/modelengine-bear_brown-attack-bedrock.png) |
-| ![crab_hermit idle Java](images/acceptance/2026-09-28-matrix/modelengine-crab_hermit-idle-java.png) | ![crab_hermit idle Bedrock](images/acceptance/2026-09-28-matrix/modelengine-crab_hermit-idle-bedrock.png) |
-| ![crab_hermit hide Java](images/acceptance/2026-09-28-matrix/modelengine-crab_hermit-hide-java.png) | ![crab_hermit hide Bedrock](images/acceptance/2026-09-28-matrix/modelengine-crab_hermit-hide-bedrock.png) |
-| ![angel_gm_archer_one idle Java](images/acceptance/2026-09-28-matrix/modelengine-angel_gm_archer_one-idle-java.png) | ![angel_gm_archer_one idle Bedrock](images/acceptance/2026-09-28-matrix/modelengine-angel_gm_archer_one-idle-bedrock.png) |
-| ![angel_gm_archer_one attack1 Java](images/acceptance/2026-09-28-matrix/modelengine-angel_gm_archer_one-attack1-java.png) | ![angel_gm_archer_one attack1 Bedrock](images/acceptance/2026-09-28-matrix/modelengine-angel_gm_archer_one-attack1-bedrock.png) |
-| ![basket_with_health_potions static Java](images/acceptance/2026-09-28-matrix/modelengine-basket_with_health_potions-static-java.png) | ![basket_with_health_potions static Bedrock](images/acceptance/2026-09-28-matrix/modelengine-basket_with_health_potions-static-bedrock.png) |
-| ![pet_griffon_phoenix idle Java](images/acceptance/2026-09-28-matrix/bettermodel-pet_griffon_phoenix-idle-java.png) | ![pet_griffon_phoenix idle Bedrock](images/acceptance/2026-09-28-matrix/bettermodel-pet_griffon_phoenix-idle-bedrock.png) |
-| ![pet_griffon_phoenix interact Java](images/acceptance/2026-09-28-matrix/bettermodel-pet_griffon_phoenix-interact-java.png) | ![pet_griffon_phoenix interact Bedrock](images/acceptance/2026-09-28-matrix/bettermodel-pet_griffon_phoenix-interact-bedrock.png) |
-| ![blacksmith_hm5_npc idle Java](images/acceptance/2026-09-28-matrix/bettermodel-blacksmith_hm5_npc-idle-java.png) | ![blacksmith_hm5_npc idle Bedrock](images/acceptance/2026-09-28-matrix/bettermodel-blacksmith_hm5_npc-idle-bedrock.png) |
-| ![blacksmith_hm5_npc wave Java](images/acceptance/2026-09-28-matrix/bettermodel-blacksmith_hm5_npc-wave-java.png) | ![blacksmith_hm5_npc wave Bedrock](images/acceptance/2026-09-28-matrix/bettermodel-blacksmith_hm5_npc-wave-bedrock.png) |
-| ![owl_crate idle Java](images/acceptance/2026-09-28-matrix/bettermodel-owl_crate-idle-java.png) | ![owl_crate idle Bedrock](images/acceptance/2026-09-28-matrix/bettermodel-owl_crate-idle-bedrock.png) |
-| ![owl_crate open Java](images/acceptance/2026-09-28-matrix/bettermodel-owl_crate-open-java.png) | ![owl_crate open Bedrock](images/acceptance/2026-09-28-matrix/bettermodel-owl_crate-open-bedrock.png) |
+| bear_brown idle Java | bear_brown idle Bedrock |
+| bear_brown attack Java | bear_brown attack Bedrock |
+| crab_hermit idle Java | crab_hermit idle Bedrock |
+| crab_hermit hide Java | crab_hermit hide Bedrock |
+| angel_gm_archer_one idle Java | angel_gm_archer_one idle Bedrock |
+| angel_gm_archer_one attack1 Java | angel_gm_archer_one attack1 Bedrock |
+| basket_with_health_potions static Java | basket_with_health_potions static Bedrock |
+| pet_griffon_phoenix idle Java | pet_griffon_phoenix idle Bedrock |
+| pet_griffon_phoenix interact Java | pet_griffon_phoenix interact Bedrock |
+| blacksmith_hm5_npc idle Java | blacksmith_hm5_npc idle Bedrock |
+| blacksmith_hm5_npc wave Java | blacksmith_hm5_npc wave Bedrock |
+| owl_crate idle Java | owl_crate idle Bedrock |
+| owl_crate open Java | owl_crate open Bedrock |
 
 ## Basket lighting isolation
 
 | Java over temporary glass platform | Bedrock over the same platform |
 |---|---|
-| ![Java basket glass lighting probe](images/acceptance/2026-09-28-matrix/yaw-fix/basket-glass-platform-java.png) | ![Bedrock basket glass lighting probe](images/acceptance/2026-09-28-matrix/yaw-fix/basket-glass-platform-bedrock.png) |
+| Java basket glass lighting probe | Bedrock basket glass lighting probe |
 
 Follow-up: the [29 September cloud-anchor regression](CLOUD_ANCHORS_2026-09-29.md)
 confirms an automatic plugin fix for the unwanted particles. The subsequent

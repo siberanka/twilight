@@ -27,7 +27,10 @@ public record TwilightConfig(
         int backupsToKeep,
         boolean javaContainerLayout,
         boolean javaTextLayout,
-        boolean javaTextSurfaces
+        boolean javaTextSurfaces,
+        boolean bedrockBiomeMatching,
+        boolean javaGlyphTint,
+        boolean javaTranslations
 ) {
     public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
                           boolean syncProviderChanges, long startupDelayTicks, long providerCommandDelayTicks,
@@ -37,7 +40,7 @@ public record TwilightConfig(
         this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
                 providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
                 autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
-                backupsToKeep, true, true, true);
+                backupsToKeep, true, true, true, true, true, true);
     }
 
     public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
@@ -49,7 +52,7 @@ public record TwilightConfig(
         this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
                 providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
                 autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
-                backupsToKeep, javaContainerLayout, javaContainerLayout, javaContainerLayout);
+                backupsToKeep, javaContainerLayout, javaContainerLayout, javaContainerLayout, true, true, true);
     }
 
     public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
@@ -61,7 +64,19 @@ public record TwilightConfig(
         this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
                 providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
                 autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
-                backupsToKeep, javaContainerLayout, javaTextLayout, javaTextLayout);
+                backupsToKeep, javaContainerLayout, javaTextLayout, javaTextLayout, true, true, true);
+    }
+
+    public TwilightConfig(boolean vanillaOverride, boolean strict, boolean autoBuildOnStartup,
+                          boolean syncProviderChanges, long startupDelayTicks, long providerCommandDelayTicks,
+                          long maximumSourceBytes, int maximumArchiveEntries, boolean downloadVanillaAssets,
+                          boolean autoDiscoverSources, List<Path> additionalSources, String geyserDirectory,
+                          boolean deployAfterBuild, boolean reloadAfterDeploy, int backupsToKeep,
+                          boolean javaContainerLayout, boolean javaTextLayout, boolean javaTextSurfaces) {
+        this(vanillaOverride, strict, autoBuildOnStartup, syncProviderChanges, startupDelayTicks,
+                providerCommandDelayTicks, maximumSourceBytes, maximumArchiveEntries, downloadVanillaAssets,
+                autoDiscoverSources, additionalSources, geyserDirectory, deployAfterBuild, reloadAfterDeploy,
+                backupsToKeep, javaContainerLayout, javaTextLayout, javaTextSurfaces, true, true, true);
     }
 
     public static TwilightConfig read(FileConfiguration source, Path serverRoot) {
@@ -94,7 +109,10 @@ public record TwilightConfig(
                 backups,
                 source.getBoolean("ui.java-container-layout", true),
                 source.getBoolean("ui.java-text-layout", true),
-                source.getBoolean("ui.java-text-surfaces", true)
+                source.getBoolean("ui.java-text-surfaces", true),
+                source.getBoolean("world.bedrock-biome-matching", true),
+                source.getBoolean("ui.java-glyph-tint", true),
+                source.getBoolean("ui.java-translations", true)
         );
     }
 

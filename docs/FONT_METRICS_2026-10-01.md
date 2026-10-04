@@ -1,5 +1,7 @@
 # Bitmap glyph heights and baselines — 1 October 2026
 
+> The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
+
 Follow-up: the [2 October wide glyph review](WIDE_GLYPHS_2026-10-02.md) extends
 this measured placement to larger atlas cells. The results below retain the
 original prerelease scope and evidence.
@@ -66,13 +68,13 @@ strict failures preserved the previous diagnostic outputs.
 
 | Evidence | Result |
 | --- | --- |
-| [Native Bedrock calibration](images/acceptance/2026-10-01-fonts/native-probe-bedrock.png) | Independent four-pixel squares at known cell offsets establish the text origin. This manually assembled probe is not plugin-output acceptance. |
-| [Java real-source reference](images/acceptance/2026-10-01-fonts/before-real-java.png) and [Bedrock before correction](images/acceptance/2026-10-01-fonts/before-real-bedrock.png) | 36 new glyphs compared; baseline error is visible and the wide rank label is omitted by diagnostic conversion. |
-| [Java metric probes](images/acceptance/2026-10-01-fonts/fixed-probe-java.png) | Six height/ascent combinations, including a negative ascent, form the unchanged Java reference. |
-| [Java menu title and inventory](images/acceptance/2026-10-01-fonts/fixed-menu-java.png) | Title combines ordinary text, a metric square and a real emoji. The matching Bedrock capture below confirms placement; text-color modulation still differs. The two previously documented invalid Java item references remain. |
-| [Bedrock metric probes](images/acceptance/2026-10-01-fonts/fixed-probe-bedrock.png) | All six measured heights and offsets match the Java reference, including negative ascent. |
-| [Final Java real glyphs](images/acceptance/2026-10-01-fonts/fixed-real-java.png) and [final Bedrock real glyphs](images/acceptance/2026-10-01-fonts/fixed-real-bedrock.png) | 35 supported glyphs visible; one wide rank remains unsupported. Native text spacing and UI scale differ. |
-| [Final Bedrock menu](images/acceptance/2026-10-01-fonts/fixed-menu-bedrock.png) | Title square/emoji align vertically; bitmap tint differs from Java. The existing missing-source inventory exceptions remain. |
+| Native Bedrock calibration | Independent four-pixel squares at known cell offsets establish the text origin. This manually assembled probe is not plugin-output acceptance. |
+| Java real-source reference and Bedrock before correction | 36 new glyphs compared; baseline error is visible and the wide rank label is omitted by diagnostic conversion. |
+| Java metric probes | Six height/ascent combinations, including a negative ascent, form the unchanged Java reference. |
+| Java menu title and inventory | Title combines ordinary text, a metric square and a real emoji. The matching Bedrock capture below confirms placement; text-color modulation still differs. The two previously documented invalid Java item references remain. |
+| Bedrock metric probes | All six measured heights and offsets match the Java reference, including negative ascent. |
+| Final Java real glyphs and final Bedrock real glyphs | 35 supported glyphs visible; one wide rank remains unsupported. Native text spacing and UI scale differ. |
+| Final Bedrock menu | Title square/emoji align vertically; bitmap tint differs from Java. The existing missing-source inventory exceptions remain. |
 
 [Measurements](images/acceptance/2026-10-01-fonts/measurements.json) distinguish
 compiler checks from visual acceptance. [Image hashes](images/acceptance/2026-10-01-fonts/sha256.json)

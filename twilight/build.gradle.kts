@@ -22,6 +22,7 @@ dependencies {
     // Text surface tests rewrite real protocol packets.
     testImplementation("org.geysermc.mcprotocollib:protocol:26.2-20260824.124638-17") { isTransitive = false }
     testImplementation("io.netty:netty-buffer:4.2.7.Final")
+    testImplementation("org.cloudburstmc:nbt:3.0.5.Final")
 
     testImplementation(platform("org.junit:junit-bom:5.14.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")

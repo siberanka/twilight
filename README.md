@@ -13,66 +13,53 @@ HUDs. These are acceptance obligations, not a count of passing tests.
 
 ## Visual acceptance tests
 
-The [real-content review](docs/REAL_CONTENT_REVIEW.md) records six tools/weapons, chat emoji, two GUI font probes, and sampled BetterModel/ModelEngine poses, including remaining failures and blocked checks. The locally built [1.0.0-pre.6 JAR and checksum](artifacts/) accompany the source. Full visual parity is not established.
+The [UI campaign](docs/UI_CAMPAIGN_2026-10-04.md) opened 104 real menus of two
+servers on Java and Bedrock: every window and 97 title bands match Java; the rest
+are differences of Bedrock's own text font. An original-art style suite covers the
+same menu techniques with publishable captures, including titles Java darkens and
+layered titles, which are not reproduced yet. The same report covers complete
+builds of six real servers and custom datapack biomes. The locally built
+[1.0.0-pre.7 JAR and checksum](artifacts/) accompany the source. Full visual parity
+is not established.
 
-The [cloud-anchor regression](docs/CLOUD_ANCHORS_2026-09-29.md) verifies automatic removal of unwanted ModelEngine particles, live state changes and passenger retention. The [mount-height regression](docs/DISPLAY_SEATS_2026-09-29.md) corrects the tested basket's lighting on solid ground. Full pose and material parity remain open.
-
-The [extended content checks](docs/BROAD_CONTENT_2026-09-29.md) cover 911 discovered
-item candidates, six further held items, 28 chat glyphs and Survival menu images.
-They document a corrected overlay-name blocker and remaining conversion failures.
-
-The [new-sample regression](docs/COMPOSITE_MODELS_2026-09-30.md) expands testing
-with 36 different items, 24 emoji and four further models. It identifies and
-corrects lost per-child composite transforms; remaining visual gaps are recorded.
-
-The [font metrics regression](docs/FONT_METRICS_2026-10-01.md) measures Java/Bedrock
-glyph placement and corrects height/ascent conversion without page-relative heuristics.
-
-The [wide glyph review](docs/WIDE_GLYPHS_2026-10-02.md) adds six real UI/HUD images
-and verifies the formerly omitted 41-pixel-wide rank. Atlas cells grow without
-shrinking the glyphs. The latest pairs below show 2 October captures at the same
-GUI scale, plus the earlier composite regression. Chat rendering now includes
-larger images; tint, horizontal padding and fractional sampling still prevent
-full UI parity. The report includes failures alongside successful comparisons.
-
-The [container layout review](docs/CONTAINER_LAYOUT_2026-10-03.md) resolves the
-clipped menu title. Desktop chest screens now show Java font-image menus in full,
-with Java's title position, drawing order and slot spacing for every chest row
-count from 1 to 6.
-
-The [text layout review](docs/TEXT_LAYOUT_2026-10-03.md) adds Java font metrics to
-chest titles: negative spaces, ItemsAdder offsets, remapped default-font
-characters and glyph bearings. Six real Survival menus match Java's GUI pixels in
-the title area and on all measured slot rows. Bitmap glyph tint and overlapping
-title layers remain open.
-
-The [text surface review](docs/TEXT_SURFACES_2026-10-04.md) applies the same
-layout to chat, the action bar, titles, boss bars, scoreboards, entity names and
-holograms. Independent SkyBlock content (CraftEngine named-font ranks and
-CustomNameplates backgrounds) measured zero offset on every surface. Complete
-production builds of five real servers found and fixed discovery, atlas, PNG and
-font defects; Survival now converts 837 of 841 custom items instead of 125.
+All screenshots below were captured on 4 October 2026 with the release build. Older
+reports keep their measurements:
+[real content](docs/REAL_CONTENT_REVIEW.md),
+[cloud anchors](docs/CLOUD_ANCHORS_2026-09-29.md),
+[mount heights](docs/DISPLAY_SEATS_2026-09-29.md),
+[extended content](docs/BROAD_CONTENT_2026-09-29.md),
+[composite models](docs/COMPOSITE_MODELS_2026-09-30.md),
+[font metrics](docs/FONT_METRICS_2026-10-01.md),
+[wide glyphs](docs/WIDE_GLYPHS_2026-10-02.md),
+[container layout](docs/CONTAINER_LAYOUT_2026-10-03.md),
+[text layout](docs/TEXT_LAYOUT_2026-10-03.md) and
+[text surfaces](docs/TEXT_SURFACES_2026-10-04.md).
 
 <table>
-  <tr><th>Java font-image menu - 3 October</th><th>Bedrock font-image menu - 3 October</th></tr>
+  <tr><th>Java - menu title without a colour</th><th>Bedrock</th></tr>
   <tr>
-    <td><img src="docs/images/acceptance/2026-10-03-container-layout/white-54-java.png" alt="Java 54-slot menu with a 176 by 83 title image over the chest slots" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-10-03-container-layout/white-54-bedrock.png" alt="Bedrock shows the same title image in full and aligned with the slots" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/header-uncoloured-java.png" alt="Java draws the header image of an uncoloured title darkened" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/header-uncoloured-bedrock.png" alt="Bedrock shows the same darkened header at the same position" width="100%"></td>
   </tr>
-  <tr><th>Java leaderboard image in chat - 2 October</th><th>Bedrock leaderboard image in chat - 2 October</th></tr>
+  <tr><th>Java - white title</th><th>Bedrock</th></tr>
   <tr>
-    <td><img src="docs/images/acceptance/2026-10-02-wide-fonts/wide-5-java.png" alt="Java leaderboard bitmap rendered as a chat glyph" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-10-02-wide-fonts/wide-5-bedrock.png" alt="Bedrock preserves leaderboard bitmap dimensions and opaque pixels; this is not an interactive menu test" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/header-white-java.png" alt="Java header image with a white title colour" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/header-white-bedrock.png" alt="Bedrock header image at the same position and colours" width="100%"></td>
   </tr>
-  <tr><th>Java real glyphs - 2 October</th><th>Bedrock real glyphs - 2 October</th></tr>
+  <tr><th>Java - icons, spaces and text</th><th>Bedrock</th></tr>
   <tr>
-    <td><img src="docs/images/acceptance/2026-10-02-wide-fonts/real-java.png" alt="Java reference with 36 real-source glyphs" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-10-02-wide-fonts/real-bedrock.png" alt="Bedrock with all 36 glyphs visible, including the wide player rank" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/icon-row-java.png" alt="Java title with coin and gem icons separated by space providers and coloured text" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/icon-row-bedrock.png" alt="Bedrock title with the icons and text at Java's positions" width="100%"></td>
   </tr>
-  <tr><th>Java composite model - 30 September</th><th>Bedrock composite model - 30 September</th></tr>
+  <tr><th>Java - layered title</th><th>Bedrock - not reproduced yet</th></tr>
   <tr>
-    <td><img src="docs/images/acceptance/2026-09-30-composites/bettermodel-demon_knight-idle-java.png" alt="Java demon knight composite model reference" width="100%"></td>
-    <td><img src="docs/images/acceptance/2026-09-30-composites/bettermodel-demon_knight-idle-bedrock.png" alt="Bedrock demon knight with corrected child transforms and attached horns" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/layered-bold-java.png" alt="Java draws a banner over the header and text inside it" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-ui-campaign/style-suite/layered-bold-bedrock.png" alt="Bedrock draws the banner after the header because text cannot move left" width="100%"></td>
+  </tr>
+  <tr><th>Java - datapack biome</th><th>Bedrock - closest vanilla biome</th></tr>
+  <tr>
+    <td><img src="docs/images/acceptance/2026-10-04-biomes/java.png" alt="Java grass in a custom datapack biome" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-04-biomes/bedrock-mapped.png" alt="Bedrock grass in the colours of the closest vanilla biome instead of the ocean fallback" width="100%"></td>
   </tr>
 </table>
 
@@ -120,8 +107,9 @@ Each operation writes a dedicated UTF-8 log under `plugins/Twilight/logs`, for e
 - Animated item textures currently export the first authored frame. Full `.mcmeta` animation playback is not implemented.
 - Layered 2D textures are composed without smoothing. Java cuboids remain volumetric Bedrock geometry with separate first/third-person left/right and head transforms. Handheld presentation follows the resolved Java model parent, while authored hand translation, rotation, and scale are preserved without implicit fitting.
 - Single-layer texture-only bows and crossbows reuse Bedrock's native pose, pull geometry, and animation controllers. Volumetric legacy pull stages retain separate Java geometry and display transforms behind one runtime-selected Bedrock attachable. Crossbow arrow/rocket loads and fishing-rod cast models become explicit Geyser predicates, preserving their distinct states.
-- Supported bitmap providers use adaptive 16-to-512-pixel cells with measured Java height/ascent alignment. Atlas growth preserves authored display dimensions; overflow beyond the supported bounds and custom spacing fail strict conversion. Six metric probes, 36 real glyphs and six further UI/HUD images were compared in both clients. Chest titles use Java font metrics (spacing, negative shifts, bearings and remapped characters); bitmap tint and fractional sampling remain limitations. Large atlases also increase memory use; see the wide glyph review. Named fonts contribute only globally safe, collision-free BMP private-use glyphs.
-- Text is laid out for Bedrock players with Java font metrics (`ui.java-text-layout: true`): fonts from all packs are combined like Java, spacing and negative-shift characters become invisible spacers, and characters Java remaps or named fonts use receive private-use aliases. Chest titles, chat, action bar, titles, boss bars, scoreboards, entity names and text displays are covered (`ui.java-text-surfaces: true`); item names and lore are not. A glyph directly after text without a space and overlapping layers can still differ by a unit.
+- Supported bitmap providers use adaptive 16-to-512-pixel cells with measured Java height/ascent alignment. Atlas growth preserves authored display dimensions; overflow beyond the supported bounds and custom spacing fail strict conversion. Six metric probes, 36 real glyphs and six further UI/HUD images were compared in both clients. Chest titles use Java font metrics (spacing, negative shifts, bearings and remapped characters); fractional sampling remains a limitation. Large atlases also increase memory use; see the wide glyph review. Named fonts contribute only globally safe, collision-free BMP private-use glyphs.
+- Text is laid out for Bedrock players with Java font metrics (`ui.java-text-layout: true`): fonts from all packs are combined like Java, spacing and negative-shift characters become invisible spacers, and characters Java remaps or named fonts use receive private-use aliases. Chest titles, chat, action bar, titles, boss bars, scoreboards, entity names and text displays are covered (`ui.java-text-surfaces: true`); item names and lore are not. Titles without a colour show their images darkened like Java (`ui.java-glyph-tint: true`), and the packs' translations reach Bedrock players (`ui.java-translations: true`). A glyph directly after text without a space can still differ by a unit, and layers moved back over an earlier image are not reproduced.
+- Datapack and plugin biomes are shown on Bedrock as the vanilla biome with the closest grass, foliage, water and fog colours instead of Geyser's ocean fallback (`world.bedrock-biome-matching: true`).
 - Desktop chest screens receive Java's container layout (`ui.java-container-layout: true`): unwrapped titles, Java label positions and drawing order, and Java slot spacing for 1 to 6 rows. Twilight merges partial UI definitions instead of replacing Bedrock UI files; other containers and touch layouts stay vanilla.
 - With `vanilla-override: false`, normal Unicode cells in the Java default font never replace Bedrock's vanilla glyphs; the text layout gives them private-use aliases instead. Characters drawn from Java's own font sheets stay ordinary Bedrock text.
 - Texture atlas sprite renames (for example ItemsAdder's `ia:<number>` sprites) and protected PNGs with broken checksums are resolved like Java. Faces whose texture variable no model defines use Java's missing texture. Content Java rejects as well is reported as a notice in `build-report.json` instead of stopping a strict build.

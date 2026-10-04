@@ -63,6 +63,7 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
     private final Map<Class<? extends Packet>, Surface<?>> surfaces = new LinkedHashMap<>();
     private final Set<String> loggedFailures = ConcurrentHashMap.newKeySet();
     private volatile TextLayoutTable table;
+    private volatile Set<String> packKeys = Set.of();
 
     private GeyserTextLayoutBridge(Object owner, Path servedPack, Logger logger, boolean allSurfaces) {
         this.servedPack = servedPack;
@@ -70,27 +71,17 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
         this.registrar = EventRegistrar.of(owner);
         surface(ClientboundOpenScreenPacket.class, this::openScreen);
         if (!allSurfaces) return;
-        surface(ClientboundSystemChatPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table,
-                packet.isOverlay() ? TextLayout.Mode.CENTERED : TextLayout.Mode.LEFT, "Content"));
-        surface(ClientboundPlayerChatPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table,
-                TextLayout.Mode.LEFT, "Content", "UnsignedContent", "Name", "TargetName"));
-        surface(ClientboundDisguisedChatPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table,
-                TextLayout.Mode.LEFT, "Message", "Name", "TargetName"));
-        surface(ClientboundSetActionBarTextPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table,
-                TextLayout.Mode.CENTERED, "Text"));
-        surface(ClientboundSetTitleTextPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table,
-                TextLayout.Mode.CENTERED, "Text"));
-        surface(ClientboundSetSubtitleTextPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table,
-                TextLayout.Mode.CENTERED, "Text"));
-        surface(ClientboundBossEventPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table,
-                TextLayout.Mode.CENTERED, "Title"));
-        surface(ClientboundSetObjectivePacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table,
-                TextLayout.Mode.CENTERED, "DisplayName"));
-        surface(ClientboundSetPlayerTeamPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table,
-                TextLayout.Mode.LEFT, "DisplayName", "PlayerPrefix", "PlayerSuffix"));
-        surface(ClientboundSetScorePacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table,
-                TextLayout.Mode.LEFT, "Display"));
-        surface(ClientboundSetEntityDataPacket.class, (session, packet, table) -> TextSurfaces.entityData(packet, table));
+        surface(ClientboundSystemChatPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), packet.isOverlay() ? TextLayout.Mode.CENTERED : TextLayout.Mode.LEFT, "Content"));
+        surface(ClientboundPlayerChatPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.LEFT, "Content", "UnsignedContent", "Name", "TargetName"));
+        surface(ClientboundDisguisedChatPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.LEFT, "Message", "Name", "TargetName"));
+        surface(ClientboundSetActionBarTextPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.CENTERED, "Text"));
+        surface(ClientboundSetTitleTextPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.CENTERED, "Text"));
+        surface(ClientboundSetSubtitleTextPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.CENTERED, "Text"));
+        surface(ClientboundBossEventPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.CENTERED, "Title"));
+        surface(ClientboundSetObjectivePacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.CENTERED, "DisplayName"));
+        surface(ClientboundSetPlayerTeamPacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.LEFT, "DisplayName", "PlayerPrefix", "PlayerSuffix"));
+        surface(ClientboundSetScorePacket.class, (session, packet, table) -> TextSurfaces.rewrite(packet, table, translations(session), TextLayout.Mode.LEFT, "Display"));
+        surface(ClientboundSetEntityDataPacket.class, (session, packet, table) -> TextSurfaces.entityData(packet, table, translations(session)));
     }
 
     /**
@@ -114,6 +105,9 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
     private synchronized void attach() {
         try {
             table = readTable(servedPack);
+            Set<String> keys = new java.util.HashSet<>();
+            GeyserLanguageBridge.read(servedPack).values().forEach(strings -> keys.addAll(strings.keySet()));
+            packKeys = Set.copyOf(keys);
         } catch (IOException | RuntimeException failure) {
             table = null;
             logger.log(Level.SEVERE, "Could not read the text layout of the served Twilight pack", failure);
@@ -135,6 +129,17 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
         logger.info(table == null ? "Java text layout idle: the served pack has no layout table."
                 : "Java text layout active for " + (surfaces.size() - missing.size()) + " Bedrock packet types ("
                 + table.entryCount() + " font entries).");
+    }
+
+    /**
+     * Pack strings for translation keys the resource packs define, in the session's language with Java's
+     * fallback order (Geyser's language maps carry them, see {@link GeyserLanguageBridge}); null when none.
+     */
+    private java.util.function.Function<String, String> translations(GeyserSession session) {
+        Set<String> keys = packKeys;
+        if (keys.isEmpty()) return null;
+        String locale = session.locale() == null ? "en_us" : session.locale();
+        return key -> keys.contains(key) ? org.geysermc.geyser.text.MinecraftLocale.getLocaleString(key, locale) : null;
     }
 
     static TextLayoutTable readTable(Path pack) throws IOException {
@@ -162,7 +167,7 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
         // The touch layout keeps its centred native title; only glyph substitution applies there.
         var profile = session.getClientData() == null ? null : session.getClientData().getUiProfile();
         boolean pocket = profile != null && "POCKET".equals(profile.toString());
-        return TextSurfaces.openScreen(packet, table, pocket);
+        return TextSurfaces.openScreen(packet, table, pocket, translations(session));
     }
 
     private void logOnce(Class<?> type, Throwable failure) {

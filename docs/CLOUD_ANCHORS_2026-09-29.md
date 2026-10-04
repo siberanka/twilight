@@ -1,5 +1,7 @@
 # Automatic cloud-anchor adaptation — 29 September 2026
 
+> The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
+
 Twilight now removes the unwanted particles around the tested ModelEngine models
 automatically. ModelEngine uses invisible Java area-effect clouds with radius zero
 as model anchors. Geyser's normal cloud translator clamps the radius to at least
@@ -90,23 +92,23 @@ previous session's unused effect color is not carried into the new flame cloud.
 
 | Java | Bedrock |
 |---|---|
-| ![Bear idle Java](images/acceptance/2026-09-29-clouds/modelengine-bear_brown-idle-java.png) | ![Bear idle Bedrock](images/acceptance/2026-09-29-clouds/modelengine-bear_brown-idle-bedrock.png) |
-| ![Bear attack Java](images/acceptance/2026-09-29-clouds/modelengine-bear_brown-attack-java.png) | ![Bear attack Bedrock](images/acceptance/2026-09-29-clouds/modelengine-bear_brown-attack-bedrock.png) |
-| ![Crab idle Java](images/acceptance/2026-09-29-clouds/modelengine-crab_hermit-idle-java.png) | ![Crab idle Bedrock](images/acceptance/2026-09-29-clouds/modelengine-crab_hermit-idle-bedrock.png) |
-| ![Crab hide Java](images/acceptance/2026-09-29-clouds/modelengine-crab_hermit-hide-java.png) | ![Crab hide Bedrock](images/acceptance/2026-09-29-clouds/modelengine-crab_hermit-hide-bedrock.png) |
-| ![Archer idle Java](images/acceptance/2026-09-29-clouds/modelengine-angel_gm_archer_one-idle-java.png) | ![Archer idle Bedrock](images/acceptance/2026-09-29-clouds/modelengine-angel_gm_archer_one-idle-bedrock.png) |
-| ![Archer attack Java](images/acceptance/2026-09-29-clouds/modelengine-angel_gm_archer_one-attack1-java.png) | ![Archer attack Bedrock](images/acceptance/2026-09-29-clouds/modelengine-angel_gm_archer_one-attack1-bedrock.png) |
-| ![Basket Java](images/acceptance/2026-09-29-clouds/modelengine-basket_with_health_potions-static-java.png) | ![Basket Bedrock](images/acceptance/2026-09-29-clouds/modelengine-basket_with_health_potions-static-bedrock.png) |
-| ![Griffon idle Java](images/acceptance/2026-09-29-clouds/bettermodel-pet_griffon_phoenix-idle-java.png) | ![Griffon idle Bedrock](images/acceptance/2026-09-29-clouds/bettermodel-pet_griffon_phoenix-idle-bedrock.png) |
-| ![Griffon interact Java](images/acceptance/2026-09-29-clouds/bettermodel-pet_griffon_phoenix-interact-java.png) | ![Griffon interact Bedrock](images/acceptance/2026-09-29-clouds/bettermodel-pet_griffon_phoenix-interact-bedrock.png) |
-| ![Blacksmith idle Java](images/acceptance/2026-09-29-clouds/bettermodel-blacksmith_hm5_npc-idle-java.png) | ![Blacksmith idle Bedrock](images/acceptance/2026-09-29-clouds/bettermodel-blacksmith_hm5_npc-idle-bedrock.png) |
-| ![Blacksmith wave Java](images/acceptance/2026-09-29-clouds/bettermodel-blacksmith_hm5_npc-wave-java.png) | ![Blacksmith wave Bedrock](images/acceptance/2026-09-29-clouds/bettermodel-blacksmith_hm5_npc-wave-bedrock.png) |
-| ![Owl idle Java](images/acceptance/2026-09-29-clouds/bettermodel-owl_crate-idle-java.png) | ![Owl idle Bedrock](images/acceptance/2026-09-29-clouds/bettermodel-owl_crate-idle-bedrock.png) |
-| ![Owl open Java](images/acceptance/2026-09-29-clouds/bettermodel-owl_crate-open-java.png) | ![Owl open Bedrock](images/acceptance/2026-09-29-clouds/bettermodel-owl_crate-open-bedrock.png) |
+| Bear idle Java | Bear idle Bedrock |
+| Bear attack Java | Bear attack Bedrock |
+| Crab idle Java | Crab idle Bedrock |
+| Crab hide Java | Crab hide Bedrock |
+| Archer idle Java | Archer idle Bedrock |
+| Archer attack Java | Archer attack Bedrock |
+| Basket Java | Basket Bedrock |
+| Griffon idle Java | Griffon idle Bedrock |
+| Griffon interact Java | Griffon interact Bedrock |
+| Blacksmith idle Java | Blacksmith idle Bedrock |
+| Blacksmith wave Java | Blacksmith wave Bedrock |
+| Owl idle Java | Owl idle Bedrock |
+| Owl open Java | Owl open Bedrock |
 
 | Normal cloud with passenger | Invisible point anchor with passenger |
 |---|---|
-| ![Positive radius](images/acceptance/2026-09-29-clouds/transition-positive-bedrock.png) | ![Zero radius invisible](images/acceptance/2026-09-29-clouds/transition-zero-invisible-bedrock.png) |
-| ![Visible zero radius](images/acceptance/2026-09-29-clouds/transition-zero-visible-bedrock.png) | ![Reconnect](images/acceptance/2026-09-29-clouds/transition-reconnect-bedrock.png) |
+| Positive radius | Zero radius invisible |
+| Visible zero radius | Reconnect |
 
-![Normal cloud restored](images/acceptance/2026-09-29-clouds/transition-restore-bedrock.png)
+Normal cloud restored

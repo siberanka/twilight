@@ -1,5 +1,7 @@
 # Java container layout on Bedrock chest screens - 3 October 2026
 
+> The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
+
 Font-image menus are drawn by Java as part of the container title. Bedrock's
 native chest title wrapped such an image at 90% of the panel width,
 hyphenated it and clipped it, and its slot rows did not keep Java's spacing.
@@ -75,11 +77,11 @@ baseline, which used the same build with the layout disabled.
 
 | Case | Java | Bedrock |
 | --- | --- | --- |
-| White-title menu image, 27 slots | [Reference](images/acceptance/2026-10-03-container-layout/white-27-java.png) | [Full image, slots aligned](images/acceptance/2026-10-03-container-layout/white-27-bedrock.png) |
-| White-title menu image, 54 slots | [Reference](images/acceptance/2026-10-03-container-layout/white-54-java.png) | [Full image, slots aligned](images/acceptance/2026-10-03-container-layout/white-54-bedrock.png) |
-| Default-colour title | [Image darkened by `0x404040`](images/acceptance/2026-10-03-container-layout/default-tint-54-java.png) | [Image not tinted](images/acceptance/2026-10-03-container-layout/default-tint-54-bedrock.png) |
-| Probe glyphs | [Reference](images/acceptance/2026-10-03-container-layout/glyph-bearing-27-java.png) | [One-unit glyph offset, no tint](images/acceptance/2026-10-03-container-layout/glyph-bearing-27-bedrock.png) |
-| Vanilla Bedrock UI, 27 slots | - | [Image missing, title hyphenated](images/acceptance/2026-10-03-container-layout/before-white-27-bedrock.png) |
+| White-title menu image, 27 slots | Reference | Full image, slots aligned |
+| White-title menu image, 54 slots | Reference | Full image, slots aligned |
+| Default-colour title | Image darkened by `0x404040` | Image not tinted |
+| Probe glyphs | Reference | One-unit glyph offset, no tint |
+| Vanilla Bedrock UI, 27 slots | - | Image missing, title hyphenated |
 
 Crops are taken from unchanged client screenshots and identified by
 [SHA-256 hashes](images/acceptance/2026-10-03-container-layout/sha256.json).
