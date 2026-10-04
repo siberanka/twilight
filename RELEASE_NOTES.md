@@ -1,4 +1,44 @@
-# Twilight 1.0.0-pre.6 - prerelease
+# Twilight 1.0.0-pre.7 - prerelease
+
+This prerelease converts the content Java players actually receive from CraftEngine,
+ItemsAdder, Nexo and other providers, shows datapack biomes and pack translations on
+Bedrock, and was verified with 104 real menus and an original-art menu style suite.
+
+- Treated each provider's generated pack (CraftEngine `resource_pack.zip`,
+  ItemsAdder output, Nexo/Oraxen packs) as authoritative over its working folders.
+  Packs of providers that are not installed, or that do not send their pack while
+  another provider does, only fill gaps. CustomNameplates and BetterHUD packs are
+  discovered; Nexo's vanilla asset cache is ignored. Complete builds of six real
+  servers now convert, for example, 1,905 of 1,932 custom items on Survival.
+- Showed datapack and plugin biomes (Terralith, Incendium, RealisticSeasons) on
+  Bedrock as the vanilla biome with the closest colours and precipitation instead of
+  Geyser's ocean fallback (`world.bedrock-biome-matching`).
+- Merged the resource packs' translations like Java: Bedrock players see the names of
+  datapack and plugin content and pack overrides such as an image as the ender chest
+  title or a hidden inventory label (`ui.java-translations`).
+- Darkened the images of container titles without a colour code like Java, with
+  pre-darkened glyph copies (`ui.java-glyph-tint`; about 330 MiB more atlas memory on
+  the largest tested server).
+- Kept bold titles at Java's position (they were four units to the right) and made
+  legacy colour codes in laid-out text take no space.
+
+Results: every window of the 104 real menus and 97 title bands matched Java; the
+other seven differ only in Bedrock's own text font. In the style suite every
+technique matched except layers moved back over an earlier image, which Bedrock
+text cannot reproduce. A custom datapack biome showed its closest vanilla biome
+(cherry grove) instead of ocean. See the [UI campaign](docs/UI_CAMPAIGN_2026-10-04.md).
+Item names and lore are not rewritten, and high-resolution glyph sampling differs.
+
+The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 25;
+156 tests across 28 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom
+content enabled. The display adapter, text layout, biome and translation bridges
+target Geyser 2.11.3 build 1247; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.6 - prerelease
 
 This prerelease shows Java font content correctly on every Bedrock text surface
 and fixes conversion defects found by complete builds of five real servers.
@@ -39,7 +79,6 @@ Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with cust
 content enabled. The display adapter and text layout target Geyser 2.11.3 build
 1247; other Geyser core versions require validation.
 
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.5 - prerelease
 
