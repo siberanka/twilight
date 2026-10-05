@@ -131,6 +131,7 @@ test-material/
 
 # Deliberately published local build; private fixture archives stay ignored.
 !/artifacts/Twilight.jar
+!/artifacts/TwilightProxy.jar
 
 # Editor workspace settings
 .vscode/
