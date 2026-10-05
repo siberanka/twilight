@@ -1,4 +1,31 @@
-# Twilight 1.0.0-pre.8 - prerelease
+# Twilight 1.0.0-pre.9 - prerelease
+
+This prerelease adds twilight-proxy: per-server Bedrock packs for networks that run Geyser on a
+Velocity or BungeeCord proxy.
+
+- Added `TwilightProxy.jar`. Each backend's pack comes from Twilight on that backend (`auto`), a
+  file in `plugins/twilight-proxy/packs/` or a direct download link. A Bedrock player loads the pack
+  of the server they join; moving to a server with another pack reconnects the client to Geyser
+  (about five seconds with a cached pack) and sends it on. Tested live on Velocity 4.2.0 and
+  BungeeCord 26.1 with two backends; see the [proxy test](docs/PROXY_2026-10-05.md).
+- Twilight shares its exported pack over signed plugin messages. The secret is the one the proxy
+  already shares with its servers (Velocity forwarding, BungeeGuard) or `proxy.secret`; requests
+  carry timestamps and single-use nonces, clients can neither read nor forge the channel, transfers
+  are bounded, and every pack is size-limited and checked before Geyser sees it.
+- Bounded the text layout against crafted input (16384 characters, moves up to 2^20 units).
+- Added the [wiki](WIKI.md) with every command, configuration key, file, API and the security model.
+
+Releases now contain `Twilight.jar` (backends) and `TwilightProxy.jar` (proxies, optional). The
+[JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 191 tests
+across 36 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.8 - prerelease
 
 This prerelease reproduces stacked menu art and nameplates, shows custom and seasonal
 biomes in their exact colours and makes every build work without setup.
@@ -32,7 +59,6 @@ with Java 26.2 and Bedrock 1.26.5203.0). The display adapter, text layout, biome
 name and translation bridges target Geyser 2.11.3 build 1247 on the same server;
 other Geyser core versions require validation.
 
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.7 - prerelease
 

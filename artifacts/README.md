@@ -1,18 +1,22 @@
-# Twilight 1.0.0-pre.8 prerelease build
+# Twilight 1.0.0-pre.9 prerelease build
 
-[Download Twilight.jar](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256)
+[Download Twilight.jar](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256) (backend servers)
+
+[Download TwilightProxy.jar](TwilightProxy.jar?raw=true) | [SHA-256](TwilightProxy.jar.sha256) (Velocity and BungeeCord proxies, optional)
 
 Built locally by siberanka using Java 25.0.2 and Gradle 9.6.0, with
-`:twilight:build --offline --no-daemon --no-configuration-cache`.
-183 tests across 34 suites passed. No hosted CI was used.
+`:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`.
+191 tests across 36 suites passed. No hosted CI was used.
 
-The corresponding source is in this commit under `twilight/`, with build files
+The corresponding source is in this commit under `twilight/`, `twilight-proxy/` and `protocol/`, with build files
 at the repository root. Licensed under [LGPL-3.0-or-later](../LICENSE.LESSER);
 the accompanying [GPL text](../LICENSE) is also provided.
 
-Read the [release notes](../RELEASE_NOTES.md) and the
+Read the [release notes](../RELEASE_NOTES.md), the [wiki](../WIKI.md) and the
 [stacked images, nameplates and exact biomes](../docs/LAYERS_BIOMES_2026-10-04.md)
-report before deployment. This prerelease draws text and images that Java moves back
+report before deployment. This prerelease adds twilight-proxy, per-server Bedrock packs for
+networks with Geyser on a Velocity or BungeeCord proxy
+([proxy test](../docs/PROXY_2026-10-05.md)). It draws text and images that Java moves back
 over earlier ones (stacked menu art, CustomNameplates backgrounds) with one Bedrock
 label per layer, shows custom and RealisticSeasons biomes in their exact colours,
 applies Java's name rules to nameplates, lets each provider's source and the Bedrock
