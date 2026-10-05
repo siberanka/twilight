@@ -1,5 +1,7 @@
 # Java title layout for Bedrock chest screens - 3 October 2026
 
+> Türkçe: [aşağıda](#türkçe)
+
 > The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
 
 > Later change (1.0.0-pre.6): the layout now also covers chat, the action bar,
@@ -101,3 +103,105 @@ glyphs on Java. Twilight now matches this instead of applying the font's advance
 - Bitmap tint, bold glyphs, chat, item names, lore, scoreboards and boss bars are
   not laid out yet; aliased characters appear correctly only in chest titles.
 - The touch layout was covered by unit tests, not by a live touch-client capture.
+
+---
+
+## Türkçe
+
+### Bedrock sandık ekranları için Java başlık yerleşimi - 3 Ekim 2026
+
+> Bu raporun ekran görüntüleri 4 Ekim 2026'da güncel görüntüler lehine kaldırıldı; aşağıdaki ölçümler
+> geçerlidir. Güncel Java/Bedrock görüntüleri [README](../README.md#visual-acceptance-tests) içindedir.
+
+> Sonraki değişiklik (1.0.0-pre.6): yerleşim artık sohbeti, aksiyon çubuğunu, başlıkları, boss
+> çubuklarını, skor tablolarını, varlık adlarını ve diğer konteyner başlıklarını da kapsar ve konteyner
+> yerleşimini gerektirmez. [Yazı yüzeyi incelemesine](TEXT_SURFACES_2026-10-04.md) bakın.
+
+Twilight 1.0.0-pre.5, konteyner başlıklarını Bedrock oyuncuları için Java font ölçüleriyle yerleştirir.
+Gerçek Java menü başlıkları negatif boşluk karakterlerini büyük arayüz görselleriyle birleştirir.
+Bedrock'ta bu başlıklar önceden üç şekilde bozuluyordu: Java'nın `minecraft:default` içinde yeniden
+eşlediği karakterler (örneğin `七` veya `ἃ`) Bedrock'un kendi harflerini gösteriyordu, negatif ve özel
+boşluklar kayboluyordu ve her bitmap glif Java'dan bir arayüz birimi sağda çiziliyordu. Altı gerçek
+Survival menüsü artık başlık alanında ve ölçülen tüm yuva satırlarında Java ile aynı arayüz
+piksellerine oturuyor.
+
+#### Ölçülmüş Bedrock glif kuralları
+
+Tanı amaçlı glif sayfaları Bedrock 1.26.5203 sandık başlığında ölçüldü:
+
+- Bir glif, alfası sıfırdan büyük ilk sütunundan başlayarak kalemin bir birim ardına çizilir. İlerlemesi
+  mürekkepli genişliği artı birdir. Java sıfırıncı sütunu kalemde çizer ve en sağdaki mürekkepli sütuna
+  kadarki genişliği artı bir kadar ilerler.
+- Alfası 1 olan pikseller görünmez kalsa da mürekkep sayılır. Tamamen saydam bir glif dört birim ilerler.
+- Yazıya göre dikey yerleşim 16 ile 512 piksel arası atlas hücreleri için Java ile aynıdır.
+- Bedrock tam olarak bir birim ilerleyemez veya bir satır içinde sola gidemez.
+
+#### Otomatik dönüşüm
+
+`ui.java-text-layout` (varsayılan `true`, `ui.java-container-layout` gerektirir) şunları ekler:
+
+| Parça | Davranış |
+| --- | --- |
+| Java font modeli | Tüm kaynak paketlerinin font tanımları Java'daki gibi birleştirilir (öncelikli paketler önce). Bitmap ilerlemeleri negatif yükseklikler dahil Java'nın formülünü kullanır (`(int)(0.5 + genişlik × yükseklik / hücreYüksekliği) + 1`); boşluk sağlayıcıları ve boş TrueType glifleri ilerlemeye dönüşür. Java'nın yükleyemediği TrueType dosyaları (`maxp` tablosu olmayan) Java'daki gibi yok sayılır. |
+| Özel kullanım takma adları | Java'nın varsayılan veya adlandırılmış bir fontta yeniden eşlediği karakterler ve çakışan ya da tamamlayıcı düzlemdeki adlandırılmış font glifleri kullanılmayan sayfalarda özel kullanım kod noktaları alır; böylece Bedrock'un kendi glifleri bozulmaz. |
+| Aralık glifleri | Alfası 1 olan görünmez bir glif sayfası 2 ile 33 birim arası ilerlemeler sağlar. Küçük glifler bir birimlik boşlukları emmek için görünmez bir son sütunlu varyant alır. |
+| Yerleşim tablosu | `twilight/text-layout.json` her karakterin Java ilerlemesini, Bedrock kod noktasını ve mürekkepli sütunlarını saklar. |
+| Sandık arayüzü | Sandık başlık etiketi Java'nın başlık başlangıcının 256 birim solundan başlar. |
+| Çalışma zamanı | Bir Geyser çevirmen sarmalayıcısı Bedrock oyuncuları için sandık başlıklarını baştaki aralık glifleri, Java ile birebir boşluklar ve takma adlarla yeniden yazar. Biçimler, renkler ve bileşen ağacı korunur; çevrilen bileşenlerin önüne aralık glifleri konur. Geyser açılışını ve yeniden yüklemelerini izler. |
+
+Bedrock'un dokunmatik (cep) yerleşimi kendi ortalanmış başlığını korur. Orada glifler konumlandırılmadan
+değiştirilir ve yalnızca Java'ya özgü boşluk karakterleri kaldırılır. Huni, fırlatıcı, fırın ve diğer
+konteynerlerin başlıkları değişmez.
+
+#### Gerçek menü sonuçları
+
+Survival DeluxeMenus tanımlarındaki menü başlıkları, özgün font sağlayıcıları ve görselleriyle yalıtılmış
+bir düzenekte yeniden üretildi. İki istemci de arayüz birimi başına iki ekran pikseliyle çalıştı.
+Kaymalar Bedrock görüntüsünün Java'ya en iyi hizalanmasıdır (arayüz birimi): yalnızca başlık bandı ve
+tüm menü penceresi.
+
+| Menü (yuva) | Başlık mekanizması | Başlık kayması | Menü kayması |
+| --- | --- | --- | --- |
+| Jobs çiftçi (54) | 8 × negatif yükseklikli bitmap `七`, `ἃ`'dan yeniden eşlenmiş görsel | 0, 0 | 0, 0 |
+| Kurallar (36) | ItemsAdder `:offset_-8:` boşluk sağlayıcısı, görsel `Ⱘ` | 0, 0 | 0, 0 |
+| Minion paneli (54) | 8 × negatif yükseklikli bitmap `ꯈ`, görsel `ꯄ` | 0, 0 | 0, 0 |
+| Cüzdan (27) | 12 × negatif yükseklikli bitmap `㈁`, 512 hücreli görsel `㈆` | 0, 0 | 0, 0 |
+| Sunucu bilgisi (54) | 8 × `ꯈ`, görsel `ᭅ` | 0, 0 | 0, 0 |
+| Varil (27) | özel kullanım görseli | 0, 0 (piksel piksel aynı bant) | 0, 0 |
+
+Bu yerleşimden önce aynı varil menüsü bir birim sağdaydı. Diğer beş menü üçüncü taraf arayüz görselleri
+kullanır ve yalnızca ölçüm olarak yayımlanır ([ölçümler](images/acceptance/2026-10-03-text-layout/measurements.json),
+[karmalar](images/acceptance/2026-10-03-text-layout/sha256.json)).
+
+Sandık boyutu takımı (9 ile 54 yuva) Java'nın başlık satırlarını, yuva satırlarını, kısayol çubuğunu ve
+envanter etiketini korudu. Huni, fırın ve fırlatıcı panelleri vanilla Bedrock arayüzüyle piksel piksel
+aynı kaldı. Bedrock içerik günlüğü hiçbir arayüz hatası bildirmedi.
+
+Canlı bir denetim Java 26.2'nin ItemsAdder `negative_spaces.ttf` dosyasını (`maxp` tablosu yok)
+yüklemediğini de buldu: karakterleri Java'da yedek glif olarak görünür. Twilight artık fontun
+ilerlemelerini uygulamak yerine buna uyar.
+
+#### Derleme ve ortam
+
+- Boşluk, glif kenar payları, negatif yükseklikler, TrueType ilerlemeleri, paketler arası font
+  birleştirme, takma adlar, aralık görünmezliği ve yansıtmalı bileşen yeniden yazımı için Java/Bedrock
+  çizim modelleri dahil 22 paketteki 109 test yerelde geçti.
+- Sürüm JAR SHA-256: `1824ec2b3f6ee5d91ad778479f47c98623dd4a9427a1258c9bc01c310fd5d78b`.
+- Test edilen düzenek paketi SHA-256: `2075b2ac0280bb1d55308e9ca90a386fb79fd4ab1e49a91cce7bffafc9902b6c`
+  (1.170 girdi); iki tekrarlanan derleme bayt bayt aynıydı ve reddedilen bir katı derleme son paketi
+  değiştirmedi.
+- Java 26.2, Paper 26.2 derleme 121, Geyser 2.11.3 derleme 1247, Windows üzerinde Bedrock 1.26.5203.0;
+  yalnızca yerel derleme, barındırılan CI yok. Test oyuncuları hayatta kaldı (can 20, tüm kayıtlı ölüm
+  sayaçları sıfır).
+
+#### Kalan sınırlar
+
+- Sıradan yazının hemen ardından (arada boşluk olmadan) gelen bir glif hâlâ bir birim sağdadır, çünkü
+  Bedrock kalemi sola taşıyamaz. Arada boşluk varsa birebirdir.
+- Üst üste binen katmanlar (bir görselin üzerine yazı çizmek için geri giden başlık) yeniden
+  üretilmiyor; bu tür geri gitmeler yaklaşık olarak sayılır. (1.0.0-pre.8 ile çözüldü.)
+- Sıradan karakterlerin iki istemcide aynı genişlikte olduğu varsayılır; bir glifin önündeki ASCII
+  olmayan yazı genişlikler farklıysa onu kaydırabilir.
+- Bitmap renklendirmesi, kalın glifler, sohbet, eşya adları, açıklamalar, skor tabloları ve boss
+  çubukları henüz yerleştirilmiyor; takma adlı karakterler yalnızca sandık başlıklarında doğru görünür.
+- Dokunmatik yerleşim canlı bir dokunmatik istemci görüntüsüyle değil, birim testleriyle kapsandı.

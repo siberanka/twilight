@@ -1,5 +1,7 @@
 # Java text on every Bedrock surface and production builds - 4 October 2026
 
+> Türkçe: [aşağıda](#türkçe)
+
 Twilight 1.0.0-pre.6 extends the Java font layout from chest titles to the other
 places where servers draw custom font content: chat, the action bar, titles and
 subtitles, boss bars, scoreboards, entity names and text displays (holograms,
@@ -155,3 +157,155 @@ paths and content names are omitted.
   injected defect was rejected while the deployed pack stayed unchanged.
 - Test players stayed alive (health 20, death counters 0). The Bedrock content log
   showed no UI errors.
+
+---
+
+## Türkçe
+
+### Her Bedrock yüzeyinde Java yazısı ve üretim derlemeleri - 4 Ekim 2026
+
+Twilight 1.0.0-pre.6, Java font yerleşimini sandık başlıklarından sunucuların özel font içeriği çizdiği
+diğer yerlere genişletir: sohbet, aksiyon çubuğu, başlıklar ve alt başlıklar, boss çubukları, skor
+tabloları, varlık adları ve yazı görüntüleri (hologramlar, ad etiketleri) ile diğer konteynerlerin
+başlıkları. Aynı sürüm, dört başka gerçek sunucunun bağımsız içeriğinin ortaya çıkardığı birkaç dönüşüm
+hatasını düzeltir. Aşağıdaki tüm denetimler yalıtılmış kopyalarda çalıştı; üretim sunucuları yalnızca
+okundu.
+
+#### Yazı yüzeyleri
+
+Bu sürümden önce Bedrock oyuncuları için yalnızca sandık başlıkları yeniden yazılıyordu. Adlandırılmış
+fontlar ve Java'nın yeniden eşlediği karakterler Bedrock'a değişmeden gidiyordu; bu yüzden bir CraftEngine
+rütbe görseli (adlandırılmış rütbe fontundaki `七`) sohbette CJK harfi `七` olarak görünüyor, aksiyon
+çubuğundaki bir ItemsAdder HUD'u kaydırma karakterleri için kutular gösteriyordu. Artık desteklenen her
+paket, paket için zaten üretilmiş Java ölçüleriyle yerleştiriliyor:
+
+| Yüzey | Paketler | Satır modeli |
+| --- | --- | --- |
+| Sohbet | sistem, oyuncu (imzalı içerik, gönderen, hedef), gizlenmiş | sola hizalı |
+| Aksiyon çubuğu | aksiyon çubuğu yazısı, kaplama sistem sohbeti | ortalı |
+| Başlıklar | başlık, alt başlık | ortalı |
+| Boss çubukları | boss çubuğu başlığı | ortalı |
+| Skor tabloları | hedef başlığı, takım görünen adı/öneki/soneki, skor görünen adları | ortalı başlık, sola hizalı satırlar |
+| Varlıklar | özel adlar, yazı görüntüsü yazısı (çok satırlı) | satır başına ortalı |
+| Konteynerler | huni, fırın, fırlatıcı ve diğer sandık dışı ekranların başlıkları | sola hizalı |
+
+Sola hizalı satırlar ilk karakterlerinin gerektirdiği yerden başlar; böylece her görsel komşularına Java'daki
+uzaklığını korur. Ortalı satırlar baştaki veya sondaki görünmez aralık glifleriyle doldurulur; böylece
+Bedrock onları Java'nın ortaladığı yerde ortalar; baştaki negatif bir kaydırma bu yüzden bir HUD görselini
+Java'daki gibi tam sola taşır. Java tam sayı aritmetiğiyle `-genişlik / 2` noktasında ortalarken Bedrock
+birebir ortalar; bu yüzden Java genişliği tek olan satırlar bir birim fazla dolgu alır; bunun için sıradan
+karakterlerin genişlikleri vanilla istemcinin kendi font sayfalarından gelir. Sıradan boşluklar mümkün olan
+her yerde boşluk kalır, böylece Bedrock sohbeti hâlâ onlardan kaydırır. Özel font karakteri olmayan yazı
+Geyser'a aynı paket olarak ulaşır.
+
+`ui.java-text-surfaces` (varsayılan `true`) yeni yüzeyleri denetler; `ui.java-text-layout` artık Java
+konteyner yerleşimini gerektirmez.
+
+##### Canlı ölçümler
+
+Bağımsız bir düzenek ikinci bir sunucudan (SkyBlock) salt okunur kopyalandı: kod noktaları (`U+4E00`..)
+bilerek ilk düzeneğin varsayılan font kaydırma karakteriyle çakışan CraftEngine adlandırılmış font
+rütbeleri ve simgeleri ve ekran dışı aralık karakterleriyle bir CustomNameplates arka plan seti. Görseller
+iki görüntüde de yazarın verdiği görsele (Java) ve Bedrock'a gerçekten sunulan glif hücresine karşı
+maskelenmiş şablon eşleşmesiyle bulundu. Konumlar birim başına iki ekran pikseliyle arayüz birimidir;
+farklar Bedrock eksi Java'dır.
+
+| Senaryo | İçerik | Sonuç |
+| --- | --- | --- |
+| Aksiyon çubuğu | 3 × ItemsAdder `:offset_-8:`, rütbe, simge | 0, 0 |
+| Yazılı aksiyon çubuğu | `Coins: 25 ` + simge + ` left` | 0 |
+| Ad etiketi çubuğu | CustomNameplates sol, orta, sağ (39 birim, tek) | 0, 0, 0 |
+| Boss çubuğu | rütbe, ` Boss `, simge | 0, 0 |
+| Boss çubuğu, tek genişlik | rütbe, ` Boss! `, simge | 0, 0 |
+| Sohbet | rütbe, ` Steve: merhaba `, simge (göreli) | 0, 0 |
+| Yan panel | hedef başlığında rütbe, skor adında simge | ikisi de görünür |
+| Başlık ve alt başlık | rütbe, simge | ikisi de görünür |
+
+`ui.java-text-surfaces: false` ile aynı senaryolar Bedrock'ta her yüzeyde ham karakterleri gösterdi. Ad
+etiketi çubuğunun ilk ölçümü Java'nın yarım birim solundaydı; bu, Java'nın tam sayı ortalamasını ortaya
+koydu ve yukarıdaki düzeltme farkı kaldırdı. Sandık menüleri sürüm derlemesiyle yeniden ölçüldü: altı
+gerçek Survival menüsü hâlâ Java ile eşleşiyor (başlık bandı ve pencere kayması 0, 0); huni, fırın ve
+fırlatıcı panelleri vanilla Bedrock arayüzüyle aynı.
+
+Ölçümler: [ölçümler](images/acceptance/2026-10-04-text-surfaces/measurements.json)
+([karmalar](images/acceptance/2026-10-04-text-surfaces/sha256.json)). Görüntüler üçüncü taraf rütbe ve ad
+etiketi görselleri içerdiğinden yayımlanmaz.
+
+#### Beş gerçek sunucunun üretim derlemeleri
+
+Yeni bir denetim, her sunucunun keşfedilen kaynakları için eklentinin o sunucuda yapacağı gibi tam derlemeyi
+(eşyalar, yerleşimli fontlar, sesler, arayüz) çalıştırır. Aynı beş sunucu pre.5 sürümüyle ve bu sürümle
+derlendi:
+
+| Sunucu | Özel eşya, pre.5 | Özel eşya, pre.6 | Sorunlar pre.5 → pre.6 |
+| --- | --- | --- | --- |
+| Survival | 125 / 130 | 837 / 841 | 152 → 75 |
+| SkyBlock | 0 / 0 | 29 / 52 (21 kaplama kafası yerel bırakıldı) | 44 → 43 |
+| Box PvP v2 | 772 / 781 | 805 / 811 | 11 → 1 |
+| Box PvP (eski) | 532 / 843 | 539 / 845 | 313 → 301 |
+| SMP Lifesteal | özel içerik yok | özel içerik yok | 0 → 0 |
+
+Kalan Survival ve SkyBlock sorunları; `vanilla-override` kapalıyken (bir yapılandırma seçimi) paketlerin
+değiştirdiği 113 vanilla ses olayı, hiçbir paketin sağlamadığı dört eşya referansı ve Bedrock'un font
+atlasının taşıyamadığı 10.000 birimlik tam ekran bir kaplama görselidir. Eski Box PvP sunucusu, modelleri
+artık bulunmayan eski bir ItemsAdder yapılandırmasındaki eşyaları listeliyor.
+
+Bulunan ve düzeltilen hatalar:
+
+- **Vanilla varlık kopyaları sunucu paketlerini gölgeliyordu.** ItemsAdder vanilla istemci varlıklarının
+  kopyalarını `storage/cache/vanilla_assets/<sürüm>` altında tutar. Bunlar üretilen paketin üstünde paket
+  olarak keşfediliyordu; bu yüzden vanilla eşya tanımları özel olanları gizliyor (Survival: Bedrock'ta 711
+  özel eşya eksikti) ve vanilla font tanımları özel font olarak birleştiriliyordu. Bu klasörler, geçici
+  derleme klasörleri ve ItemsAdder'ın çalışma paketindeki eskimiş kendi barındırılan `pack.zip` artık kaynak
+  değil; `generated.zip` yoksa yeniden adlandırılmış bir ItemsAdder çıktısı (örneğin
+  `generated_1.21.x.zip`) kullanılır.
+- **Atlas sprite yeniden adlandırmaları.** ItemsAdder'ın ürettiği paketler `ia:2015` gibi, bir atlas
+  tanımının gerçek dokuya eşlediği sprite'lara başvurur. Twilight artık `single` ve `directory` atlas
+  kaynaklarını Java gibi çözer.
+- **Korumalı paketler.** Paket koruması, Java'nın yok saydığı PNG parça sağlama toplamlarını ve zlib
+  sağlama toplamını bozar. Dokular artık katı çözücü başarısız olduğunda esnek biçimde çözülür (tüm renk
+  türleri, bit derinlikleri, paletler, saydamlık, Adam7).
+- **Java'nın kendi font sayfaları.** CustomNameplates'in dikey kaydırılmış yazısı gibi fontlar `ascii.png`
+  ve unicode sayfalarını yeniden kullanır. Her karakter renklendirilmemiş bir görsel takma adı olarak
+  kopyalanıyor, Bedrock'un özel kullanım sayfalarını taşırıyor (50.000'den fazla istek) ve katı derlemeleri
+  başarısız kılıyordu. Bu karakterler artık sıradan yazıdır.
+- **Ekran dışı ve saydam aralık görselleri.** Binlerce birim uzağa konan veya neredeyse saydam bitmap'ler
+  aralık hileleridir; taban çizgisi veya aşırı büyük görsel sorunu yerine ilerlemeye dönüşürler.
+- **Model ayrıntıları.** Nesne biçimli doku girdileri (`{"sprite": ...}`) okunur, özel seçiciler düz
+  vanilla modeller gösterebilir (menü düğmesi olarak bir bariyer) ve doku değişkenini hiçbir modelin
+  tanımlamadığı yüzler Java'nın eksik dokusunu kullanır. Java'nın özel çizicisiyle çizilen oyuncu kaplaması
+  kafaları Geyser'ın yerel çizimine bırakılır ve not edilir.
+- **Java'nın da reddettiği içerik.** Bozuk font dosyaları, okunamayan TrueType fontlar ve hiçbir pakette
+  bulunmayan ses dosyaları `build-report.json` içinde bildirim olarak raporlanır. Bedrock böylece Java
+  oyuncularının aldığıyla eşleşir; bu yüzden artık katı derlemeyi durdurmazlar; gerçek dönüşüm sorunları
+  hâlâ durdurur.
+
+Kategori başına ölçülen sayılar yayımlanan ölçümlerin parçasıdır; sunucu yolları ve içerik adları
+çıkarılmıştır.
+
+#### Kalan sınırlar
+
+- Eşya adları ve açıklamaları yeniden yazılmaz. Geyser envanter tıklamaları için eşya verisinin karmasını
+  alır ve yaratıcı modda tam eşyaları geri gönderir; bu yüzden onları değiştirmek Java eşyasını
+  değiştirebilir; açıklamalardaki adlandırılmış font görselleri bu nedenle Bedrock'ta hâlâ ham
+  karakterlerini gösterir.
+- Sıradan yazının hemen ardından boşluksuz gelen bir glif Java'nın bir birim sağındadır; Bedrock kalemi geri
+  alamaz. Aynısı negatif kaydırmayla bir ad etiketi arka planının üzerine çizilen yazı gibi üst üste binen
+  katmanlar için de geçerlidir. (1.0.0-pre.8 ile katmanlar çözüldü.)
+- Yüksek çözünürlüklü dokulardan çizilen bitmap glifler Bedrock'ta arayüz birimlerine indirgenir (Java
+  onları ekran çözünürlüğünde örnekler); bu yüzden rütbe görsellerinin içindeki küçük yazılar daha az
+  keskindir.
+- Kalın yazı ve Bedrock'un dokunmatik yerleşimi yeni yüzeylerde canlı ölçülmedi.
+
+#### Derleme ve ortam
+
+- Sola hizalı ve ortalı satırlar için Java/Bedrock çizim modelleri, her yüzey için gerçek protokol
+  paketleri, bağımsız bir kodlayıcıya karşı esnek PNG çözme, atlas yeniden adlandırmaları ve yukarıdaki
+  keşif kuralları dahil 25 paketteki 138 test yerelde geçti (Java 25).
+- Java 26.2 istemcisi ve Paper 26.2 sunucusu, Bedrock 1.26.5203.0, Geyser 2.11.3 derleme 1247; iki istemci
+  de arayüz birimi başına iki ekran pikseli.
+- Test edilen düzenek paketi SHA-256 `651afb1ceb18e0c589da8e0425eb12e307a33defe9b7734b714b14d4cb007936`
+  (1.177 girdi); tekrarlanan bir derleme bayt bayt aynıydı ve kasıtlı bir hata eklenmiş katı derleme
+  reddedilirken dağıtılmış paket değişmeden kaldı.
+- Test oyuncuları hayatta kaldı (can 20, ölüm sayaçları 0). Bedrock içerik günlüğü hiçbir arayüz hatası
+  göstermedi.

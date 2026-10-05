@@ -1,5 +1,7 @@
 # Bitmap glyph heights and baselines — 1 October 2026
 
+> Türkçe: [aşağıda](#türkçe)
+
 > The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
 
 Follow-up: the [2 October wide glyph review](WIDE_GLYPHS_2026-10-02.md) extends
@@ -111,3 +113,110 @@ client UI scale. Wide rank labels, oversized GUI backgrounds, custom advances
 and contextual font remapping still need a layout adapter. First-person model
 poses and complete animated-texture playback also remain open; this is a
 prerelease, not an assertion of universal Java/Bedrock parity.
+
+---
+
+## Türkçe
+
+### Bitmap glif yükseklikleri ve taban çizgileri — 1 Ekim 2026
+
+> Bu raporun ekran görüntüleri 4 Ekim 2026'da güncel görüntüler lehine kaldırıldı; aşağıdaki ölçümler
+> geçerlidir. Güncel Java/Bedrock görüntüleri [README](../README.md#visual-acceptance-tests) içindedir.
+
+Devamı: [2 Ekim geniş glif incelemesi](WIDE_GLYPHS_2026-10-02.md) bu ölçülmüş yerleşimi daha büyük atlas
+hücrelerine genişletir. Aşağıdaki sonuçlar özgün ön sürüm kapsamını ve kanıtını korur.
+
+Dönüştürücü Java'nın `ascent` değerini okuyor ama glifleri yerleştirirken kullanmıyordu. Tüm görüntüler
+16 piksellik hücrenin altına hizalanıyordu. Sıradan bir 9 yükseklik, 8 ascent emoji bu yüzden test
+edilen Bedrock istemcisinde dört arayüz birimi aşağıda görünüyordu.
+
+Twilight artık her glifi hücresinde `11 - ascent` konumuna yerleştirir ve kaynak bitmap'ini bildirilen
+`height` değerine ölçekler. Bu; kaynak çözünürlüğünden, komşu gliflerden ve sayfa üyeliğinden
+bağımsızdır. Görünür görüntü sığdığında negatif ascent'leri de destekler. Görünür taşma sessizce
+kırpılmak veya küçültülmek yerine raporlanır. Saydam dolgu hücrenin dışına uzanabilir; kırpma, komşu
+karakteri silmesini önler.
+
+#### Ölçüm ve regresyon kapsamı
+
+Java'nın bitmap üstü yazı başlangıcına göre `7 - ascent` konumundadır. Bedrock 1.26.5203.0'da ayrı bir
+yerel sayfa kalibrasyonu, hücre üstünü sıradan `H` yazısının dört arayüz birimi üzerinde ölçtü; arayüz
+birimi başına bir doku pikseli. Bu ölçümler birlikte yukarıdaki hücre yerleşimini verir. Kalibrasyon
+paketi yalnızca tanı amaçlıydı; kabul gerçek derleyicinin ürettiği sayfaları kullanır.
+
+Son aday paket tamamen derleyici tarafından üretildi ve yeni, yalıtılmış bir sunucuda yüklendi. Font
+sayfaları yalıtılmış font regresyonu çıktısıyla bayt bayt eşleşiyor. Son Java/Bedrock görüntüleri ön
+plan engeli kalktıktan sonra 1 Ekim'de incelendi. Altı deneme, istemcilerin arayüz ölçekleri
+normalleştirildikten sonra özdeş bildirilmiş yüksekliklere ve yazıya göre dikey konumlara sahip:
+
+| Yükseklik / ascent | Java üst kayması | Bedrock üst kayması |
+| --- | --- | --- |
+| 4 / 4 | 3 | 3 |
+| 4 / 2 | 5 | 5 |
+| 4 / 0 | 7 | 7 |
+| 2 / -2 | 9 | 9 |
+| 8 / 8 | -1 | -1 |
+| 9 / 8 | -1 | -1 |
+
+Kaymalar bitişik `H`'ye göre arayüz birimidir. Java bu görüntülerde arayüz birimi başına üç ekran pikseli,
+Bedrock iki kullanır. Desteklenen 35 gerçek kaynak glifi alt satır kırpılması olmadan görünür. Geniş rütbe
+hâlâ bir tanı mesajıyla dışarıda bırakılıyor. Test edilen menü başlığı kare ve emoji yüksekliğini/hizasını
+koruyor, ancak **başlık renk modülasyonu farklı**: Java bitmap'i yazı rengiyle koyulaştırırken Bedrock
+özgün glif renklerini korur. Bu tam glif veya arayüz eşdeğerliği değil, geçilmiş bir taban
+çizgisi/yükseklik denetimidir.
+
+Dört yeni otomatik test ölçülmüş konumları, temsil edilebilir negatif ascent'leri, farklı kaynak
+çözünürlüklerini, sayfa bağımsızlığını, görünür taşmayı ve dolu hücrelerin yanındaki saydam dolguyu
+kapsar. 19 paketteki 84 testin hepsi Java 25 üzerinde yerelde geçti. Barındırılan CI kullanılmadı.
+
+Yeni gerçek kaynak seçimi önceden kullanılmamış 24 emoji ve 12 ek eşya/rütbe glifi içerir. Kaynak
+görüntüler ve Java sağlayıcı ölçüleri değiştirilmeden kopyalandı. 41 birim genişliğindeki bir rütbe
+etiketi hâlâ bir yerleşim bağdaştırıcısı gerektiriyor ve desteklenmiyor olarak raporlanıyor. Bu bir
+dönüşüm başarısı değildir.
+
+BoxPVP ve Survival test malzemesine karşı tam kaynak denetimleri de çalıştı: sırasıyla 772/781 ve
+125/130 eşya eşlemesi. Bu sayılar tek tek görsel geçişler değil, derleyici kapsamıdır. Tekrarlanan
+paketler bayt bayt aynıydı; katı hatalar önceki tanı çıktılarını korudu.
+
+#### İncelenen kanıt
+
+| Kanıt | Sonuç |
+| --- | --- |
+| Yerel Bedrock kalibrasyonu | Bilinen hücre kaymalarındaki bağımsız dört piksellik kareler yazı başlangıcını belirler. Elle oluşturulan bu deneme eklenti çıktısı kabulü değildir. |
+| Java gerçek kaynak referansı ve düzeltme öncesi Bedrock | 36 yeni glif karşılaştırıldı; taban çizgisi hatası görünür ve geniş rütbe etiketi tanı amaçlı dönüşümde dışarıda kalır. |
+| Java ölçü denemeleri | Negatif ascent dahil altı yükseklik/ascent birleşimi değişmemiş Java referansını oluşturur. |
+| Java menü başlığı ve envanter | Başlık sıradan yazı, bir ölçü karesi ve gerçek bir emojiyi birleştirir. Eşleşen Bedrock görüntüsü yerleşimi doğrular; yazı rengi modülasyonu hâlâ farklı. Önceden belgelenen iki geçersiz Java eşya referansı sürüyor. |
+| Bedrock ölçü denemeleri | Negatif ascent dahil ölçülen altı yükseklik ve kaymanın hepsi Java referansıyla eşleşiyor. |
+| Son Java gerçek glifleri ve son Bedrock gerçek glifleri | Desteklenen 35 glif görünür; bir geniş rütbe desteklenmiyor. Yerel yazı aralığı ve arayüz ölçeği farklı. |
+| Son Bedrock menüsü | Başlık karesi/emoji dikey hizalı; bitmap renklendirmesi Java'dan farklı. Mevcut eksik kaynaklı envanter istisnaları sürüyor. |
+
+[Ölçümler](images/acceptance/2026-10-01-fonts/measurements.json) derleyici denetimlerini görsel kabulden
+ayırır. [Görüntü karmaları](images/acceptance/2026-10-01-fonts/sha256.json) değiştirilmemiş görüntüleri
+kapsar. Üçüncü taraf kaynak paketleri ve yerel otomasyon herkese açık depo dışında kalır.
+
+#### İncelenen ilgili projeler
+
+- [smashyalts/java2bedrockclient](https://github.com/smashyalts/java2bedrockclient/tree/8ef56991acf1e97f13c883ac476bed0c44ed44fd)
+  (GPL-3.0) bitmap font dönüşümü sunar ve yaklaşıklığı raporlar. [Font aşaması](https://github.com/smashyalts/java2bedrockclient/blob/8ef56991acf1e97f13c883ac476bed0c44ed44fd/packages/core/src/convert/stages/fontsStage.ts)
+  sayfaya göre yükseklik/ascent sezgileri kullanır. Twilight, yeni bir glif eklemenin mevcutları
+  kaydıramaması için ölçülmüş sabit ölçüler kullanır.
+- [AZPixel-Team/Java2Bedrock](https://github.com/AZPixel-Team/Java2Bedrock/tree/ffe3f128db5ef251b267bd5ae7f9ff7f4315fd3e)
+  (AGPL-3.0) glif sayfası araçları içerir; README'si projeyi bakımsız olarak işaretler. Bağımlılık olarak
+  alınmadı, önceki çalışma olarak incelendi.
+- [GeyserMC/PackConverter](https://github.com/GeyserMC/PackConverter/tree/48cb61a874a9e0f6a064eec75da2724caccc49f0)
+  (MIT) ilgili bir kaynak paketi dönüştürücüsüdür ve doku dönüşümünü tam özel eşya eşlemesinden açıkça
+  ayırır.
+
+Bu projelerden kaynak kod kopyalanmadı. Twilight'ın uygulaması ve testleri deponun mevcut lisansı
+altındadır; mevcut kaynak yazar ve lisans bildirimleri korunur.
+
+#### Sınırlar
+
+Bildirilen Java görüntü boyutları korunur; büyük içerik hücreye sığması için asla küçültülmez. Yüksek
+çözünürlüklü kaynak dokular daha küçük bir yedek boyuta sığdırılmaz, yazarın verdiği Java görüntü
+yüksekliğinde örneklenir. Yerel bitmap sayfaları hâlâ her kaynak texel'ini veya bağlama göre yazı
+renklendirmesini koruyamaz.
+
+Bu düzeltme özdeş sohbet satır aralığı, kenar yumuşatma veya istemci arayüz ölçeği iddia etmez. Geniş
+rütbe etiketleri, büyük arayüz arka planları, özel ilerlemeler ve bağlama göre font yeniden eşleme hâlâ
+bir yerleşim bağdaştırıcısı gerektirir. Birinci şahıs model pozları ve tam animasyonlu doku oynatımı da
+açık kalıyor; bu evrensel Java/Bedrock eşdeğerliği iddiası değil, bir ön sürümdür.

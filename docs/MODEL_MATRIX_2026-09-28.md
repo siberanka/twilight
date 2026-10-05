@@ -1,5 +1,7 @@
 # Additional real-model review — 2026-09-28
 
+> Türkçe: [aşağıda](#türkçe)
+
 > The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
 
 **Overall visual acceptance remains incomplete.** All seven additional models produced visible
@@ -142,3 +144,128 @@ on unchanged stone. The images here retain the earlier failing baseline.
 
 Changing the platform is a diagnostic step, not a product fix. The normal stone
 platform was restored. Unwanted particles remained visible throughout this probe.
+
+---
+
+## Türkçe
+
+### Ek gerçek model incelemesi — 28 Eylül 2026
+
+> Bu raporun ekran görüntüleri 4 Ekim 2026'da güncel görüntüler lehine kaldırıldı; aşağıdaki ölçümler
+> geçerlidir. Güncel Java/Bedrock görüntüleri [README](../README.md#visual-acceptance-tests) içindedir.
+
+**Genel görsel kabul eksik kalıyor.** Yedi ek modelin hepsi görünür Bedrock geometrisi üretti, ancak
+karşılaştırma ışıklandırma, parçacık ve yön farklarını ortaya çıkardı. Başarılı dönüşüm sayısı başarılı
+bir görsel test değildir. BetterModel yön hatası daha sonra düzeltildi ve aşağıda yeniden test edildi. Bu
+inceleme bir sürümü onaylamaz.
+
+İşletmeci iki yerel sunucu kurulumundan değiştirilmemiş yedi model sağladı. Seçilen her varlık için kaynak
+ve kopyalanmış model SHA-256 değerleri eşleşti. Java, kopyalamadan sonra baytları doğrulanan,
+sağlayıcının ürettiği özgün kaynak paketlerini kullandı. Kaynak sunucular salt okunurdu; tüm doğurma,
+dönüşüm ve tanı değişiklikleri yalıtılmış yerel test sunucularında yapıldı.
+
+#### Temel kapsam ve sonuçlar
+
+| Sağlayıcı | Model | Örneklenen durumlar | Gözlem |
+|---|---|---|---|
+| ModelEngine R4.1.1 | `bear_brown` | bekleme, saldırı | Birleşik gövde, balık ve saldırı pozu görünür; Bedrock'ta istenmeyen siyah parçacıklar. |
+| ModelEngine R4.1.1 | `crab_hermit` | bekleme, saklanma | Gövde ve kabuk görünür; siyah parçacıklar küçük modeli örtüyor. |
+| ModelEngine R4.1.1 | `angel_gm_archer_one` | bekleme, saldırı1 | Gövde, kanatlar ve yay görünür; parçacıklar ve bir poz/yön farkı kabulü engelliyor. |
+| ModelEngine R4.1.1 | `basket_with_health_potions` | durağan | Tanınabilir geometri, ancak Java'da parlak dokuluyken Bedrock'ta neredeyse siyah; istenmeyen parçacıklar da var. |
+| BetterModel 3.4.2-SNAPSHOT-516 | `pet_griffon_phoenix` | bekleme, etkileşim | Dokulu gövde, kanatlar ve asa görünür; yön Java'dan farklı. |
+| BetterModel 3.4.2-SNAPSHOT-516 | `blacksmith_hm5_npc` | bekleme, el sallama | NPC ve örs görünür; yön Java'dan farklı. |
+| BetterModel 3.4.2-SNAPSHOT-516 | `owl_crate` | bekleme, açılma | Sandık geometrisi ve açılma hareketi görünür; yön Java'dan farklı. |
+
+Matris 13 Java/Bedrock çifti (26 özgün görüntü) içerir. Her çift istenen aynı oyuncu konumunu, yaw ve
+pitch değerini kullanır. İstemci FOV'u, çözünürlüğü ve çizimi farklıdır; bunlar piksel eşitliği testi
+değil, görsel karşılaştırmalardır. ModelEngine animasyon saatleri kısa bir ilerlemeden sonra donduruldu.
+BetterModel görüntüleri ardışık canlı örneklerdir ve **eşleşen animasyon karelerini veya zamanlamasını
+kanıtlamaz**. Bu örneklerden tam bir animasyon döngüsü veya rastgele model güvencesi çıkarılmaz.
+
+İki tam test paketi sırasıyla 172/172 ve 70/70 hacimli adayı sıfır derleyici sorunuyla dönüştürdü. Bu
+sayılar mevcut düzenekleri ve tek tek kemik ağlarını içerir; kabul edilmiş mob sayıları değildir. Temel
+geliştirme JAR SHA-256 değeri
+`ba1f08919c262375c866ae21f6f221221da513686b14d2f2e7b7192413932817`.
+
+#### Yön düzeltmesi ve devamı
+
+Çalışma zamanı denemesi görüntünün gövde yaw değerini -180 derece, kafa yaw değerini ise sıfır buldu.
+Java eşya görüntülerinin bağımsız bir kafası yoktur, ancak Bedrock bağlı ağı bu kafa yönüne döndürüyordu.
+Köprü artık doğuşta ve göreli/mutlak harekette kafa yaw değerini gövde yaw değeriyle hizalar. Bağımsız
+kafa bakış güncellemelerini yok sayar. Üretilen iskelet de aktör yaw değerini ikinci kez uygulamayı
+bırakır.
+
+Yeniden derlenen JAR, 16 paketteki 65 yerel testin hepsini geçti. SHA-256 değeri
+`ffa682351d2893e8b2bda5cb3c8d4acc52cd651267ce584cbd8768daf5e6fb5f`. Tam bir BetterModel dönüşümü derleyici
+sorunu olmadan 70/70 ağ üretti, dağıtıldı ve iki istemci de bağlantı betiğiyle yeniden katıldı. Bu
+devamdan önce elle hazırlanan deneme paketi derleyicinin ürettiği paketle değiştirildi.
+
+Üç BetterModel modelinin hepsi örneklenen sahnelerde artık Java referansına bakıyor. Baykuş da taşıyıcı
+0, 90 ve -45 dereceye döndürülüp ardından 180 dereceye geri getirildikten sonra referans yönle eşleşti.
+Bu denetimler yeni doğuşu ve sonraki dönüş güncellemelerini sınar. Kare kare kusursuz animasyon
+oynatımını, pitch davranışını, binek kaymalarını veya ışık eşdeğerliğini kanıtlamaz.
+
+İlk dört devam çifti yağmurda çekildi. Baykuş bekleme çifti sırasında hava açıldı; üç ayrı yön
+karşılaştırması açık havada yapıldı. Dünya hava durumu farkları model dönüşüm sonucu sayılmaz. NPC ve
+evcil hayvan pozları hâlâ eşzamanlı kareler değil, ardışık canlı animasyon örnekleridir.
+[Devam sonuçlarına](images/acceptance/2026-09-28-matrix/yaw-fix/results.json) ve
+[karma manifestine](images/acceptance/2026-09-28-matrix/yaw-fix/sha256.json) bakın.
+
+| Java yön referansı | Düzeltmeden sonra Bedrock |
+|---|---|
+| Baykuş yaw 0 Java | Baykuş yaw 0 Bedrock |
+| Baykuş yaw 90 Java | Baykuş yaw 90 Bedrock |
+| Baykuş yaw -45 Java | Baykuş yaw -45 Bedrock |
+
+Aynı yeni JAR ModelEngine paketine de yeniden derlendi (172/172 ağ, sıfır derleyici sorunu), dağıtıldı ve
+tam yeniden başlatma ile yeni istemci katılımından sonra test edildi. Dört modelin hepsi yedi eşlenmiş
+örnekte görünür kaldı. İstenmeyen siyah parçacıklar ve sepetin ağır kararması sürdü; tam poz kabulü açık
+kalıyor. Bu devam görüntüleri aynı makine tarafından okunabilir sonuçlara ve görüntü manifestine dahildir.
+
+#### Yeniden üretim ve sınırlar
+
+Seçilen modellerin lisanslı yerel kopyalarını özgün sağlayıcılarıyla kullanın. Her modeli AI'ı ve
+yerçekimi kapalı, sabit ve hasar almayan bir taşıyıcıya bağlayın, iki test oyuncusu için yaratıcı modu
+açın ve dönüştürülmüş paketi Geyser üzerinden indirin. Yerel istemci katılım otomasyonuyla yeniden
+bağlanın, ardından her istemcide aynı kamera koordinatlarını çekin. Örneklemeden sonra bekleme durumuna
+dönün. Özel `ai/MODEL_MATRIX.md` otomatik yerel çalıştırıcıyı ve korumalarını anlatır; ne o ne de özel
+varlık paketleri yayımlanır.
+
+Çekim dizilerinden sonra iki oyuncunun da canı 20/20'ydi. İki test dünyasındaki tüm kayıtlı oyuncu ölüm
+sayaçları sıfır kaldı. Üretim savaş becerileri içe aktarılmadı. Bu doğrudan sağlayıcı model testidir;
+önceki MythicMobs entegrasyon denemesi [gerçek içerik incelemesinde](REAL_CONTENT_REVIEW.md) belgelenmiş
+olarak kalır.
+
+Sepet ayrıca yazarın verdiği göz yüksekliği ve yinelenen kemik adları hakkında sağlayıcı uyarıları
+tetikledi. Kaynağı değiştirilmeden bırakıldı. Denetimli bir ışık denemesi yalnızca altındaki 25 taş
+platform bloğunu camla değiştirdi. Bedrock bundan sonra modeli, dokuyu veya Java paketini değiştirmeden
+sepet ve şişe renklerini olağan gösterdi. 25 bloğun hepsi sonra taşa geri döndürüldü. Bu, görüntü
+çapası çevresindeki ışık örneklemesini/örtmeyi işaret eder; tam ve genel bir düzeltme belirlemez.
+Sıfır yarıçaplı ModelEngine pivot bulutları ve Geyser'ın en küçük bulut yarıçapı istenmeyen parçacıklar
+için olası bir açıklamadır, doğrulanmış bir düzeltme değil. Oynanış parçacıkları topluca bastırılmadı.
+
+Ekran görüntüleri işletmecinin sağladığı görseller için uyumluluk kanıtıdır. Özgün modellerin, dokuların
+veya üretilen paketlerin yeniden dağıtımına izin vermez. BetterModel toxicity188 ve katkıcılarına,
+ModelEngine Ticxo'ya, MythicMobs Lumine'e aittir; görseller ilgili yaratıcılarına atfedilir.
+
+#### Eşlenmiş görüntüler
+
+Sol sütun Java, sağ sütun Bedrock'tur. [Makine tarafından okunabilir sonuçlara](images/acceptance/2026-09-28-matrix/results.json)
+ve [görüntü karmalarına](images/acceptance/2026-09-28-matrix/sha256.json) bakın. Görüntü adları
+yukarıdaki İngilizce tabloyla aynıdır: bear_brown (bekleme, saldırı), crab_hermit (bekleme, saklanma),
+angel_gm_archer_one (bekleme, saldırı1), basket_with_health_potions (durağan), pet_griffon_phoenix
+(bekleme, etkileşim), blacksmith_hm5_npc (bekleme, el sallama), owl_crate (bekleme, açılma).
+
+#### Sepet ışıklandırma yalıtımı
+
+| Geçici cam platform üzerinde Java | Aynı platform üzerinde Bedrock |
+|---|---|
+| Java sepet cam ışık denemesi | Bedrock sepet cam ışık denemesi |
+
+Devamı: [29 Eylül bulut çapası regresyonu](CLOUD_ANCHORS_2026-09-29.md) istenmeyen parçacıklar için
+otomatik bir eklenti düzeltmesini doğrular. Sonraki [binek yüksekliği regresyonu](DISPLAY_SEATS_2026-09-29.md)
+değişmemiş taş üzerindeki sepet ışıklandırmasını düzeltir. Buradaki görüntüler önceki başarısız temel
+çizgiyi korur.
+
+Platformu değiştirmek bir ürün düzeltmesi değil, bir tanı adımıdır. Olağan taş platform geri getirildi.
+İstenmeyen parçacıklar bu deneme boyunca görünür kaldı.

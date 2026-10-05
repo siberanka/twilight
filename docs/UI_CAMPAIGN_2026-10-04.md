@@ -1,5 +1,7 @@
 # UI campaign, provider coverage and custom biomes - 4 October 2026
 
+> Türkçe: [aşağıda](#türkçe)
+
 Twilight 1.0.0-pre.7 was checked against every resolvable menu of two real servers,
 an original-art style suite that reproduces the menu techniques found there, complete
 builds of six real servers and a live custom-biome scene. All checks ran on isolated
@@ -141,3 +143,139 @@ exact colours; the captures were replaced by the
 - Bedrock adds its close button and inventory label in the client's language.
 - Item names and lore are not rewritten; high-resolution glyphs are sampled to GUI
   units.
+
+---
+
+## Türkçe
+
+### Arayüz kampanyası, sağlayıcı kapsamı ve özel biyomlar - 4 Ekim 2026
+
+Twilight 1.0.0-pre.7; iki gerçek sunucunun çözülebilen her menüsüne, orada bulunan menü tekniklerini
+yeniden üreten özgün görselli bir stil takımına, altı gerçek sunucunun tam derlemelerine ve canlı bir özel
+biyom sahnesine karşı denetlendi. Tüm denetimler yalıtılmış kopyalarda çalıştı; üretim sunucuları yalnızca
+okundu. Bu depodaki her ekran görüntüsü 4 Ekim'de sürüm derlemesiyle çekildi; eski görüntüler kaldırıldı.
+
+#### Gerçek menüler
+
+`ui-campaign.py` menü başlıklarını sunucunun kendi eklenti yapılandırmalarından toplar (DeluxeMenus ve
+başlığı ve boyutu olan her eklenti YAML'ı), bunları çalışan eklentilerin yapacağı gibi çözer (eski, hex ve
+MiniMessage renkleri, sunucunun kendi önbelleklerinden ItemsAdder `:name:` ve `%img_name%` görselleri ile
+`:offset_N:` kaydırmaları, `{player}`), sunucunun Java oyuncularına gönderdiği paketi Java istemcisine,
+Twilight'ın aynı sunucu için yaptığı tam derlemeyi de Geyser'a kurar, ardından her başlığı iki istemcide
+açar. Çözülmemiş yer tutucuları olan başlıklar atlanır. Konumlar yuva ızgarasında (tüm pencere) ve başlık
+bandında arayüz birimi olarak ölçülür.
+
+| Sunucu | Menü | Font görselli başlık | Yazı başlığı | Pencere kayması 0 | Başlık bandı kayması 0 |
+| --- | --- | --- | --- | --- | --- |
+| Survival (CraftEngine, ItemsAdder, CustomNameplates, BetterModel) | 88 | 40 | 48 | 88 | 82 |
+| Box PvP (ItemsAdder, ModelEngine) | 16 | 0 | 16 | 16 | 15 |
+
+Kalan başlık bandı farkları görsel yerleşiminden değil, Bedrock'un kendi yazı çiziminden kaynaklanır:
+Bedrock'un fontu bazı karakterleri farklı genişliklerle çizer (Türkçe `ı`, `ğ`, kalın yazı; bir satırda bir
+iki birim) ve Bedrock'un varsayılan fontunda olmayan bir karakter (`❘`) içeren başlık tamamen Bedrock'un
+daha küçük unicode fontuyla çizilir. Font görselli bir başlık bir çalıştırmada üç birimlik dikey bant farkı
+ölçtü, tekrarında hiç ölçmedi; sandık kenarının üzerinde yarı saydam görselleri var.
+
+Kampanya bu sürümde üç hata buldu ve düzeltti:
+
+| Hata | Önce | Sonra |
+| --- | --- | --- |
+| Renk kodu olmayan başlıklar: Java glif görsellerini varsayılan başlık rengi `0x404040` ile çarpar, Bedrock onları koyulaştırmadan gösteriyordu | ortalama görsel farkı 78,6 ve 74,9 (iki menü) | 16,1 ve 12,9; en parlak görsel pikseli iki istemcide de 64 |
+| Kalın başlıklar: Bedrock kalın aralık gliflerini genişletir, bu yüzden başlangıç dolgusu satırı kaydırıyordu | 4 birim sağda | 0 |
+| Paket çevirileri: Java paketlerin dizelerini gösterir (adlar, gizli envanter etiketi) | Bedrock vanilla dizeleri gösteriyordu | her dil için birleştirilmiş paket dizeleri |
+
+Gerçek menüler üçüncü taraf arayüz görselleri kullandığından yalnızca ölçüm olarak yayımlanır:
+[Survival](images/acceptance/2026-10-04-ui-campaign/survival/measurements.json),
+[Box PvP](images/acceptance/2026-10-04-ui-campaign/boxpvp/measurements.json).
+
+#### Özgün görselli stil takımı
+
+`style-suite.py` kendi görsellerini çizer ve gerçek sunucuların kullandığı tekniklerle bir kaynak paketi
+derler; sunucudan hiçbir şey kopyalanmaz, bu yüzden tüm görüntüler yayımlanır.
+
+| Stil | Teknik | Sonuç |
+| --- | --- | --- |
+| Başlık görseli, renksiz | `-8` boşluktan sonra sandığın üstünde 76 birimlik başlık görseli, renksiz başlık | birebir; Java gibi koyulaşmış (görsel farkı 0,2) |
+| Başlık görseli, beyaz | aynısı `&f` ile | birebir (0,2) |
+| Simge satırı | `+4` ve `-1` boşluklarla ayrılmış simgeler, renkli yazı | birebir |
+| Negatif yükseklik kaydırmaları | Jobs tarzı sekiz negatif yükseklikli bitmap, ardından başlık görseli | birebir |
+| Hex yazı | `&#FFAA00` ve eski renkler | birebir |
+| Kalın yazı | `&b&l` başlık | birebir |
+| Katmanlı | `-121` boşlukla başlık görselinin üzerine geri alınan afiş, ardından kalın yazı | 1.0.0-pre.7'de yeniden üretilmedi; 1.0.0-pre.8'den beri birebir (katman başına bir etiket) |
+
+Bu çalıştırmanın görüntüleri, üst üste katmanları da kapsayan aynı takımın 1.0.0-pre.8 görüntüleriyle
+değiştirildi; [üst üste görseller, ad etiketleri ve birebir biyomlar](LAYERS_BIOMES_2026-10-04.md)
+belgesine bakın. Java istemcisi İngilizce, Bedrock istemcisi Türkçe çalışıyor; "Inventory" ve "Envanter"
+farkı bundandır.
+
+##### Koyulaştırılmış kopyalar
+
+Bedrock kaynak paketi gliflerini asla yazı rengiyle renklendirmez: bir deneme özel kullanım sayfalarının
+her renkte renklendirilmediğini, özel olmayan sayfaların ise renklendirildiğini ama çözünürlükleri ne olursa
+olsun hep yarım boyutta çizildiğini gösterdi; bu yüzden menü görseli taşıyamazlar. Bu nedenle paket,
+yerleştirilmiş gliflerin `0x404040` ile çarpılmış kopyalarını boş özel kullanım sayfalarında alır ve renksiz
+konteyner başlıkları bunları kullanır. Diğer yüzeyler varsayılan olarak beyazdır ve özgünleri korur.
+Survival'da bu dokuz sayfa ekler (12 yerine 21, yaklaşık 330 MiB sıkıştırılmamış atlas belleği, 1,3 MB
+paket boyutu); `ui.java-glyph-tint: false` bunları kaldırır. Beyaz veya varsayılan dışındaki bir renkteki
+başlıklar koyulaştırılmaz (104 gerçek başlığın hiçbiri bir görselden önce böyle bir renk kullanmıyor).
+
+#### Sağlayıcı kapsamı ve üretim derlemeleri
+
+Keşif artık her sağlayıcının ürettiği paketi Java oyuncularının aldığı paket olarak kabul ediyor:
+CraftEngine'in `generated/resource_pack.zip` dosyası (CustomNameplates ve BetterModel çıktısını da
+birleştirir), ItemsAdder'ın çıktısı ve Nexo/Oraxen paketleri sağlayıcıların çalışma klasörlerinin önüne
+geçer. Eklentisi kurulu olmayan bir sağlayıcı (CraftEngine sunucusunda kalmış bir ItemsAdder klasörü) veya
+başka bir sağlayıcı üretilmiş bir paket gönderirken ayarları kendi paketini göndermeyen bir sağlayıcı
+yalnızca boşlukları doldurur. CustomNameplates ve BetterHUD paketleri keşfedilir; Nexo'nun vanilla varlık
+önbelleği yok sayılır.
+
+| Sunucu (kaynaklar) | pre.6 | pre.7 |
+| --- | --- | --- |
+| Survival (CraftEngine, ItemsAdder klasörü, CustomNameplates, BetterModel, ModelEngine, dünya datapack'i) | 837 / 841 | 1.905 / 1.932 |
+| SkyBlock (CraftEngine, ItemsAdder klasörü, CustomNameplates, BetterModel) | 29 / 52 | 29 / 52 (21 kaplamayla çizilen kafa not edildi) |
+| Box PvP v2 (ItemsAdder, BetterModel, ModelEngine) | 805 / 811 | 884 / 902 |
+| Box PvP (ItemsAdder, ModelEngine) | 539 / 845 | 612 / 928 |
+| Kaynak (ItemsAdder, Nexo dosyaları, CustomNameplates, ModelEngine) | - | 2.713 / 3.014 |
+| SMP Lifesteal (yalnızca datapack) | 0 / 0 | 0 / 0 |
+
+Tam derleme başına dönüştürülen / aday özel eşyalar. Daha büyük aday sayıları, önceden eskimiş klasörlerin
+gerisinde kalan teslim edilmiş paketlerden gelir. Kalan başarısızlıklar sunucuların kendi paketlerindeki
+eksik dokular ve modeller (Java'daki gibi) ve 3B sağlayıcı modellerinin belgelenmiş sınırlarıdır. MMO
+eklentileri (MMOItems, MythicMobs eşyaları) bu paketlerin eşya modellerini kullanır ve onlarla birlikte
+dönüştürülür; MythicMobs varlıkları bir çalışma zamanı varlık köprüsü gerektirir
+([uyumluluk sözleşmesine](COMPATIBILITY.md) bakın). Nexo yalnızca dosyalardan test edildi: hiçbir test
+sunucusu Nexo eklentisini çalıştırmıyor.
+
+Survival'ın paketleri 122 dilde 23.379 dize tanımlar. Twilight bunları Java gibi birleştirir ve Geyser Java
+yazısını onlarla çizer; Bedrock'un kendi envanter etiketi paketi izler (boş bir etiket boş kalır).
+
+#### Özel biyomlar
+
+Geyser bilmediği her biyomu boyutun yedeği olarak gösterir (overworld'de okyanus); bu yüzden datapack
+biyomları (Terralith, Incendium) ve eklenti biyomları (RealisticSeasons) Bedrock'ta renklerini
+kaybediyordu. Twilight artık her özel biyomu Bedrock için; biyomun Java tanımından ve vanilla renk
+haritalarından hesaplanan en yakın çimen, yaprak, su ve sis renkleri ile yağışa sahip vanilla biyom olarak
+kaydediyor (`world.bedrock-biome-matching`).
+
+`biome-check.py` test dünyasına `twilighttest:blossom_vale` adlı bir datapack biyomu (kendi çimen ve
+yaprak renklerine sahip kiraz bahçesi tanımı) kurdu, `/fillbiome` ile bir çimen zemin boyadı ve iki
+istemciyi çekti. Twilight `blossom_vale=minecraft:cherry_grove` kaydını düştü.
+
+| İstemci | Ortalama zemin rengi (RGB) |
+| --- | --- |
+| Java | 112, 129, 65 |
+| Eşlemeli Bedrock | 102, 123, 54 |
+| Eşlemesiz Bedrock (okyanus yedeği) | 79, 103, 62 |
+
+Eşleme vanilla Bedrock biyomlarını kullandığından bu çalıştırmada birebir özel renkler yeniden üretilmedi.
+1.0.0-pre.8'den beri özel biyomlar birebir renkleriyle boş Bedrock biyom yuvaları alıyor; görüntüler
+[1.0.0-pre.8 biyom görüntüleriyle](LAYERS_BIOMES_2026-10-04.md#custom-biomes) değiştirildi.
+
+#### Kalan farklar
+
+- Önceki bir görselin üzerine geri alınan katmanlar (bir görselden sonra negatif boşluk) 1.0.0-pre.7'de
+  yeniden üretilmedi; 1.0.0-pre.8 bunları katman başına bir etiketle çizer.
+- Bedrock yazıyı kendi fontuyla çizer: bazı karakter genişlikleri farklıdır ve varsayılan fontunda olmayan
+  bir karakter tüm başlığı unicode fonta geçirir.
+- Bedrock kapatma düğmesini ve envanter etiketini istemcinin dilinde ekler.
+- Eşya adları ve açıklamaları yeniden yazılmaz; yüksek çözünürlüklü glifler arayüz birimlerine örneklenir.

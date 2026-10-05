@@ -1,5 +1,7 @@
 # Java container layout on Bedrock chest screens - 3 October 2026
 
+> Türkçe: [aşağıda](#türkçe)
+
 > The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
 
 Font-image menus are drawn by Java as part of the container title. Bedrock's
@@ -116,3 +118,118 @@ describe this 1.0.0-pre.4 checkpoint.
 - Bedrock's panel frame and close button remain native. Java's image is drawn
   above them where it overlaps.
 - Menu interactions, tooltips and live HUD state are outside this change.
+
+---
+
+## Türkçe
+
+### Bedrock sandık ekranlarında Java konteyner yerleşimi - 3 Ekim 2026
+
+> Bu raporun ekran görüntüleri 4 Ekim 2026'da güncel görüntüler lehine kaldırıldı; aşağıdaki ölçümler
+> geçerlidir. Güncel Java/Bedrock görüntüleri [README](../README.md#visual-acceptance-tests) içindedir.
+
+Font görselli menüler Java'da konteyner başlığının parçası olarak çizilir. Bedrock'un yerel sandık
+başlığı böyle bir görseli panel genişliğinin %90'ında satır kaydırıyor, kısa çizgiyle bölüyor ve
+kırpıyordu; yuva satırları da Java'nın aralıklarını korumuyordu. Twilight 1.0.0-pre.4 artık Java ile
+uyumlu bir masaüstü sandık yerleşimini kendiliğinden üretir. Survival test içeriğindeki gerçek bir
+176 x 83 menü görseli artık tamamen görünür ve 1'den 6'ya her sandık satır sayısında yuvalarıyla hizalanır.
+
+Bu rapor **masaüstü (klasik) sandık ailesini** kapsar: Geyser'ın genel 9 x 1 ile 9 x 6 menüleri olarak
+sunduğu sandıklar, büyük sandıklar, ender sandıkları, shulker kutuları ve variller. Dokunmatik
+yerleşimler, diğer konteyner türleri, menü eylemleri veya açıklama kutuları için eşdeğerlik iddia etmez.
+
+#### Otomatik dönüşüm
+
+`ui.java-container-layout` (varsayılan `true`) üretilen pakete iki kısmi Bedrock arayüz tanımı ekler.
+Bedrock bunları vanilla `chest` ve `common` ad alanlarıyla birleştirir; vanilla öğeler kopyalanmaz veya
+değiştirilmez.
+
+| Java davranışı | Bedrock uyarlaması |
+| --- | --- |
+| Başlık (8, 6) konumunda satır kaydırmadan ve kırpılmadan çizilir. | Sandık başlık etiketi kendi yazı boyutunu ve Java'nın ilk yuva çerçevesine göre konumunu kullanır. |
+| Başlık yuva çerçevelerinden sonra ve eşyalardan önce çizilir. | Başlık katmanı yuva çerçevelerinin üstünde, seçim, üzerine gelme ve eşya çizicilerinin altındadır. |
+| Varsayılan başlık rengi `0x404040`'tır. | Etiketin varsayılan rengi `0x404040`'tır; açık renk kodları yine uygulanır. |
+| Oyuncu envanteri çerçevesi son sandık satırının 13 birim altında, kısayol çubuğu envanterin 4 birim altında başlar. | Üst yarı 2 birim yükseltilir ve sandık ekranları bir değişkenle 4 birimlik kısayol çubuğu kayması ayarlar. |
+| `Inventory` etiketi oyuncu envanterinin bir birim sağında ve on birim üstündedir; başlıktan sonra çizilir. | Sandık ekranları kaymasını ve başlığın üstündeki katmanını değişkenlerle ayarlar. |
+
+Ortak kısayol çubuğu şablonu ve envanter etiketi bu değerleri varsayılanları vanilla Bedrock'a eşit olan
+değişkenlerden okur. Huni, fırlatıcı ve fırın ekranları çekilen panel alanlarında vanilla arayüzle
+piksel piksel aynıydı. Vanilla etiket sabit değerli adsız bir dizi girdisi olduğundan envanter etiketi
+Bedrock'un `modifications` mekanizmasıyla yeniden kurulur. Değiştirilmemiş Bedrock sandık arayüzüne
+dönmek için seçeneği kapatın.
+
+#### Ölçülmüş sonuçlar
+
+İki istemci de arayüz birimi başına iki ekran pikseliyle çalıştı. Her boş menü
+`H<8 x 8 deneme>H<41 x 9 rütbe>H` başlığını kullandı. Konumlar ilk sandık yuvasına göre arayüz
+birimidir. Betikli karşılaştırma başlık glif dizilerini ve satırlarını, her yuva satırını (sandık,
+oyuncu envanteri ve kısayol çubuğu) ve envanter etiketinin ilk glifini ölçtü.
+
+| Sandık yuvaları | Vanilla Bedrock yerleşimi | Twilight yerleşimi |
+| --- | --- | --- |
+| 9, 18, 27 | Geniş başlık kayar ve kırpılır; başlık yazısı 1 birim solda ve 2 birim aşağıda; envanter 2, kısayol çubuğu 3 birim yukarıda; envanter etiketi 1 birim solda ve 1 aşağıda | Başlık satırları, yuva satırları, kısayol çubuğu ve envanter etiketi Java ile aynı |
+| 36, 45, 54 | Yukarıdaki gibi, yalnızca başlık yazısı 1 birim aşağıda | Başlık satırları, yuva satırları, kısayol çubuğu ve envanter etiketi Java ile aynı |
+
+Kalan başlık farkı yalnızca özel bitmap gliflerde görülür: Bedrock her glifi Java'nın konumundan bir
+birim sağa çizer. Satırları Java ile eşleşir; sıradan yazı ve sol tarafında saydam sütun olmayan bir
+glifin ardındaki karakter de eşleşir. [Yerleşim ölçümleri](images/acceptance/2026-10-03-container-layout/layout-measurements.json)
+ve [vanilla temel çizgisi](images/acceptance/2026-10-03-container-layout/vanilla-measurements.json)
+boyut başına tüm verileri içerir.
+
+##### Başlıkta ölçülen bitmap glif davranışı
+
+- Bedrock bir glifin sol kenarındaki saydam sütunları kırpar, ilk opak sütunu kalem konumundan bir birim
+  sonra çizer ve opak genişlik artı bir kadar ilerler. Java saydam sütunlar dahil kalemden çizer ve en
+  sağdaki opak sütuna kadarki genişlik artı bir kadar ilerler. Bu yüzden sol saydamlığı olmayan bir glif
+  bir birim sağda görünür ve sol dolgu Bedrock ilerlemesini daraltır. Bunu düzeltmek için bağlama duyarlı
+  bir yerleşim bağdaştırıcısı gerekir; uygulanmadı.
+- Bedrock özel kullanım bitmap gliflerini renklendirmez. Java onları yazı rengiyle çarpar; bu yüzden
+  varsayılan renkli bir başlıktaki görsel Java'da `0x404040` ile koyulaşır, Bedrock'ta değişmez. Beyaz
+  (`&f`) başlıklar eşleşir. Kırmızı bir `&c` denemesi Java'da `(255, 0, 85)`, Bedrock'ta `(255, 0, 255)`
+  oldu.
+
+#### İncelenen görüntüler
+
+Yerleşimin kapatıldığı aynı derlemeyi kullanan vanilla temel çizgisi dışında tüm görüntüler sürüm
+derlemesini (`1.0.0-pre.4`) kullandı.
+
+| Durum | Java | Bedrock |
+| --- | --- | --- |
+| Beyaz başlıklı menü görseli, 27 yuva | Referans | Tam görsel, yuvalar hizalı |
+| Beyaz başlıklı menü görseli, 54 yuva | Referans | Tam görsel, yuvalar hizalı |
+| Varsayılan renkli başlık | Görsel `0x404040` ile koyulaşmış | Görsel renklendirilmemiş |
+| Deneme glifleri | Referans | Bir birimlik glif kayması, renklendirme yok |
+| Vanilla Bedrock arayüzü, 27 yuva | - | Görsel eksik, başlık kısa çizgiyle bölünmüş |
+
+Kırpıntılar değiştirilmemiş istemci görüntülerinden alındı ve
+[SHA-256 karmalarıyla](images/acceptance/2026-10-03-container-layout/sha256.json) tanımlanır. Java
+istemci dili İngilizce, Bedrock istemci dili Türkçeydi; bu yüzden envanter etiketlerinin yazısı farklı.
+İki geçersiz Java eşya referansı Java menüsünde eksik dokulu eşya olarak görünür kalıyor.
+
+#### Derleme ve ortam
+
+- 20 paketteki 95 test yerelde geçti; dört yeni test başlık yerleşimini, katmanları, envanter ve kısayol
+  çubuğu aralığını, vanilla varsayılanları ve seçenek anahtarını kapsar.
+- Sürüm JAR SHA-256: `13d45d42b078211266879d1f86ce57b9e0c6961d2ef8be5fe5b71ac4787d3b16`.
+- Test edilen paket SHA-256: `1723b9024707aed15493a75098e317f3e102b2ade780ed6af570cfe445d504b9`
+  (1.165 girdi). İki tekrarlanan derleme bayt bayt aynıydı ve reddedilen bir katı derleme son paketi
+  değiştirmedi.
+- Java 26.2, Paper 26.2 derleme 121, Geyser 2.11.3 derleme 1247 ve Windows üzerinde Bedrock 1.26.5203.0.
+  Yalnızca yerel derleme; barındırılan CI yok.
+- Bedrock içerik günlüğü hiçbir arayüz hatası bildirmedi. Test oyuncuları 20 canla yaratıcı modda kaldı
+  ve tüm kayıtlı ölüm sayaçları sıfır kaldı.
+
+#### Kalan sınırlar
+
+[Yazı yerleşimi incelemesi](TEXT_LAYOUT_2026-10-03.md) (1.0.0-pre.5) daha sonra bir birimlik glif
+kaymasını kaldırdı ve sandık başlıklarına Java aralıklarını ekledi; aşağıdaki maddeler bu 1.0.0-pre.4
+kontrol noktasını anlatır.
+
+- Bağlama göre bitmap renklendirmesi, bir birimlik glif kayması, Java boşluk sağlayıcısı ilerlemeleri
+  (negatif boşluklar dahil) ve çok katmanlı başlık birleştirmesi bir çalışma zamanı yazı/yerleşim
+  bağdaştırıcısı gerektirir.
+- Dokunmatik (cep) yerleşimler, kumanda odağı ve huni, fırlatıcı, fırın, örs gibi diğer konteyner
+  ekranları vanilla Bedrock yerleşimini korur.
+- Bedrock'un panel çerçevesi ve kapatma düğmesi yerel kalır. Java görseli çakıştığı yerde onların
+  üstüne çizilir.
+- Menü etkileşimleri, açıklama kutuları ve canlı HUD durumu bu değişikliğin kapsamı dışındadır.

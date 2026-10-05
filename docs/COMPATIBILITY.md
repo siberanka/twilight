@@ -1,5 +1,7 @@
 # Twilight compatibility contract
 
+> Türkçe: [aşağıda](#türkçe)
+
 This document separates implemented behavior from planned compatibility. A provider is supported only when its public API or generated standard assets pass the same conversion and validation pipeline; directory recognition alone is discovery support.
 
 The [3 October review](COMPATIBILITY_REVIEW_2026-10-03.md) and
@@ -115,3 +117,207 @@ Discovery counters also cover sounds, blockstates, `.bbmodel` files, and datapac
 Twilight owns only `packs/twilight.zip`, `custom_mappings/twilight_*`, and explicitly generated locale override files recorded in its deployment manifest. Deployment stages and hashes all files, snapshots the previous owned set, publishes with atomic replacement where supported, rolls back on failure, and retains three snapshots by default. Deploy and rollback compare mappings with the startup snapshot: a difference reports a required server restart and suppresses the ineffective Geyser reload. Configuration reload preserves that state. Unchanged mappings permit a controlled resource reload. Unrelated Geyser files are never removed.
 
 Provider reload/pack commands and supported completion events are debounced. Twilight hashes the actual source bytes and live item descriptors before rebuilding, skips duplicate deploys when content is unchanged, and performs a delayed settle check for providers that finish writing after their command returns.
+
+---
+
+## Türkçe
+
+### Twilight uyumluluk sözleşmesi
+
+Bu belge uygulanmış davranışı planlanan uyumluluktan ayırır. Bir sağlayıcı yalnızca genel API'si veya
+ürettiği standart varlıklar aynı dönüşüm ve doğrulama hattından geçtiğinde desteklenir; yalnızca dizinin
+tanınması keşif desteğidir.
+
+[3 Ekim incelemesi](COMPATIBILITY_REVIEW_2026-10-03.md) ve [kabul katalogu](acceptance/catalog.json) daha
+geniş gerekli test yüzeyini tanımlar. Planlanan senaryolar aşağıdaki destek durumlarını değiştirmez.
+
+#### Çalışma zamanı platformları
+
+| Platform | Durum | Notlar |
+|---|---|---|
+| Paper 1.21.4+ | Uygulandı | Birincil derleme ve çalışma zamanı hedefi. |
+| Folia 1.21.4+ | Çekirdek uygulandı | Genel zamanlayıcı bağdaştırıcısı; dönüşüm işi ayrı bir işçide çalışır. Çalışma zamanı varlık işleri bölge güvenli kalmalıdır. |
+| Spigot 1.21.4+ | Çekirdek uygulandı | Bukkit zamanlayıcı yedeği; çalışma zamanında Paper'a özgü sabit bağlantı yok. |
+| Fabric istemcisi | Desteklenmiyor | Kaldırıldı. Twilight yalnızca sunucu tarafındadır. |
+
+En düşük bytecode düzeyi Java 21'dir. Yerel derlemeler Java 25 kullanır.
+
+#### Proxy'ler (twilight-proxy)
+
+| Platform | Durum |
+|---|---|
+| Geyser 2.11.3 ile Velocity 4.2.0 | Canlı test edildi: `auto`, dosya ve paket geçişi, modern yönlendirme gizli anahtarı |
+| Geyser 2.11.3 ile BungeeCord 26.1 | Canlı test edildi: `auto`, dosya ve paket geçişi, açık gizli anahtar |
+| Velocity 3.x, Waterfall, eski BungeeCord | Yalnızca uzun süredir var olan API'yi kullanır (`order` abonelikleri, `Reason` olmayan proxy'ler için yedekli `ServerConnectEvent`); canlı test edilmedi |
+| İndirme bağlantıları | Uygulandı ve birim testlerle denetlendi; canlı bir sunucuya karşı test edilmedi |
+
+Sunucu başına paketler, paket değiştiğinde yeniden bağlanma gerektirir, çünkü Bedrock paketleri yalnızca
+bağlanırken yükler. Twilight'ın çalışma zamanı yazı, biyom ve ad köprüleri Geyser'ın Twilight ile aynı
+sunucuda olmasını gerektirir; yalnızca proxy'deki bir Geyser paketleri alır ama bu katmanları almaz.
+[Proxy testine](PROXY_2026-10-05.md) bakın.
+
+#### Kaynak keşfi
+
+Her sağlayıcı kendiliğinden okunur (`sources.providers.<ad>: auto`); `generated` sağlayıcıyı ürettiği
+pakete, `contents` çalışma klasörlerine sınırlar, `false` ise kapatır. Dünya datapack'leri
+`sources.datapacks` ayarını izler. Her derleme ayrıca bir proxy Geyser'ı veya paketi gönderen başka bir
+eklenti için (`geyser.send-pack-to-bedrock: false`) `plugins/Twilight/export` dizinine (`Twilight.mcpack` ve
+Geyser eşya eşlemeleri) dışa aktarılır.
+
+| Kaynak | Keşif | Dönüşüm |
+|---|---|---|
+| ItemsAdder contents/data/cache/üretilmiş paketler/API | Uygulandı | Üretilen çıktı paketi (Java oyuncularının indirdiği) yazarın kök dizinlerinin ve data/cache'in önüne geçer; onlar boşlukları doldurur. Eklentisi olmayan kalıntı bir klasör veya başka bir sağlayıcı paket gönderirken ayarların göndermediği bir paket yalnızca boşlukları doldurur. İlk yükleme, veri yükleme ve paket sıkıştırma olayları izlenir. |
+| CraftEngine resources/cache/üretilmiş paketler/API | Uygulandı | CraftEngine gönderdiğinde `generated/resource_pack.zip` (CustomNameplates ve BetterModel çıktısını da birleştirir) çalışma klasörlerinin önüne geçer. `loadedItems`, yeniden yükleme ve paket üretim olayları desteklenir; daha zengin bileşen eşlemesi sürüyor. |
+| CustomNameplates ve BetterHUD paketleri | Uygulandı | Kaynak paketi olarak keşfedilir; font görselleri yazı yerleşimine katılır. Katmanlı boss çubuğu arka planları ve kaydırılmış yazı Java ile eşleşir; binilen oyuncular kendi Bedrock adlarını gizler ve ad etiketi kutusu gizlenir (`ui.nametag-background: auto`). Hex gradyanlar Bedrock'un 28 yazı rengini kullanır. |
+| Nexo/Oraxen paketleri/API | Uygulandı | Standart eşya varlıkları uygulandı; Nexo'nun vanilla varlık önbelleği yok sayılır ve teslim ayarları okunur. Oraxen dizi kayıtları ve eşya yükleme/paket olayları desteklenir; sürüme özgü API hataları dosyalara geri düşer ve günlüğe yazılır. Nexo dosyalardan doğrulandı; hiçbir test sunucusu eklentiyi çalıştırmıyor. |
+| BetterModel/ModelEngine üretilmiş paketleri | Kısmi | Durağan geometri ve geliştirme aşamasında canlı eşya görüntüsü köprüsü uygulandı. Örneklenen BetterModel/ModelEngine pozları ve sabit MythicMobs modelleri doğrulandı; tam animasyonlar sürüyor. |
+| Bağımsız `.bbmodel` kaynakları | Keşfedildi | Kaynak keşfi bağımsız iskelet/animasyon dönüşümü anlamına gelmez; şu an üretilmiş Java eşya varlıkları gereklidir. |
+| RealisticSeasons paket katmanları ve mevsimler | Uygulandı | Paket mevsimsel katman olarak dizinlenir. Mevsimsel biyomları sunucu kayıt defterinden okunur; geçerli mevsimin görünümleri önce birebir Bedrock biyom yuvaları alır, mevsim değişikliği paketi yeniden derler ve biyom güncellemeleri Bedrock oyuncularına yeniden katılmadan ulaşır. RealisticSeasons'ın verileri ve paketleri değiştirilmez. |
+| Dünya datapack'leri | Uygulandı | `server.properties` `level-name`, Bukkit dünyaları, boyutlar, ZIP/klasör datapack'leri. Özel biyomlar birebir renklerini ve iklimlerini yeniden tanımlanmış 25 Bedrock biyomunda korur; fazlası en yakın vanilla biyomu veya yuvayı kullanır (`world.bedrock-biome-matching`). |
+| MythicMobs çalışma zamanı mobları | Twilight tarafından uygulanmadı | Sağlayıcı Java mobları doğurabilir; istemciler arası özel varlık çizimi bir çalışma zamanı varlık köprüsü gerektirir. Gerçek içerik incelemesine bakın. |
+| Ek yapılandırılmış kaynaklar | Uygulandı | Yol sınırlama, bağlantı, boyut, girdi ve arşiv güvenlik denetimleri uygulanır. |
+
+Twilight korumalı varlıkları çıkarmaz veya ücretli eklentilerin iç yapısını yeniden üretmez. Entegrasyonlar
+genel API'leri, belgelenmiş dosya biçimlerini ve sunucu işletmecisinin erişebildiği varlıkları kullanır.
+
+#### Eşya dönüşümü
+
+Uygulananlar:
+
+- Geyser özel eşya eşleme biçimi v2.
+- Modern Java eşya modeli kökleri ve Geyser uyumlu koşul, aralık ve seçim belirteçleri.
+- Durağan bileşikler eşya görüntülerinde, eklentilerde (attachable) ve durağan envanter önizlemelerinde ayrı
+  alt geometriyi ve yazarın verdiği görüntü pozlarını korur; üretilmiş sprite alt modelleri küboidlerle
+  birlikte korunur. Dinamik bileşikler desteklenmiyor.
+- Eski sayısal custom model data.
+- Katmanlı 2B PNG birleştirme ve belirlenimci eşya atlası girdileri.
+- Java küboidleri, varsayılan ve açık yüz başına UV'ler, yüz UV dönüşleri, öğe dönüşleri, doku atlasları,
+  Bedrock geometrisi ve eklentiler.
+- Birinci şahıs sağ/sol, üçüncü şahıs sağ/sol ve kafa görüntü dönüşümleri; yazarın verdiği el ötelemesi,
+  dönüşü ve ölçeği örtük sığdırma olmadan korunur.
+- Eşlemenin vanilla temel eşyasından bağımsız, model üst öğesinden türetilen elde tutma sunumu.
+- Tek katmanlı yalnızca doku değiştirmeleri için yerel Bedrock yay/arbalet pozu ve gerilme denetleyicileri.
+- Hacimli eski yay/arbalet gerilme aşamaları için çalışma zamanında seçilen Java geometrisi ve durum başına
+  görüntü dönüşümleri; ok ve roket yükleme türleri ayrı kalır.
+- Üretilen Bedrock kaynak yolları, çalışma zamanı durum animasyonları dahil Geyser'ın 80 karakterlik
+  taşınabilirlik sınırının altında kalır.
+- Geyser'ın `fishing_rod_cast` belirteciyle eski olta bekleme/atma çeşitleri.
+- Katı dönüşüm modu ve kararlı paket UUID'leri.
+
+Açık sürüm kapıları:
+
+- İç içe dinamik bileşikler ve yerel özel çiziciler dahil tam güncel Java eşya düğümü/özelliği matrisi.
+- Karmaşık 3B modeller için kaynak dokusu yedek simgeleri yerine birebir arayüz çizimi.
+- Animasyonlu `.mcmeta` dosyalarının Bedrock flipbook'a dönüşümü (şu an yalnızca yazarın verdiği ilk kare
+  dışa aktarılır).
+- Özellikle birinci şahıs çerçeveleme ve karmaşık sağlayıcı modellerinde tam görsel el pozu eşdeğerliği;
+  [gerçek içerik incelemesine](REAL_CONTENT_REVIEW.md) bakın.
+- Olta ipleri, 3B yay/arbalet durum geçişleri, kalkanlar, üç dişli mızraklar/mızraklar, zırh ve elytra
+  dahil her sağlayıcı/sürüm durum matrisinin canlı kabulü.
+- Her sağlayıcı sürümü için bileşen zengini çalışma zamanı tanımları ve yaratıcı/tarif sunumu.
+
+#### Diğer özel içerik
+
+`minecraft:default` üzerinden erişilen desteklenen bitmap sağlayıcıları, ölçülmüş Java yükseklik/ascent
+yerleşimiyle 16 ile 512 piksel arası uyarlanır hücreler kullanır. Her sayfa, her glifin yazarın verdiği
+görüntü boyutlarını ve taban çizgisini korurken en büyük glifini içerecek şekilde büyür. Hiçbir görsel daha
+küçük bir hücreye sığması için küçültülmez. Bu sınırların ötesindeki görünür taşma ve özel boşluk
+ilerlemeleri katı derlemeyi başarısız kılar; tanı derlemeleri atlamaları raporlar. Yerel kalibrasyon,
+piksel karşılaştırmaları ve bellek maliyetleri için [geniş glif regresyonuna](WIDE_GLYPHS_2026-10-02.md)
+bakın. Temsil edilebilir negatif ascent'ler desteklenir. Okunamayan üretilmiş katmanlar geçerli, daha
+düşük öncelikli bir kaynak varlığına geri düşebilir. Adlandırılmış fontlardaki çakışmasız BMP özel kullanım
+glifleri genel Bedrock atlasına katılabilir.
+
+`vanilla-override` kapalıyken Java varsayılan fontundaki olağan Unicode hücreleri Bedrock'un vanilla
+gliflerinin yerini asla almaz. Yazı yerleşimi açıkken (varsayılan) bu karakterler, bir kod noktasını
+yeniden kullanan farklı adlandırılmış font görselleri ve özel kullanım aralığı dışındaki adlandırılmış
+glifler, çalışma zamanı yerleşiminin font başına yerine koyduğu özel kullanım takma adları alır. Dikey
+kaydırılmış yazı fontlarında olduğu gibi Java'nın kendi font sayfalarından (`ascii.png`, `accented.png`,
+`nonlatin_european.png`, unicode sayfaları) çizilen karakterler olağan Bedrock yazısı kalır. Yerleşim
+olmadan bağlama bağlı karakterler katı yayında reddedilir.
+
+Özel pakette bulunmayan açık `minecraft:` doku referansları çalışan sunucu sürümünün Mojang istemci
+JAR'ından çözülür. Twilight yalnızca resmî HTTPS sunucularını kabul eder ve arşivi önbelleğe almadan önce
+sürüm meta verisini, bildirilen boyutu ve SHA-1'i doğrular. `generation.download-vanilla-assets` ağdan
+indirmeyi kapatabilir; mevcut doğrulanmış önbellek kullanılabilir kalır.
+
+Katmanlı Java `sounds.json` dosyaları `replace` anlamıyla birleştirilir ve `sounds/sound_definitions.json`
+dosyasına dönüştürülür. Dosya ve olay referansları, OGG varlıkları, ağırlık, ses düzeyi, perde, akış ve
+uyumlu zayıflama mesafeleri korunur. Nitelenmemiş Java dosya referansları `minecraft` üzerinden doğru
+çözülür; üretilen yollar Bedrock dosya çakışmalarını önlemek için bir ad alanı parçası korur. Açık vanilla
+ses bağımlılıkları sürümün SHA-1 doğrulamalı Mojang varlık dizini üzerinden alınır. `vanilla-override`
+kapalıyken vanilla ile özdeş tanımlar atlanır ve değiştirilmiş vanilla olaylar raporlanır.
+
+Masaüstü sandık ekranları varsayılan olarak üretilmiş bir Java konteyner yerleşimi kullanır
+(`ui.java-container-layout`). Başlıklar kaydırılmaz ve kırpılmaz, başlık ve envanter etiketleri Java'nın
+konumlarını ve çizim sırasını kullanır, sandık, oyuncu envanteri ve kısayol çubuğu satırları 1 ile 6 sandık
+satırı için Java'nın aralığını korur. Kısmi arayüz tanımları Bedrock'un vanilla arayüzüyle birleştirilir;
+diğer konteynerler ve dokunmatik yerleşimler vanilla Bedrock yerleşimini korur.
+[Konteyner yerleşimi incelemesine](CONTAINER_LAYOUT_2026-10-03.md) bakın.
+
+Yazı, Bedrock oyuncuları için varsayılan olarak Java font ölçüleriyle yerleştirilir (`ui.java-text-layout`).
+Tüm paketlerin font tanımları Java gibi birleştirilir; boşluk sağlayıcıları, negatif yükseklikli bitmap'ler,
+ekran dışı aralık bitmap'leri ve boş TrueType glifleri görünmez aralık glifleriyle birebir ilerlemelere
+dönüşür; glif kenar payları düzeltilir; Java'nın `minecraft:default` veya adlandırılmış fontlarda yeniden
+eşlediği karakterler Bedrock'un gliflerinin yerini almak yerine özel kullanım takma adları alır. Sandık
+başlıkları Java konteyner başlangıcını kullanır ([yazı yerleşimi incelemesine](TEXT_LAYOUT_2026-10-03.md)
+bakın). `ui.java-text-surfaces` (varsayılan) ile sohbet, aksiyon çubuğu, başlıklar, boss çubukları, skor
+tabloları, varlık adları, yazı görüntüleri ve diğer konteyner başlıkları da yerleştirilir: sola hizalı
+satırlar Java'nın göreli konumlarını korur, ortalı satırlar Java'nın tam sayı ortalamasına göre doldurulur.
+Ölçülen kaymalar test edilen her yüzeyde sıfırdı; [yazı yüzeyi incelemesine](TEXT_SURFACES_2026-10-04.md)
+bakın. Eşya adları ve açıklamaları yeniden yazılmaz, çünkü Geyser eşya verisinin karmasını alır ve yaratıcı
+modda tam eşyaları geri gönderir. Renksiz konteyner başlıkları önceden koyulaştırılmış glif kopyaları
+kullanır, çünkü Java onları `0x404040` ile çizer ve Bedrock kaynak paketi gliflerini asla renklendirmez
+(`ui.java-glyph-tint`). Kaynak paketi çevirileri Java gibi birleştirilir ve Java yazısı ile Bedrock'un
+envanter etiketi için kullanılır (`ui.java-translations`). Öncekilerin üzerine geri alınan yazı ve görseller
+sandık başlıklarında, aksiyon çubuğunda ve boss çubuklarında katman başına bir etiketle (en fazla dört)
+çizilir (`ui.java-text-layers`); [üst üste görseller, ad etiketleri ve birebir biyomlar](LAYERS_BIOMES_2026-10-04.md)
+belgesine bakın. Yazının hemen ardından gelen bir glif bir birim farklıdır. [Arayüz kampanyasına](UI_CAMPAIGN_2026-10-04.md)
+bakın: 104 gerçek menü, her pencere ve 97 başlık bandı birebir.
+
+Derleyici tanıları yerleşim olmadan tamamlayıcı düzlem kod noktalarını, hücre dışı taban çizgisi
+denetimlerini ve bozuk kaynak PNG verisini reddeder. PNG parça veya zlib sağlama toplamları bozuk korumalı
+paketler Java gibi çözülür. Java'nın reddettiği veya bozuk gösterdiği içerik (bozuk font dosyaları,
+okunamayan TrueType fontlar, hiçbir pakette bulunmayan ses dosyaları, dokular veya modeller, ekran
+boyutunda kaplama glifleri, `vanilla-override` olmadan değiştirilmiş vanilla ses olayları) Java'nın
+gösterdiği şekilde dönüştürülür ve `build-report.json` içinde bildirim olarak raporlanır; katı derlemeyi
+durdurmaz. Yedi üretim sunucusunun tam derlemeleri varsayılan yapılandırmayla katı yayını geçti. Çalışma
+zamanı font sınırlamaları ayrıdır: Bedrock bitmap glifleri yazı rengiyle renklendirmez (renksiz başlıklar
+koyulaştırılmış kopyalar kullanır; diğer açık renkler görseli koyulaştırmadan korur) ve yüksek çözünürlüklü
+veya kesirli ölçekli glif dokuları arayüz birimlerine indirgenir. Eşya adları ve açıklamaları ham
+karakterlerini korur. En son eşlenmiş testler altı ölçü denemesini, 36 gerçek glifi ve altı ek arayüz/HUD
+görselini kapsar. Sohbette çizilen büyük görseller etkileşimli menü veya dinamik HUD eşdeğerliğini
+kanıtlamaz. Atlas sayfaları 8192 kareye (sayfa başına 256 MiB ham RGBA) ulaşabilir; kısıtlı cihaz kabulü
+doğrulanmadı.
+
+Keşif sayaçları sesleri, blok durumlarını, `.bbmodel` dosyalarını ve datapack biyom tanımlarını da kapsar.
+Üretim dönüşümü, kalan her alt sistem yapısal testlere ve gerçek Java/Bedrock kabul kanıtına sahip olana
+kadar kapılı kalır:
+
+- shader menüleri ve dinamik HUD durumu;
+- özel bloklar, mobilya, moblar, kemikler, animasyonlar, çarpışma kutuları ve ekipman;
+- sağlayıcının tetiklediği özel ses olayları için canlı Bedrock oynatım kabulü;
+- aynı anda 25'ten fazla farklı özel biyom görünümü (geri kalanlar en yakın görünümü paylaşır);
+- özel kafatasları ve yol noktası simgeleri.
+
+#### Vanilla koruma
+
+`vanilla-override` varsayılan olarak `false`. Twilight yalnızca algılanan özel eşya tanımlarını veya eski
+override değerlerini eşler. Dokunulmamış vanilla bir eşya yığını için eşleme üretmez. Basit özel eşyalar
+vanilla Bedrock sunum anlamını yeniden kullanabilir; karmaşık özel şekiller kendi geometrilerini ve
+dönüşümlerini korur.
+
+#### Geyser dağıtımı
+
+Twilight yalnızca `packs/twilight.zip`, `custom_mappings/twilight_*` ve dağıtım manifestine kaydedilmiş,
+açıkça üretilmiş dil geçersiz kılma dosyalarının sahibidir. Dağıtım tüm dosyaları hazırlar ve karmasını
+alır, önceki sahip olunan kümenin anlık görüntüsünü alır, desteklenen yerlerde atomik değiştirmeyle yayımlar,
+hata durumunda geri alır ve varsayılan olarak üç anlık görüntü saklar. Dağıtım ve geri alma eşlemeleri
+açılış anlık görüntüsüyle karşılaştırır: bir fark gerekli bir sunucu yeniden başlatmasını raporlar ve etkisiz
+Geyser yeniden yüklemesini bastırır. Yapılandırma yeniden yüklemesi bu durumu korur. Değişmemiş eşlemeler
+denetimli bir kaynak yeniden yüklemesine izin verir. İlgisiz Geyser dosyaları asla kaldırılmaz.
+
+Sağlayıcı yeniden yükleme/paket komutları ve desteklenen tamamlanma olayları geciktirilerek birleştirilir.
+Twilight yeniden derlemeden önce gerçek kaynak baytlarının ve canlı eşya tanımlayıcılarının karmasını alır,
+içerik değişmediğinde yinelenen dağıtımları atlar ve komutları döndükten sonra yazmayı bitiren sağlayıcılar
+için gecikmeli bir yerleşme denetimi yapar.

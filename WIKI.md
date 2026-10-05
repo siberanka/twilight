@@ -1,5 +1,7 @@
 # Twilight wiki
 
+> Türkçe: [aşağıda](#türkçe)
+
 Twilight converts the custom content of a Java server (ItemsAdder, Nexo, CraftEngine, Oraxen,
 BetterModel, ModelEngine, CustomNameplates, BetterHUD, datapacks and RealisticSeasons) into a Bedrock
 resource pack and Geyser mappings, and makes Bedrock players see it the way Java players do. The
@@ -20,7 +22,7 @@ are in the [reports](docs/); limits per feature are in [docs/COMPATIBILITY.md](d
 3. [How a build works](#how-a-build-works)
 4. [Commands and permissions](#commands-and-permissions)
 5. [Configuration reference: Twilight](#configuration-reference-twilight)
-6. [twilight-proxy](#twilight-proxy)
+6. [twilight-proxy](#twilight-proxy-1)
 7. [Files and folders](#files-and-folders)
 8. [Developer API](#developer-api)
 9. [Plugin-message protocol](#plugin-message-protocol)
@@ -56,7 +58,7 @@ are in the [reports](docs/); limits per feature are in [docs/COMPATIBILITY.md](d
 3. Forward player data with Velocity's `modern` (or `bungeeguard`) forwarding or BungeeGuard. Both
    plugins then share that secret automatically. Without it, set the same `secret` in
    twilight-proxy's `config.yml` and `proxy.secret` in each backend's Twilight `config.yml`.
-4. Each Bedrock player now loads the pack of the server they join; see [twilight-proxy](#twilight-proxy).
+4. Each Bedrock player now loads the pack of the server they join; see [twilight-proxy](#twilight-proxy-1).
 
 ## How a build works
 
@@ -272,7 +274,7 @@ In Geyser's folder Twilight owns `packs/twilight.zip`, `custom_mappings/twilight
 
 | Path | Content |
 |---|---|
-| `config.yml` | Settings ([reference](#twilight-proxy)) |
+| `config.yml` | Settings ([reference](#twilight-proxy-1)) |
 | `packs/` | Pack files named in `config.yml` |
 | `cache/<server>.mcpack` | Packs received from Twilight on the backends |
 | `cache/link-<hash>.mcpack` (+ `.etag`) | Downloaded packs |
@@ -387,3 +389,398 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 Outputs: `twilight/build/libs/Twilight.jar` and `twilight-proxy/build/libs/TwilightProxy.jar`. The
 plugin-message protocol lives in `protocol/` and is compiled into both. Licensed under
 [LGPL-3.0-or-later](LICENSE.LESSER).
+
+---
+
+## Türkçe
+
+### Twilight wiki
+
+Twilight bir Java sunucusunun özel içeriğini (ItemsAdder, Nexo, CraftEngine, Oraxen, BetterModel,
+ModelEngine, CustomNameplates, BetterHUD, datapack'ler ve RealisticSeasons) bir Bedrock kaynak paketine ve
+Geyser eşlemelerine dönüştürür ve Bedrock oyuncularının onu Java oyuncularının gördüğü gibi görmesini sağlar.
+Proje iki eklentiyle gelir:
+
+| Eklenti | Çalıştığı yer | Amaç |
+|---|---|---|
+| `Twilight.jar` | Paper, Folia, Spigot 1.21.4+ (arka uç sunucular) | Bedrock paketini derler, Geyser'a dağıtır, çalışma zamanında yazıyı, biyomları ve adları yerleştirir |
+| `TwilightProxy.jar` (twilight-proxy) | Velocity, BungeeCord/Waterfall (proxy'ler) | Proxy'deki Geyser üzerinden her arka uç sunucuya kendi Bedrock paketini verir |
+
+Bu sayfa yöneticiler ve eklenti geliştiricileri için başvuru kaynağıdır. Ölçümler ve ekran görüntüleri
+[raporlardadır](docs/); özellik başına sınırlar [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) içindedir.
+
+#### İçindekiler
+
+1. [Gereksinimler](#gereksinimler)
+2. [Kurulum](#kurulum)
+3. [Bir derleme nasıl çalışır](#bir-derleme-nasıl-çalışır)
+4. [Komutlar ve izinler](#komutlar-ve-izinler)
+5. [Yapılandırma başvurusu: Twilight](#yapılandırma-başvurusu-twilight)
+6. [twilight-proxy](#twilight-proxy-4)
+7. [Dosyalar ve klasörler](#dosyalar-ve-klasörler)
+8. [Geliştirici API'si](#geliştirici-apisi)
+9. [Eklenti mesajı protokolü](#eklenti-mesajı-protokolü)
+10. [Güvenlik modeli](#güvenlik-modeli)
+11. [Sorun giderme](#sorun-giderme)
+12. [Kaynaktan derleme](#kaynaktan-derleme)
+
+#### Gereksinimler
+
+| Bileşen | Sürüm |
+|---|---|
+| Java | 21 veya üstü (Twilight Java 25 ile, release 21 olarak derlenir) |
+| Arka uç sunucu | Paper, Folia veya Spigot 1.21.4 veya üstü; önce en yeni sürümler (Paper 26.2 üzerinde test edildi) |
+| Geyser | Özel içeriği açık 2.x; çalışma zamanı köprüleri Geyser 2.11.3'e karşı doğrulandı |
+| Bedrock istemcileri | Güncel sürüm (1.26.5203 ile test edildi); eskileri Geyser'ın desteklediği kadar |
+| Proxy (isteğe bağlı) | Proxy'de Geyser bulunan Velocity 3.x/4.x veya BungeeCord/Waterfall (Velocity 4.2.0 ve BungeeCord 26.1 üzerinde test edildi) |
+
+#### Kurulum
+
+##### Tek sunucu
+
+1. `Twilight.jar` dosyasını Geyser-Spigot'un yanına, `plugins/` içine koyun ve sunucuyu başlatın.
+2. Hiçbir şeyin yapılandırılması gerekmez. Sunucu ve içerik eklentileri yüklendikten sonra Twilight
+   paketlerini bulur, Bedrock paketini derler, Geyser'a dağıtır ve Geyser'ı yeniden yükler.
+3. Bedrock oyuncuları paketi bir sonraki katılışlarında alır. Eşya eşlemeleri değiştiyse konsol bir kez
+   yeniden başlatma ister, çünkü Geyser eşyaları yalnızca açılışta kaydeder.
+
+##### Proxy'li bir ağ
+
+1. Özel içeriği olan her arka uca `Twilight.jar` kurun; arka uçlarda Geyser-Spigot gerekmez.
+2. Proxy'ye Geyser ve `TwilightProxy.jar` kurun.
+3. Oyuncu verisini Velocity'nin `modern` (veya `bungeeguard`) yönlendirmesiyle ya da BungeeGuard ile iletin.
+   İki eklenti de bu gizli anahtarı kendiliğinden paylaşır. Bu yoksa twilight-proxy'nin `config.yml`
+   dosyasında `secret` ve her arka ucun Twilight `config.yml` dosyasında `proxy.secret` için aynı değeri
+   ayarlayın.
+4. Artık her Bedrock oyuncusu katıldığı sunucunun paketini yükler; [twilight-proxy](#twilight-proxy-4)
+   bölümüne bakın.
+
+#### Bir derleme nasıl çalışır
+
+1. **Keşif.** Twilight kurulu sağlayıcıların klasörlerini ve üretilmiş paketlerini okur. Bir sağlayıcının
+   Java oyuncularına gönderdiği paket, boşlukları dolduran çalışma klasörlerinin önüne geçer; ayarları
+   paketini göndermeyen veya eklentisi kurulu olmayan bir sağlayıcı yalnızca boşlukları doldurur. Dünya
+   datapack'leri ve `sources.additional` eklenir. Her sağlayıcı `sources.providers` ile sınırlanabilir.
+2. **Çalışma zamanı eşyaları.** Tarif sonuçları, çevrim içi envanterler ve sağlayıcıların eşya kayıtları
+   genel API'ler üzerinden okunur; böylece yalnızca çalışma zamanında var olan eşyalar da dönüştürülür.
+3. **Derleme.** Eşya modelleri, dokular, fontlar, sesler, çeviriler, biyom görünümleri ve arayüz dosyaları
+   dönüştürülür. Java'nın kendisinin bozuk gösterdiği içerik (eksik bir doku veya model, ekran boyutunda bir
+   kaplama glifi) Java'nın gösterdiği şekilde dönüştürülür ve bildirim olarak raporlanır. Güvenle temsil
+   edilemeyen içerik bir sorundur; `generation.strict: true` ile sorunlu bir derleme, bir sunucunun ilk
+   paketi dışında yayımlanmaz.
+4. **Dışa aktarma ve dağıtım.** Paket ve Geyser eşlemeleri `plugins/Twilight/export/` dizinine yazılır ve
+   Geyser'a işlemsel olarak dağıtılır (geri alma için anlık görüntülerle).
+5. **Çalışma zamanı.** Oyuncular oynarken Twilight, Java yazısını Bedrock için yerleştirir (başlıklar,
+   sohbet, aksiyon çubuğu, boss çubukları, skor tabloları, adlar, yazı görüntüleri), Java'nın ad kurallarını
+   uygular, özel biyomları eşler ve biyom güncellemelerini iletir.
+
+Derlemeler sağlayıcı yeniden yüklemelerinden, sağlayıcı paket komutlarından ve RealisticSeasons mevsim
+değişikliklerinden sonra kendiliğinden yeniden çalışır. Değişmemiş girdiler bir parmak iziyle algılanır ve
+atlanır.
+
+#### Komutlar ve izinler
+
+##### Twilight (arka uç)
+
+| Komut | Açıklama |
+|---|---|
+| `/twilight status` | İşlem durumu, son tarama, girdi parmak izi, Geyser klasörü ve anlık görüntüler |
+| `/twilight scan` | Derlemeden kaynakları keşfeder ve inceler |
+| `/twilight convert` (takma ad `build`) | Tarar, derler, dışa aktarır ve dağıtır |
+| `/twilight deploy` | Son derlemeyi Geyser'a yeniden dağıtır |
+| `/twilight rollback [n]` | En yeni n'inci Geyser anlık görüntüsünü geri yükler (varsayılan 1) |
+| `/twilight reload` | `config.yml` dosyasını yeniden yükler ve doğrular |
+
+Takma ad: `/tw`. İzin: `twilight.admin` (varsayılan: operatörler). Uzun işlemler sunucu iş parçacığı
+dışında çalışır; aynı anda yalnızca biri çalışır.
+
+##### twilight-proxy
+
+| Komut | Açıklama |
+|---|---|
+| `/twilightproxy` | Paylaşılan gizli anahtar durumu, Geyser varlığı ve her sunucunun paketi |
+| `/twilightproxy reload` | `config.yml` dosyasını ve her paketi yeniden yükler |
+
+Takma ad: `/twproxy`. İzin: `twilight.proxy.admin`.
+
+#### Yapılandırma başvurusu: Twilight
+
+`plugins/Twilight/config.yml`. Her anahtarın çalışan bir varsayılanı vardır; dosyanın yalnızca davranışı
+değiştirmek için düzenlenmesi gerekir.
+
+##### Üst düzey
+
+| Anahtar | Varsayılan | Anlamı |
+|---|---|---|
+| `vanilla-override` | `false` | Paketin Java paketlerinin değiştirdiği vanilla Bedrock varlıklarının (sesler, glifler) yerini almasına izin verir |
+
+##### `generation`
+
+| Anahtar | Varsayılan | Anlamı |
+|---|---|---|
+| `strict` | `true` | Sorunlu bir derleme yayımlanmaz (bir sunucunun ilk paketi yine yayımlanır) |
+| `auto-build-on-startup` | `true` | Sunucu ve sağlayıcılar yüklendikten sonra derler |
+| `sync-provider-changes` | `true` | Sağlayıcı yeniden yükleme/paket olaylarından ve komutlarından sonra yeniden derler |
+| `startup-delay-ticks` | `40` | Otomatik derlemelerden önceki gecikme (1-72000) |
+| `provider-command-delay-ticks` | `100` | Bir sağlayıcı komutundan sonra, çıktısının yazılması için gecikme |
+| `maximum-source-bytes` | `1073741824` | Bir derlemede okunan tüm kaynak baytlarının üst sınırı |
+| `maximum-archive-entries` | `100000` | Kaynak arşivi başına girdi üst sınırı |
+| `download-vanilla-assets` | `true` | Bir derleme gerektirdiğinde sürümün istemci varlıklarını Mojang'dan indirir (karma doğrulamalı) |
+
+##### `sources`
+
+| Anahtar | Varsayılan | Anlamı |
+|---|---|---|
+| `auto-discover` | `true` | Sağlayıcıları ve dünya datapack'lerini kendiliğinden bulur |
+| `providers.<ad>` | `auto` | Sağlayıcı başına (`itemsadder`, `nexo`, `craftengine`, `oraxen`, `bettermodel`, `modelengine`, `customnameplates`, `betterhud`, `realisticseasons`): `auto` / `true`, `generated` (yalnızca üretilmiş paket), `contents` (yalnızca çalışma klasörleri), `off` / `false` |
+| `datapacks` | `true` | Dünyaların datapack'lerini okur |
+| `additional` | `[]` | Ek paketler veya datapack'ler (klasörler veya ZIP'ler), sunucu klasörüne göreli |
+
+##### `geyser`
+
+| Anahtar | Varsayılan | Anlamı |
+|---|---|---|
+| `directory` | `auto` | Geyser'ın veri klasörü; `auto` `plugins/Geyser-*` klasörünü bulur |
+| `deploy-after-build` | `true` | Her başarılı derlemeyi dağıtır |
+| `reload-after-deploy` | `true` | Yeniden başlatma gerekmediğinde dağıtımdan sonra `geyser reload` çalıştırır |
+| `backups-to-keep` | `3` | `/twilight rollback` için saklanan Geyser anlık görüntüleri (1-20) |
+| `send-pack-to-bedrock` | `true` | Paketi Geyser'ın göndermesine izin verir; bir proxy veya başka bir eklenti `export/Twilight.mcpack` dosyasını gönderiyorsa `false` |
+
+##### `ui`
+
+| Anahtar | Varsayılan | Anlamı |
+|---|---|---|
+| `java-container-layout` | `true` | Bedrock sandık ekranlarında Java'nın sandık yerleşimi ve başlık konumu |
+| `java-text-layout` | `true` | Yazıyı Java font ölçüleriyle yerleştirir (boşluklar, negatif boşluklar, görseller) |
+| `java-text-surfaces` | `true` | Yerleşimi sohbete, aksiyon çubuğuna, başlıklara, boss çubuklarına, skor tablolarına, adlara ve yazı görüntülerine uygular |
+| `java-glyph-tint` | `true` | Renksiz konteyner başlıkları için Java'nın çizdiği gibi koyulaştırılmış görsel kopyaları |
+| `java-text-layers` | `true` | Öncekilerin üzerine geri çizilen yazı ve görseller katman başına bir etiket alır (sandık başlıkları, aksiyon çubuğu, boss çubukları) |
+| `nametag-background` | `auto` | Bedrock'un ad etiketi kutusu: `auto` (CustomNameplates'in ad etiketleri açıkken gizli), `hidden`, `bedrock` |
+| `java-translations` | `true` | Bedrock oyuncuları için kaynak paketlerinin çevirilerini kullanır |
+
+##### `world`
+
+| Anahtar | Varsayılan | Anlamı |
+|---|---|---|
+| `bedrock-biome-matching` | `true` | Yeniden tanımlanmış 25 Bedrock biyomunda özel biyomlar için birebir renkler ve iklim, aksi hâlde en yakın vanilla biyom ve canlı biyom güncellemeleri |
+
+##### `proxy`
+
+| Anahtar | Varsayılan | Anlamı |
+|---|---|---|
+| `share-pack` | `true` | Dışa aktarılan paketi imzalı eklenti mesajlarıyla twilight-proxy'ye sunar |
+| `secret` | `""` | twilight-proxy ile paylaşılan gizli anahtar (16+ karakter); boşsa Paper'ın Velocity gizli anahtarını veya BungeeGuard belirteçlerini kullanır |
+
+`ui` ve `world` anahtarlarındaki değişiklikler yeni bir derleme gerektirir (`/twilight convert`); `proxy`
+anahtarları ve `geyser.send-pack-to-bedrock` yeniden başlatmada etkinleşir.
+
+#### twilight-proxy
+
+Bedrock kaynak paketlerini bir kez, bağlanırken yükler. twilight-proxy bu yüzden her Bedrock oturumu için
+oyuncunun katılmak üzere olduğu sunucunun paketini kaydeder (Geyser'ın `SessionLoadResourcePacksEvent`
+olayıyla). Oyuncu daha sonra başka paketli bir sunucuya geçtiğinde istemci Geyser'a geri aktarılır, o paketi
+yükler ve istediği sunucuya gönderilir. İstemci paketi önbellekte tutuyorsa yeniden bağlanma yaklaşık beş
+saniye sürer; aksi hâlde Bedrock indirmek için bir kez sorar. Aynı paketi kullanan sunucular asla yeniden
+bağlanmaya yol açmaz.
+
+##### Yapılandırma
+
+`plugins/twilight-proxy/config.yml`:
+
+```yaml
+packs:
+  default: auto          # listelenmeyen sunucular
+  server:
+    lobby: auto                                  # o arka uçta Twilight'ın derlediği paket
+    smp: https://example.com/packs/smp.mcpack    # doğrudan indirme bağlantısı (önbelleğe alınır, yenilenir)
+    survival: survival.zip                       # plugins/twilight-proxy/packs/ içindeki dosya
+    hub: none                                    # sunucuya özel paket yok
+transfer-on-switch: true
+transfer-address: ""     # boş = oyuncunun katıldığı adres
+transfer-port: 0         # 0 = oyuncunun katıldığı port
+initial-server: ""       # boş = proxy'nin ilk sunucusu
+secret: ""               # boş = Velocity yönlendirme gizli anahtarı veya BungeeGuard belirteci
+max-pack-size-mb: 256
+download-timeout-seconds: 60
+url-refresh-minutes: 60  # 0 = yalnızca açılışta ve yeniden yüklemede
+```
+
+| Anahtar | Anlamı |
+|---|---|
+| `packs.default` | Girdisi olmayan sunucular için kaynak |
+| `packs.server.<ad>` | `auto`, `none`, `packs/` içinde bir dosya adı veya bir `.zip`/`.mcpack` dosyasına `http(s)` bağlantısı |
+| `transfer-on-switch` | Sonraki sunucusu başka bir paket gerektiren Bedrock oyuncularını yeniden bağlar |
+| `transfer-address`, `transfer-port` | Aktarılan oyuncuların yeniden bağlandığı yer (yük dengeleyici arkasında yararlı) |
+| `initial-server` | Yeni bir oturumun paketini yüklediği sunucu |
+| `secret` | `auto` paketler için paylaşılan gizli anahtar |
+| `max-pack-size-mb` | Kabul edilen en büyük paket (1-2048) |
+| `download-timeout-seconds` | Bir indirmenin zaman aşımı (5-600) |
+| `url-refresh-minutes` | Bağlantıların ETag ile yeni sürüm için ne sıklıkla denetlendiği (0-10080) |
+
+Her paket kullanılmadan önce denetlenir: boyut sınırının altında, kökünde `manifest.json` bulunan ve hiçbir
+girdisi klasör dışına çıkamayan bir ZIP olmalıdır. Denetimi geçemeyen bir paket, başarısız bir indirme veya
+eksik bir aktarım önceki paketi korur.
+
+##### Kaynaklar
+
+- **auto**: Arka uçtaki Twilight bir oyuncu katıldığında ve her derlemeden sonra dışa aktardığı paketi
+  duyurur. Proxy kendi kopyası farklıysa paketi ister ve `cache/<sunucu>.mcpack` olarak saklar. 2,2 MiB'lik bir
+  paket yaklaşık dört saniyede ulaşır.
+- **dosya**: açılışta ve yeniden yüklemede `plugins/twilight-proxy/packs/` dizininden okunur.
+- **bağlantı**: arka planda HTTP(S) üzerinden `cache/link-<karma>.mcpack` dosyasına indirilir; düz HTTP'ye
+  yönlendirmeler izlenmez.
+
+#### Dosyalar ve klasörler
+
+##### Arka uç: `plugins/Twilight/`
+
+| Yol | İçerik |
+|---|---|
+| `config.yml` | Ayarlar ([başvuru](#yapılandırma-başvurusu-twilight)) |
+| `build/current/pack.zip` | Son derlenen Bedrock paketi |
+| `build/current/custom_mappings/` | O derlemenin Geyser eşya ve blok eşlemeleri |
+| `build/current/build-report.json` | Derlemenin sayıları, sorunları ve bildirimleri |
+| `export/Twilight.mcpack` | Son başarılı paket, atomik olarak değiştirilir; proxy'ler ve diğer eklentiler için |
+| `export/custom_mappings/twilight_*.json` | Dışa aktarılan pakete uyan Geyser eşlemeleri |
+| `backups/geyser/<zaman>/` | `/twilight rollback` için Geyser anlık görüntüleri |
+| `cache/vanilla/<sürüm>/` | Karma doğrulamalı Mojang istemci varlıkları |
+| `logs/<işlem>-log-<zaman>.txt` | İşlem başına bir günlük (kaynaklar, parmak izi, sonuçlar) |
+| `reports/content-report.json` | Son taramanın keşif raporu |
+| `deployment.properties` | Twilight'ın Geyser klasöründe sahip olduğu dosyalar, karmalarıyla |
+
+Geyser klasöründe Twilight yalnızca `packs/twilight.zip`, `custom_mappings/twilight_*.json` ve
+`locales/overrides/` öğelerinin sahibidir; başka hiçbir şeye dokunulmaz.
+
+##### Paket girdileri (`pack.zip` içinde)
+
+| Yol | İçerik |
+|---|---|
+| `manifest.json` | Kararlı bir UUID'ye ve içerikten türetilen bir sürüme sahip paket başlığı |
+| `attachables/`, `models/entity/`, `animations/`, `render_controllers/`, `textures/` | Dönüştürülmüş eşyalar ve modeller |
+| `font/glyph_XX.png` | Özel font görselleri ve takma adları için glif sayfaları |
+| `ui/chest_screen.json`, `ui/hud_screen.json`, `ui/ui_common.json` | Sandık yerleşimi ve yazı katmanı etiketleri |
+| `biomes/<ad>.client_biome.json`, `fogs/twilight_<ad>.json` | Özel biyom görünümleri için yeniden tanımlanmış Bedrock biyomları |
+| `materials/ui3D.material` | Gizli ad etiketi kutusu (`ui.nametag-background`) |
+| `texts/*.lang` | Bedrock arayüz anahtarları için paket çevirileri |
+| `sounds/sound_definitions.json`, `sounds/` | Dönüştürülmüş sesler |
+| `twilight/*.json` | Twilight'ın çalışma zamanı köprüleri için tablolar (yazı yerleşimi, biyom yuvaları, görüntü çeşitleri); Bedrock bunları yok sayar |
+
+##### Proxy: `plugins/twilight-proxy/`
+
+| Yol | İçerik |
+|---|---|
+| `config.yml` | Ayarlar ([başvuru](#twilight-proxy-4)) |
+| `packs/` | `config.yml` içinde adı geçen paket dosyaları |
+| `cache/<sunucu>.mcpack` | Arka uçlardaki Twilight'tan alınan paketler |
+| `cache/link-<karma>.mcpack` (+ `.etag`) | İndirilen paketler |
+
+#### Geliştirici API'si
+
+##### Twilight (arka uç)
+
+`com.siberanka.twilight.api.TwilightApi` Bukkit'in hizmet yöneticisine kaydedilir:
+
+```java
+TwilightApi twilight = Bukkit.getServicesManager().load(TwilightApi.class);
+if (twilight != null && !twilight.isOperationRunning()) twilight.requestConvert();
+```
+
+| Yöntem | Açıklama |
+|---|---|
+| `boolean isOperationRunning()` | Bir tarama, derleme veya dağıtımın çalışıp çalışmadığı |
+| `boolean requestScan()` | Bir tarama başlatır; başka bir işlem çalışırken false |
+| `boolean requestConvert()` | Bir derleme başlatır (tarama, derleme, dışa aktarma, dağıtım) |
+| `boolean requestDeploy()` | Son derlemeyi yeniden dağıtır |
+| `Optional<ContentReport> lastContentReport()` | Son taramanın raporu |
+| `Path dataDirectory()` | `plugins/Twilight`; dışa aktarılan paket `export/Twilight.mcpack` |
+
+Olaylar (`com.siberanka.twilight.api.event` paketi, sunucu iş parçacığında tetiklenir):
+
+| Olay | Veri |
+|---|---|
+| `TwilightScanCompleteEvent` | `report()`: kaynaklar, eşya tanımları, modeller, biyomlar |
+| `TwilightBuildCompleteEvent` | `result()`: dönüştürülen eşyalar, glifler, sesler, sorunlar, paket SHA-256 |
+| `TwilightDeployCompleteEvent` | `result()`: dağıtılan dosyalar, anlık görüntü, yeniden başlatma gerekip gerekmediği |
+| `TwilightOperationFailedEvent` | `operation()`, `logFile()`, `failure()` |
+
+##### twilight-proxy
+
+`com.siberanka.twilight.proxy.api.TwilightProxyApi`, twilight-proxy etkinleştirildikten sonra kullanılabilir
+(yumuşak bağımlılık olarak ekleyin):
+
+```java
+TwilightProxyApi packs = TwilightProxyApi.get();
+packs.pack("survival").ifPresent(path -> { /* salt okunur .mcpack */ });
+```
+
+| Yöntem | Açıklama |
+|---|---|
+| `Optional<Path> pack(String server)` | Bir sunucunun denetlenmiş paketi |
+| `Optional<String> packSha256(String server)` | Onun SHA-256 değeri (hex) |
+| `boolean reload()` | Yapılandırmayı ve paketleri yeniden yükler |
+
+#### Eklenti mesajı protokolü
+
+Kanal `twilight:proxy`. Tüm değerler big-endian'dır; her mesaj bir HMAC-SHA256 etiketiyle biter.
+
+| Alan | Boyut |
+|---|---|
+| Sihirli değer `TW` | 2 bayt |
+| Sürüm (1) | 1 bayt |
+| Tür: 1 duyuru, 2 istek, 3 parça | 1 bayt |
+| Gövde | aşağıya bakın |
+| Önceki her şey üzerinden HMAC-SHA256 | 32 bayt |
+
+| Tür | Yön | Gövde |
+|---|---|---|
+| Duyuru | arka uç → proxy | zaman (8), paket SHA-256 (32), boyut (8) |
+| İstek | proxy → arka uç | zaman (8), rastgele nonce (16), istenen SHA-256 (32) |
+| Parça | arka uç → proxy | istek nonce'u (16), sıra (4), toplam (4), uzunluk (2), veri (en fazla 30000) |
+
+Anahtar `HMAC-SHA256(secret, "twilight-proxy-pack-v1")` değeridir. Zamanlar alıcının saatine göre 120 saniye
+içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
+
+#### Güvenlik modeli
+
+- **Önce gizli anahtar.** Paylaşılan bir gizli anahtar olmadan twilight-proxy paket istemez ve Twilight
+  kanalda hiçbir şey duyurmaz veya yanıtlamaz.
+- **Sahtelenemez, istemcilerce okunamaz.** Proxy `twilight:proxy` üzerindeki her mesajı iki yönde de
+  tüketir: istemciler asla paket verisi almaz ve bir arka uca mesaj gönderemez. Mesajlar bir HMAC etiketi,
+  bir zaman damgası ve (isteklerde) Twilight'ın yalnızca bir kez kabul ettiği bir nonce taşır; bu yüzden
+  doğrudan bir arka uca bağlanan bir istemci bir isteği sahteleyemez veya yeniden oynatamaz.
+- **Sınırlı iş.** Twilight aynı anda bir aktarıma hizmet eder, tick başına en fazla iki parça gönderir, tam
+  aktarımlar arasında 30 saniye bekler ve oyuncu ayrıldığında veya paket değiştiğinde durur. Proxy bir
+  aktarımı yalnızca kendi nonce'u için, sırayla, duyurulan boyut ve SHA-256 ile kabul eder, aynı anda en
+  fazla dördünü yürütür, boşta kalanları 30 saniye sonra bırakır ve kısmi dosyaları siler.
+- **Denetlenen paketler.** Boyut sınırı, ZIP yapısı, kökteki `manifest.json` ve güvenli girdi adları Geyser
+  bir paketi görmeden önce denetlenir. Yapılandırılmış dosya adları `packs/` dışına çıkamaz; bağlantılar
+  kimlik bilgisi içermeyen http(s) olmalıdır.
+- **Oyuncu başına sınırlı aktarım.** Bir Bedrock oyuncusu beş dakikada en fazla dört kez aktarılır; bekleyen
+  bir hedef on dakika sonra sona erer.
+- **Yazı yerleşimi sınırları.** 16384 karakterden uzun yazı veya 2^20 birimden geniş bir kaydırma
+  yerleştirilmez (değişmeden gönderilir); böylece özel hazırlanmış yazı yerleşimi veya çıktısını sınırsız
+  büyütemez.
+- **Derlemeler.** Kaynak boyutları ve arşiv girdi sayıları sınırlıdır, sembolik bağlantılar reddedilir,
+  vanilla indirmeleri karma ile doğrulanır ve dağıtım yalnızca Twilight'ın sahip olduğu dosyaları değiştirir.
+
+#### Sorun giderme
+
+| Belirti | Denetim |
+|---|---|
+| Bedrock oyuncuları paket almıyor | `/twilight status`; `plugins/Twilight/logs/`; `geyser.send-pack-to-bedrock` |
+| "Restart the server to activate changed Geyser item mappings" | Geyser eşyaları açılışta kaydeder; bir kez yeniden başlatın |
+| Bir derleme yayımlanmıyor | `build/current/build-report.json` → `problems`; katı derlemeler son iyi paketi korur |
+| `auto` paketler proxy'ye hiç ulaşmıyor | `/twilightproxy` "auto packs off" gösteriyor: iki tarafta aynı `secret` değerini ayarlayın veya modern yönlendirme kullanın |
+| Bedrock oyuncuları her sunucu geçişinde yeniden bağlanıyor | Sunucular farklı paketler kullandığında beklenir; aynı paketler asla yeniden bağlanmaz |
+| Aktarılan oyuncular yanlış sunucuya düşüyor | `transfer-address`/`transfer-port` aynı proxy'ye ulaşmalı |
+| Özel biyomlar vanilla gibi görünüyor | 25'ten fazla farklı görünüm veya `world.bedrock-biome-matching: false` |
+
+#### Kaynaktan derleme
+
+```text
+./gradlew :twilight:build :twilight-proxy:build --offline --no-configuration-cache
+```
+
+Çıktılar: `twilight/build/libs/Twilight.jar` ve `twilight-proxy/build/libs/TwilightProxy.jar`. Eklenti
+mesajı protokolü `protocol/` içindedir ve ikisine de derlenir. [LGPL-3.0-or-later](LICENSE.LESSER) ile
+lisanslanmıştır.

@@ -1,5 +1,7 @@
 # Compatibility review and acceptance expansion - 3 October 2026
 
+> Türkçe: [aşağıda](#türkçe)
+
 Twilight's target is automatic Java/Bedrock content parity with unchanged Java
 assets. The BedrockGen review broadens the checklist; it does not establish that
 Twilight already implements the compared features. The current evidence remains
@@ -130,3 +132,130 @@ Every product change must bring a reproducible regression, current source/build
 hashes and affected client checks. A full test rerun alone cannot turn a planned
 feature into support. The existing snapshot JAR and screenshots are unchanged
 by this research/catalog commit; no new gameplay conversion feature is claimed.
+
+---
+
+## Türkçe
+
+### Uyumluluk incelemesi ve kabul kapsamının genişletilmesi - 3 Ekim 2026
+
+Twilight'ın hedefi, Java varlıkları değişmeden otomatik Java/Bedrock içerik eşdeğerliğidir. BedrockGen
+incelemesi denetim listesini genişletir; Twilight'ın karşılaştırılan özellikleri zaten uyguladığını
+kanıtlamaz. Geçerli kanıt, 87 test ve yayımlanmış istemci karşılaştırmalarıyla yerelde test edilmiş
+`30511e9` anlık sürümü olmaya devam ediyor. Tam etkileşimli arayüz ve animasyon eşdeğerliği açık kalıyor.
+
+İki ek derleyici regresyonu artık geçiyor: aynı dosya adına sahip ad alanı nitelikli glif görselleri ayrı
+kalıyor ve çok satırlı bitmap sayfaları boş kod noktalarını yok sayarken hücrelerini koruyor. Yerel tam
+derleme **19 paketteki 89 testi** geçiyor; ürün JAR'ı temel çizgiyle bayt bayt aynı.
+[Doğrulama sonuçları](acceptance/validation-2026-10-03.json) eksik kabulün ve kanıtsız bir durum yükseltme
+girişiminin reddedildiğini de kaydeder.
+
+#### İncelenen harici malzeme
+
+[BBB ilanı](https://builtbybit.com/resources/bedrockgen-java-to-bedrock-converter.115920/) v3 / 1.0.349
+sürümünü belirtir. Kullanıcının sağladığı menü/açıklama kutusu paneli, özel sandık görsellerini HUD
+eklentisi gerektiren çerçeveli üzerine gelme yazısından ayırır. İlan yazılımı kapalı kaynak olarak
+işaretler. Hiçbir ikili dosya, kod veya görsel alınmadı.
+
+[Resmî wiki](https://docs.bedrockgen.com/) kaynak entegrasyonlarını, eşya geometrisi/pozları/bileşenlerini,
+blokları, ekipmanı, mobilyayı, modelleri, glifleri, sesleri, animasyonlu dokuları, sandık menülerini, skor
+tablolarını, kafatasılarını ve dağıtımı belgeler. Çalışma zamanı dönüştürücü, sunucu entegrasyonu ve
+Geyser uzantısı arasında bölünmüştür. HUD eklentisi BetterHud, MythicHUD, CustomNameplates, LuxDialogues ve
+CustomFishing'i kapsar. Menü içe aktarma yapılandırma veya canlı envanter ölçümleri kullanır. Glif araçları
+inceleme, geçersiz kılmalar, sayfa koruma ve isteğe bağlı kaynak yeniden yazımı içerir. Belgelenen sınırlar
+bazı model dönüşlerini, mob zırhını, tabloları, katmanlı menüleri ve istemciye özgü sunumu içerir. Ayarlar
+bölümü ile ayrı elytra bölümü süzülme konusunda çelişiyor; varsayılanlar da bölümler arasında farklı.
+Bunlar bağımsız olarak ölçülmüş rakip sonuçları değil, yayımlanmış iddialardır.
+
+Okuma kapsamı: kurulum çeşitleri, komutlar/ayarlar, desteklenen/desteklenmeyen özellikler ve emoji sorun
+giderme dahil 17 İngilizce wiki bölümünün tamamı; BBB genel bakışı ve
+[bağımlılıklar](https://builtbybit.com/resources/bedrockgen-java-to-bedrock-converter.115920/field?field=dependencies);
+dört güncelleme listesi sayfasının tamamı. Japonca/Çince çeviriler ek özellik belirtimi sayılmadı. Eski
+wiki sunucusuna ve tam BBB ek görsellerine mevcut okuyucuyla erişilemedi. Sağlanan ekran görüntüsü
+doğrudan incelendi; video davranışı ve çalışan bir rakip derlemesi doğrulanmadı. Bu, erişilemeyen
+malzemenin incelendiği iddiası değildir.
+
+[Son güncellemeler](https://builtbybit.com/resources/bedrockgen-java-to-bedrock-converter.115920/updates)
+yinelenen arayüz dosya adlarından, envanter ile elde tutma görüntü bağlamlarından, geniş rütbelerden, model
+oturakları/dönüşünden, açıklama kutularından ve bağlantı kurtarmadan söz eder.
+[Sayfa 2](https://builtbybit.com/resources/bedrockgen-java-to-bedrock-converter.115920/updates?page=2)
+yanlış yuva ızgarası algılama, kod noktası çakışmaları, telefon yolları, bellek ve kaynak koruma
+çevresinde yararlı regresyon tetikleyicileri ekler.
+[Sayfa 3](https://builtbybit.com/resources/bedrockgen-java-to-bedrock-converter.115920/updates?page=3)
+zırh, eşya kimliği, model animasyon zamanlaması ve entegre paket sorunlarını kaydeder.
+[Sayfa 4](https://builtbybit.com/resources/bedrockgen-java-to-bedrock-converter.115920/updates?page=4)
+erken mobilya, yay ve arayüz dönüşüm değişikliklerini kaydeder. Geçmiş düzeltmeler ve güncel pazarlama
+iddiaları bir testi kendimiz yeniden üretmenin yerini tutmaz.
+
+#### Twilight'ın kendi kabul sözleşmesi
+
+Makine tarafından okunabilir [katalog](acceptance/catalog.json) **40 alan ve 289 gerekli senaryo**
+tanımlar. Bunlar 289 geçen test değil, test yükümlülükleridir. Bu kontrol noktasında 21 alan kısmi
+uygulama/kanıta sahip, 18'i planlanmış ve biri bilinen engelleyici bir arayüz hatasını kaydediyor. Hiçbir
+alan bütünüyle kabul edilmiş olarak işaretlenmedi. Geçerli bir katalog başarılı bir dönüşüm veya çalışma
+zamanı testi değildir.
+
+Her senaryo altı ayrı aşama gerektirir: yapısal doğrulama, değişmemiş Java referansı, Bedrock görsel
+karşılaştırması, çalışma zamanı davranışı, yeniden yükleme/yeniden bağlanma ve kaynak bütünlüğü. Kabul
+edilmiş kayıtlar incelenen derlemeyi, Java/Bedrock/Geyser sürümlerini, inceleyeni ve karması alınmış
+kanıtı belirtmelidir. Eksik, eskimiş veya değişmiş kanıt tamamlanma sağlayamaz. Yerel tamlık kapısı şu an
+katalogu beklendiği gibi reddediyor.
+
+| Alan | Twilight'ın mevcut sınırı | Gereken sonraki kanıt |
+| --- | --- | --- |
+| Kaynak keşfi | Standart paketler ve birkaç sağlayıcı API'si; tanıma tam entegrasyon değildir. | Yapılandırılmış her kaynak, öncelik çakışması, eksik kayıt ve yeniden yükleme sırası; EcoItems doğrulanmamış kalıyor. |
+| Eşya görselleri | Durağan geometri, bileşikler ve model tabanlı arayüz simgeleri uygulandı; pozlar yalnızca örneklendi. | Her görüntü bağlamı, iki el, aynalar, ince düzlemler, alfa/derinlik ve bağlama bağlı tanımlar. |
+| Eşya davranışı | Seçili eşleme koşulları mevcut. | Silah durum geçişleri, tüketim, aletler, bekleme süreleri, onarımlar, tarifler ve yaratıcı envanter. |
+| Doku animasyonu | Yazarın verdiği ilk kare dışa aktarılır. | Kare sırası, eşit olmayan süre, ara değerleme ve her görüntü bağlamında kesintisiz oynatım. |
+| Ekipman | Tam ekipman dönüşümü kabul edilmedi. | Zırh katmanları ve eklemleri, boyalar/parıltı, elytra geçişleri, kozmetikler ve iskeletle birlikte var olma. |
+| Bloklar | Keşif mevcut; özel blok eşdeğerliği uygulanmadı. | Her durum ve yön, çarpışma, yerleştirme, kırılma hızı, düşen eşyalar, sesler ve yeniden yükleme. |
+| Mobilya ve modeller | Geliştirme aşamasındaki görüntü köprüsü ve örneklenmiş sağlayıcı kanıtı. | Tam animasyon/durum dizileri, bağımsız kafa hareketi, oturaklar, çarpışma kutuları, geç gelen izleyiciler ve temizlik. |
+| Glifler | Test edilen örnekler için ölçülmüş boyutlar/taban çizgileri ve daha geniş atlas hücreleri çalışıyor. | Kesirli ayrıntı, kenar payları, adlandırılmış font çakışmaları ve tüm gerçek sohbet/ad/menü/HUD bağlamları. |
+| Menüler | Büyük görseller sohbette çiziliyor; gerçek başlık kırpılması kaydedilmiş bir başarısızlık. | Yerleşim birleştirme artı doğru yuvalar, üzerine gelme, tıklamalar, izinler ve dinamik içerik. |
+| Açıklama kutuları | Tam özel açıklama kutusu bağdaştırıcısı yok. | Yazarın verdiği çerçeve, renk, satır sonları, yazı ölçüleri, kenar kaydırma ve işaretçi/kumanda odağı. |
+| HUD ve skor tablosu | Yerel glif dışa aktarımı tam bir ekran bağdaştırıcısı sağlamaz. | Canlı değişkenler, görseller, zamanlı katmanlar, diyalog seçimleri, balıkçılık durumları ve yeniden bağlanma temizliği. |
+| Dünya, ses ve kafatasları | Ses derleyicisinin yapısal testleri var; diğer sistemler kısmi/planlanmış. | Oynatım, profil kaydı, mob ekipmanı, tablolar, mevsimler ve yol noktası sunumu. |
+| Dağıtım | Yerel işlemsel dağıtım ve geri alma uygulandı. | Proxy/bağımsız, çoklu arka uç durumu, kesilen aktarımlar, sınırlı yeniden denemeler ve önbellek kurtarma. |
+| Kaynaklar ve cihazlar | Windows anlık görüntüleri mevcut; büyük atlas belleği belgelendi. | Ölçülmüş heap/GPU maliyeti, katılım gecikmesi ve tick etkisi; Android/iOS, kumanda ve kısıtlı donanım. |
+
+Gereksinimlerimiz tek bir vitrin görselini aşar: yazarın verdiği boyutu sığdırmak için küçültme yok, Java
+kaynağı yeniden yazımı yok, rastgele görsel katman dizileri, bağlama duyarlı fontlar, tekrarlanabilir
+çıktı, açık atlamalar ve gerçek etkileşimler için kanıt. Bunlar bugünkü bir üstünlük iddiası değil,
+uygulanacak ve doğrulanacak hedeflerdir.
+
+#### Gerçek menü malzemesi envanteri
+
+Yeni bir salt okunur tarama, mevcut test kaynaklarında **42 DeluxeMenus tanımı** buldu: 17 Box ve 25
+Survival. Boyutlar 9, 27, 36, 45 ve 54 yuvayı içerir; bir tanım 53 bildiriyor. Sekiz başlık görsel yer
+tutucusu içeriyor ve biri kaçışlı Unicode kullanıyor. Kırk tanım açıklama (lore), 21'i koşullu girdiler
+içeriyor ve 42'sinin hepsi eylem içeriyor. Bunlar çözümlenmiş YAML/yerleşim veya görsel kabul değil,
+sözdizimi düzeyinde sayılardır. Erişilemeyen eski Survival dizini sayılmadı. Kaynak dosyalar ve komutlar
+ne değiştirildi ne çalıştırıldı. [Toplu sayım](acceptance/menu-census-2026-10-03.json) özel yolları, menü
+yazısını ve eylemleri dışarıda bırakır; 42 kaynak karmasının hepsi yeniden denetlendi ve değişmemişti.
+
+Bu, derleme kümesine hemen geçersiz bir boyut durumu, izne duyarlı menüler ve çok satırlı üzerine gelme
+içeriği ekler. Kaynak karmalarını koruyun; yalıtılmış kopyalar kullanın. Yalnızca ekran görüntüsü almak
+için özgün bir menüden mağaza/ödeme/izin eylemi asla çalıştırmayın. Davranış düzenekleri, karşılaştırılan
+yerleşimi ve koşulları korurken denetimli test durumu kullanmalıdır.
+
+#### Uygulama sırası
+
+1. Font kimliğini, tam ilerlemeleri, kesirli koordinatları, rengi ve sıralı görsel/yazı katmanlarını
+   koruyan ortak bir yazı/yerleşim gösterimi kurun. Gerçek envanter boyutlarını kaynak/çalışma zamanı
+   bilgisinden çözün; yalnızca dekoratif ızgaralardan tahmin etmeyin. Ad alanı nitelikli görsel
+   kimliklerini koruyun.
+2. Bu gösterimi bir Bedrock envanter bağdaştırıcısında kullanın. Önce mevcut geniş başlık hatasını, sonra
+   1-6 satırı, saydam delikleri, çoklu katmanları, açıklama kutularını ve yuva etkileşimlerini yeniden
+   üretin. Masaüstü ve dokunmatiği ayrı ayrı doğrulayın.
+3. Sağlayıcı HUD olaylarını ve değişkenlerini aynı yerleşim kurallarına bağlayın. Animasyon zamanlamasını
+   ve veri değişikliklerini doğrulayın; tek bir kare yerine kayıtları karşılaştırın.
+4. Ekipman, blok ve model davranışını mevcut eşya/görüntü regresyonlarıyla birlikte genişletin. Kaynak
+   biçimi desteğini sağlayıcı çalışma zamanı desteğinden ayırın.
+5. Geniş sürüm iddialarından önce topoloji/cihaz/kaynak kapıları ekleyin. Bir istemci sınırlaması
+   ölçülmüş bir yeniden üretim ve belirtilmiş bir öykünme sınırı gerektirir; harici bir satıcının
+   sınırlaması Twilight için imkânsızlığın kanıtı değildir.
+
+Her ürün değişikliği tekrarlanabilir bir regresyon, güncel kaynak/derleme karmaları ve etkilenen istemci
+denetimleri getirmelidir. Yalnızca tam bir test yeniden çalıştırması planlanmış bir özelliği desteğe
+dönüştüremez. Mevcut anlık JAR ve ekran görüntüleri bu araştırma/katalog commit'iyle değişmez; yeni bir
+oynanış dönüşüm özelliği iddia edilmez.

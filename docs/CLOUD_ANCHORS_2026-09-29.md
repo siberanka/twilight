@@ -1,5 +1,7 @@
 # Automatic cloud-anchor adaptation — 29 September 2026
 
+> Türkçe: [aşağıda](#türkçe)
+
 > The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
 
 Twilight now removes the unwanted particles around the tested ModelEngine models
@@ -112,3 +114,93 @@ previous session's unused effect color is not carried into the new flame cloud.
 | Visible zero radius | Reconnect |
 
 Normal cloud restored
+
+---
+
+## Türkçe
+
+### Otomatik bulut çapası uyarlaması — 29 Eylül 2026
+
+> Bu raporun ekran görüntüleri 4 Ekim 2026'da güncel görüntüler lehine kaldırıldı; aşağıdaki ölçümler
+> geçerlidir. Güncel Java/Bedrock görüntüleri [README](../README.md#visual-acceptance-tests) içindedir.
+
+Twilight artık test edilen ModelEngine modellerinin çevresindeki istenmeyen parçacıkları kendiliğinden
+kaldırıyor. ModelEngine, model çapası olarak yarıçapı sıfır olan görünmez Java alan etkisi bulutları
+kullanır. Geyser'ın olağan bulut çevirmeni yarıçapı en az 0,5'e sabitler; bu da bu çapaların
+Bedrock'ta parçacık çıkarmasına yol açıyordu.
+
+Görüntü köprüsü Geyser'ın bulut çevirmeninden türer ve yalnızca Java bulutu görünmez ve yarıçapı tam
+olarak sıfır olduğunda görünmez bir zırh askılığı aktörü seçer. Java varlığı ve meta verisi değişmez.
+Pozitif yarıçaplı ve görünür bulutlar Geyser'ın olağan temsilini korur. Canlı yarıçap/bayrak
+değişiklikleri kendiliğinden geri döner. İstemci aktörü değiştirilirken tam bir meta veri anlık
+görüntüsü ve yolcu bağlantıları geri yüklenir; sunucu tarafındaki binme çizgesi korunur. Model adı
+istisnası, kaynak düzenlemesi, operatör onarım komutu veya kaynak paketi değişikliği yoktur. Başka bir
+entegrasyonun kayıtlı bulut çevirmenine veya özel doğuş tanımına dokunulmaz.
+
+#### Doğrulama
+
+Yerel Java 25 derlemesi 17 paketteki 67 testi geçti. Yalıtılmış Paper 26.2 sunucusu ModelEngine R4.1.1,
+MythicMobs 5.13.1 ve Geyser 2.11.3 derleme 1247 kullandı. Kanıt toplanmadan önce yeni JAR ile tamamen
+yeniden başlatıldı. Kabulde yalnızca eklenti uygulaması kullanıldı; önceki tanı amaçlı paket
+değişiklikleri bu sürece uygulanmadı. Salt okunur çalışma zamanı incelemesi aktörleri ve binme
+ilişkilerini kaydetti.
+
+Önceki matristen değişmemiş dört model yedi eşlenmiş Java/Bedrock pozunda örneklendi: ayı
+bekleme/saldırı, yengeç bekleme/saklanma, okçu bekleme/saldırı1 ve durağan iksir sepeti. Yedi Bedrock
+örneğinin hiçbirinde istenmeyen parçacık yoktu; dört ağ da görünür kaldı. Modeller menzildeyken yapılan
+incelemede 17 uyarlanmış çapa ve 148 yolcu bağlantısı bulundu, kırık geri başvuru sıfırdı.
+
+Ayrı BetterModel 3.4.2 anlık test sunucusu da aynı JAR ile yeniden başlatıldı. Griffon
+bekleme/etkileşim, demirci bekleme/el sallama ve baykuş kasası bekleme/açılma altı eşlenmiş örnek daha
+üretti. Üç ağ da görünür kaldı ve önceki yön düzeltmesi sağlam kaldı. Bu görüntüler çalışan
+animasyonları sırayla örnekler; baykuş kapağının farklı aşamalarda olması gibi farklar kare kare
+birebir karşılaştırma değildir. Tam animasyon eşdeğerliği kabul edilmedi.
+
+Atılabilir bir vanilla bulut ve hasar almayan, sabit bir domuz yolcu aynı Java varlığındaki
+değişiklikleri test etti:
+
+| Java durumu | Bedrock temsili | Sonuç |
+|---|---|---|
+| Görünmez, yarıçap 1,5 | Olağan bulut | Parçacıklar görünür kalır |
+| Görünmez, yarıçap 0 | Görünmez zırh askılığı | Parçacık yok; yolcu korunur |
+| Görünür, yarıçap 0 | Olağan bulut | Geyser'ın olağan sabitlemesi geri gelir |
+| Yeniden görünmez, yarıçap 0 | Görünmez zırh askılığı | Tekrarlanan geçiş geçer |
+| Yeniden görünmez, yarıçap 1,5 | Olağan bulut | Önceki parçacık/renk meta verisi korunur |
+| Görünmez/yarıçap 0 iken yeniden bağlanma | Görünmez zırh askılığı | Yolcu yeniden görünür; parçacık yok |
+
+Her geçiş menzildeki 120 bulut yolcu bağlantısının tamamını korudu, kırık geri başvuru sıfırdı.
+Temizlik atılabilir bulutu ve yolcuyu kaldırdı; 13 sağlayıcı çapası ve 119 bağlantı kaldı. Sayılar
+önceki model incelemesinden farklıdır çünkü kamera hareket etti ve varlık izleyicisi menzildeki kümeyi
+değiştirdi. Olağan bulut denetimi Geyser davranışının korunduğunu kanıtlar, Java/Bedrock parçacık
+biçimi eşdeğerliğini değil.
+
+İki oyuncu da 20/20 canla bitirdi. İki yalıtılmış test dünyasındaki kaydedilmiş on oyuncu ölüm sayacının
+hepsi sıfırdı. Üretim dosyaları salt okunurdu; seçilen yedi kaynak karmasının hepsi önceki envanterle
+hâlâ eşleşiyor. Hiçbir savaş becerisi içe aktarılmadı. İstemci başlatma, bağlantı ve bilinen uyarıların
+işlenmesi `ai/CLIENT_TEST_AUTOMATION.md` içinde belgelenen özel `ai/client-join/join.py` otomasyonunu
+kullandı; yeni geniş duraklatma menüsü şablonu da denetlendi. Yerel bulut geçiş çalıştırıcısı Geyser'ın
+canlı temsilini değil, atılabilir Java varlığını değiştirir.
+
+#### Kalan hatalar
+
+Devamı: [binme yüksekliği düzeltmesi](DISPLAY_SEATS_2026-09-29.md) aşağıda anlatılan sepet kararmasını
+çözer. Bu görüntüler önceki derlemenin sonuçlarını ve özgün sınırlarını saklar.
+
+İksir sepeti taş platformun üzerinde hâlâ neredeyse siyah oluyor. Bazı yengeç/okçu poz farkları da
+sürüyor. Bu değişiklik tam animasyon zamanlaması, ışıklandırma, malzeme, billboard, birinci şahıs, glif
+veya arayüz eşdeğerliği sağlamaz. [Önceki matris](MODEL_MATRIX_2026-09-28.md) başarısız temel çizgiyi ve
+ışık yalıtma kanıtını korur. Bu kabul edilmiş bir sürüm değil, bir geliştirme kontrol noktasıdır. Özgün
+görseller yaratıcılarına aittir; ekran görüntüleri uyumluluk kanıtıdır ve kaynak dosyaların yeniden
+dağıtımına izin vermez.
+
+#### Kanıt
+
+Tüm görüntüler gözle incelendi. [Sonuçlar](images/acceptance/2026-09-29-clouds/results.json) ve
+[SHA-256 karmaları](images/acceptance/2026-09-29-clouds/sha256.json) on üç eşlenmiş örneğe ve beş
+geçiş/yeniden bağlanma görüntüsüne (31 PNG) eşlik eder. [Geçiş doğrulamaları](images/acceptance/2026-09-29-clouds/transitions.json)
+meta veriyi ve yolcu sayılarını kaydeder. Yeniden bağlanma meta veriyi sıfırdan başlatır; önceki
+oturumun kullanılmayan etki rengi yeni alev bulutuna taşınmaz.
+
+Görüntüler kaldırıldığı için tablolar yalnızca örnek adlarını listeler: ayı, yengeç, okçu, sepet,
+griffon, demirci ve baykuş (Java ve Bedrock çiftleri); bulut geçişleri için pozitif yarıçap, görünmez
+sıfır yarıçap, görünür sıfır yarıçap, yeniden bağlanma ve geri gelen olağan bulut.

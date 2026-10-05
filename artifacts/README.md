@@ -1,5 +1,7 @@
 # Twilight 1.0.0-pre.9 prerelease build
 
+> Türkçe: [aşağıda](#türkçe)
+
 [Download Twilight.jar](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256) (backend servers)
 
 [Download TwilightProxy.jar](TwilightProxy.jar?raw=true) | [SHA-256](TwilightProxy.jar.sha256) (Velocity and BungeeCord proxies, optional)
@@ -41,3 +43,49 @@ The [extended content checks](../docs/BROAD_CONTENT_2026-09-29.md), the
 [new-sample regression](../docs/COMPOSITE_MODELS_2026-09-30.md) and the
 [font metrics regression](../docs/FONT_METRICS_2026-10-01.md) document earlier
 item, glyph and menu results.
+
+---
+
+## Türkçe
+
+### Twilight 1.0.0-pre.9 ön sürüm derlemesi
+
+[Twilight.jar indir](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256) (arka uç sunucuları)
+
+[TwilightProxy.jar indir](TwilightProxy.jar?raw=true) | [SHA-256](TwilightProxy.jar.sha256) (Velocity ve BungeeCord proxy'leri, isteğe bağlı)
+
+siberanka tarafından Java 25.0.2 ve Gradle 9.6.0 ile yerel olarak
+`:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`
+komutuyla derlendi. 36 paketteki 191 test geçti. Barındırılan CI kullanılmadı.
+
+İlgili kaynak kod bu commit içinde `twilight/`, `twilight-proxy/` ve `protocol/` altında, derleme
+dosyaları depo kökündedir. [LGPL-3.0-or-later](../LICENSE.LESSER) ile lisanslanmıştır;
+eşlik eden [GPL metni](../LICENSE) de sağlanır.
+
+Dağıtımdan önce [sürüm notlarını](../RELEASE_NOTES.md), [wiki'yi](../WIKI.md) ve
+[üst üste görseller, isim plakaları ve birebir biyomlar](../docs/LAYERS_BIOMES_2026-10-04.md)
+raporunu okuyun. Bu ön sürüm, Geyser'ı Velocity veya BungeeCord proxy'si üzerinde çalıştıran ağlar
+için sunucuya özel Bedrock paketleri sunan twilight-proxy'yi ekler
+([proxy testi](../docs/PROXY_2026-10-05.md)). Java'nın önceki öğelerin üzerine geri çizdiği yazı ve
+görselleri (üst üste menü görselleri, CustomNameplates arka planları) katman başına bir Bedrock
+etiketiyle çizer, özel ve RealisticSeasons biyomlarını birebir renkleriyle gösterir, isim
+plakalarına Java'nın isim kurallarını uygular, her sağlayıcının kaynağını ve Bedrock paket
+gönderimini `config.yml` içinde seçtirir ve her derlemeyi `plugins/Twilight/export` altına
+aktarır. Yedi üretim sunucusunun tam derlemeleri varsayılan ayarlarla katı yayımlamayı geçer.
+
+[Arayüz kampanyası](../docs/UI_CAMPAIGN_2026-10-04.md) (104 gerçek menü), her Bedrock yazı
+yüzeyindeki Java yazı yerleşimi ([yazı yüzeyi incelemesi](../docs/TEXT_SURFACES_2026-10-04.md)),
+sandık başlığı yerleşimi ([yazı yerleşimi incelemesi](../docs/TEXT_LAYOUT_2026-10-03.md)) ve
+konteyner yerleşimi ([konteyner yerleşimi incelemesi](../docs/CONTAINER_LAYOUT_2026-10-03.md))
+üzerine kuruludur; canlı görüntü köprüsünü, [bulut çapası düzeltmelerini](../docs/CLOUD_ANCHORS_2026-09-29.md)
+ve [Java uyumlu bulut binme yüksekliğini](../docs/DISPLAY_SEATS_2026-09-29.md) içerir.
+
+Tam animasyon, birinci şahıs, arayüz ve varlık eşdeğerliği henüz tamamlanmadı. Eşya adları ve
+açıklamaları ham font karakterlerini korur, moblara binen yazı gösterimleri yaklaşık 0,4 blok
+aşağıda durur, hex renkli yazılar Bedrock'un 28 rengini kullanır, boşluksuz olarak yazının hemen
+ardından gelen bir glif bir birim farklı durur ve yüksek çözünürlüklü glif örneklemesi farklıdır.
+
+[Genişletilmiş içerik denetimleri](../docs/BROAD_CONTENT_2026-09-29.md),
+[yeni örnek regresyonu](../docs/COMPOSITE_MODELS_2026-09-30.md) ve
+[font ölçüleri regresyonu](../docs/FONT_METRICS_2026-10-01.md) önceki eşya, glif ve menü
+sonuçlarını belgeler.

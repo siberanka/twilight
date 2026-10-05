@@ -1,5 +1,7 @@
 # Real-content visual review — 2026-09-27
 
+> Türkçe: [aşağıda](#türkçe)
+
 > The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
 
 Twilight 1.0.0-pre.3 was tested with real tools, weapons, emoji, and menu images
@@ -151,7 +153,6 @@ must not be attributed conclusively to the client/protocol version mismatch.
 
 ## Initial BetterModel, MythicMobs, and ModelEngine probes (before bridge)
 
-
 | Probe | Java/server observation | Bedrock observation | Result |
 |---|---|---|---|
 | BetterModel 3.4.2-SNAPSHOT-516, original `meleesalamander` | Plugin enabled; direct spawn on a stationary pig displayed the model. | Assembled model absent after a full registry restart and fresh client join. | Failed entity parity. |
@@ -203,3 +204,202 @@ These screenshots demonstrate compatibility testing of operator-provided assets;
 they do not grant a license to redistribute the original packs. Artwork and
 Minecraft presentation remain attributable to their respective creators. Provider
 names describe the tested integrations and imply no affiliation.
+
+---
+
+## Türkçe
+
+### Gerçek içerik görsel incelemesi — 27 Eylül 2026
+
+> Bu raporun ekran görüntüleri 4 Ekim 2026'da güncel görüntüler lehine kaldırıldı; aşağıdaki ölçümler
+> geçerlidir. Güncel Java/Bedrock görüntüleri [README](../README.md#visual-acceptance-tests) içindedir.
+
+Twilight 1.0.0-pre.3, işletmecinin BoxPVP-v2 ve Survival-v5 kurulumlarındaki gerçek aletler, silahlar,
+emojiler ve menü görselleriyle test edildi. Survival-v3 mevcut değildi. İşletmeci aşağıda incelenen ekran
+görüntülerinin yayımlanmasına izin verdi. Kaynak paketleri, eklenti dosyaları, yapılandırma, dünyalar ve
+ham günlükler özel kalır.
+
+**Sonuç: kısmi iyileştirmeler, tam Java/Bedrock eşdeğerliği değil.** Üçüncü şahıs hacimli geometri
+iyileşti, ancak birinci şahıs çerçeveleme, izleyici sunumu ve sohbet/arayüz kabulü açık kalıyor. Büyük
+Java arayüz glifleri bir Bedrock yerleşim bağdaştırıcısı gerektiriyor ve artık katı dönüşümde açıkça
+reddediliyor.
+
+#### Yöntem ve ortam
+
+- Paper 26.2 derleme 121; Java istemcisi 26.2; Java 25.0.2; Geyser 2.11.3 derleme 1247; kurulu Bedrock
+  istemcisi 26.52.
+- Bu çalıştırma sırasında Geyser'ın yayımlanmış destek aralığı 26.51'de bitiyordu. Bu kabul güvenini
+  sınırlar; gözlenen her başarısızlığın nedenini kanıtlamaz.
+- Özgün Java model, görüntü, doku ve animasyon meta veri baytları değiştirilmeden kopyalandı ve özel
+  kaynak SHA-256 kayıtlarına karşı denetlendi. Yalnızca özel test eşya eşlemeleri ve gerekli atlas
+  kayıtları eklendi.
+- Tekrarlanabilir rastgele seçim `20260927` tohumunu kullandı: üç düz BoxPVP eşyası ve üç hacimli
+  Survival eşyası. İki istemci de altı kısayol çubuğu yuvasını seçti.
+- Sunucu yerelde, vanilla geçersiz kılmaları kapalı çalıştı. Test oyuncuları yaratıcı modda kaldı; model
+  denemeleri sabit, hasar almayan, saldırmayan domuzlar kullandı.
+- Değişen eşya eşlemeleri sunucunun tamamen yeniden başlatılmasıyla etkinleştirildi. Türkçe JVM yerel
+  ayarı Geyser'ın `definition` değerini reddetmesine yol açtı; yalıtılmış en/US JVM bayrakları bunu çözdü.
+- Tüm ekran görüntüleri gerçek istemci çekimleridir. Farklı kaplamalar, görüş boyutları ve izleyici
+  durumları piksel piksel karşılaştırmayı engeller. Bedrock üçüncü şahıs görüntülerinde sağdaki kırmızı
+  karakter test edilen yerel oyuncudur.
+
+[Geyser eşleme kurulumu](https://geysermc.org/wiki/geyser/custom-items/) ve
+[desteklenen sürümler](https://geysermc.org/wiki/geyser/supported-versions/) belgelerine bakın.
+
+#### Altı eşya denemesi
+
+Tanı paketi üç hacimli model dahil 6/6 eşyayı ve 20 emojiyi üç font sayfasına dönüştürdü. Desteklenmeyen
+iki arayüz glifini açıkça dışarıda bıraktı. Katı dönüşüm bozulmuş bir menü yayımlamak yerine bu arayüz
+gliflerini reddetti.
+
+| Özgün model | Java referansı | Bedrock son görüntü | Gözlem |
+|---|---|---|---|
+| `terraria:auto_generated/tin_axe` | Java | Bedrock | Görünür; yandan tutuş yönü genel olarak benzer, tutuş/ölçek eşdeğerliği kabul edilmedi. |
+| `itemsadder:auto_generated/spinel_pickaxe` | Java | Bedrock | Görünür; düz eşya pozu ve birebir tutuş kabul edilmedi. |
+| `terraria:auto_generated/adamantite_sword` | Java | Bedrock | Görünür; birebir poz/ölçek eşdeğerliği kabul edilmedi. |
+| `ender_dragonset:axe` | Java | Bedrock | Yerel üçüncü şahıs silüeti ve aşağı yönü genel olarak uyuşuyor. Tam çok görüşlü kabul açık. |
+| `mythic_weapons:pickaxe` | Java | Bedrock | Kırık/tekrarlanan doku parçaları düzeldi; yerel üçüncü şahıs yönü genel olarak uyuşuyor. Birinci şahıs farklı. |
+| `gearforge_nature:sword` | Java | Bedrock | Yerel üçüncü şahıs silüeti genel olarak uyuşuyor; animasyon eşdeğerliği uygulanmadı. |
+
+##### Kazma dokusu düzeltmesi
+
+| Son küboid/UV/kare düzeltmelerinden önce | Son dönüştürülmüş paket |
+|---|---|
+| Önce: tekrarlanan/kırık doku parçaları | Sonra: kesintisiz kazma dokusu |
+
+Bu; döndürülmüş öğe X/Y işaretlerini, yüz UV dönüşünü, atlanan Java UV varsayılanlarını ve yazarın verdiği
+ilk animasyon karesinin durağan örneklenmesini düzeltir. Animasyonlu dokular henüz tam Java animasyonlarını
+oynatmıyor. Uzak ekipman yerel üçüncü şahıs pozundan farklıydı; bu yüzden izleyici sunumu hâlâ açık bir
+denetim.
+
+##### Kalan birinci şahıs uyumsuzluğu
+
+| Değişmemiş Java referansı | Bedrock son paket — eşdeğerlik başarısız |
+|---|---|
+| Java birinci şahıs kazma | Bedrock kazmanın birinci şahıs açısı ve çerçevelemesi farklı |
+
+#### Emoji ve arayüz denemeleri
+
+Dört BoxPVP emojisi ve Survival 4×4 emoji sayfası özgün kod noktalarıyla dışa aktarıldı. Java sohbet
+denemesi yükselen/alçalan kısımları ve taban çizgisi yerleşimini göstermek için iki tarafta da `Agjp`
+kullanır. Bedrock'un sohbet ve envanter arayüzü bu oturumda, yeni bir istemci açılışı ve paket indirmesinden
+sonra bile görünmedi. Bu yüzden satır içi emoji hizalaması geçmedi, **engellendi**.
+
+| Java sohbet referansı | Bedrock sohbet denemesi — engellendi |
+|---|---|
+| Java satır içi emoji referansı | Deneme sırasında Bedrock sohbet arayüzü yok |
+
+Menü denemeleri her özgün glifi düz 54 yuvalı bir envanter başlığına koyar. Bunlar tam üretim eklenti
+menüleri değil, font çizim denemeleridir: üretim aralığı, yuva yerleşimi ve eklenti davranışı yeniden
+üretilmedi. Büyük Java görselleri düz test envanteriyle çakışır ve doğru bir üretim menü yerleşimi olarak
+sunulmamalıdır.
+
+| BoxPVP boş menü glifi | Survival lands menü glifi |
+|---|---|
+| Java boş menü başlık denemesi | Java lands menü başlık denemesi |
+
+Bildirilen görüntü boyutları 192×170 ve 236×245'tir; Java yerleşimini korurken Bedrock'un 16 piksellik
+Unicode hücresine sığamazlar. Katı dönüşüm artık `oversized bitmap glyphs require a Bedrock UI adapter`
+raporluyor. Özel aralık da bir yerleşim bağdaştırıcısı gerektirir. Bir Bedrock envanter denemesi envanter
+arayüzü göstermedi; tam arayüz kabulü desteklenmiyor/engellendi. (Sonraki sürümler bu glifleri ve menü
+yerleşimini destekler.)
+
+#### Canlı görüntü köprüsü devamı
+
+Sonraki bir geliştirme derlemesi ortak bir Bedrock varlığı ve bir Geyser eşya görüntüsü çevirmeni ekler.
+Özgün 34 BetterModel kemik eşyası artık birleşik bir model oluşturuyor. Test sahnesi üç sabit model örneği
+(doğrudan BetterModel ve MythicMobs entegrasyonu) ve Bedrock oturumunda 105 görüntü varlığı içerir.
+
+| Java saldırı pozu | Bedrock saldırı pozu |
+|---|---|
+| Java özgün model saldırısı | Bedrock dönüştürülmüş model saldırısı |
+
+Bunlar eşzamanlı kareler değil, aynı döngüsel animasyonun ayrı çekimleridir. Model birleştirme ve saldırı
+hareketi gözlendi; birebir zamanlama, ışıklandırma, tüm animasyon evreleri ve tüm sağlayıcı modelleri
+onaylanmadı. Köprü değişmemiş Java sağlayıcı pozlarını ve bağımsız üretilmiş Bedrock geometrisini kullanır.
+[Köprü uygulaması ve sınırlarına](DISPLAY_BRIDGE.md) bakın.
+
+ModelEngine R4.1.1 daha sonra ayrı bir yerel Paper 26.2 örneğinde başarıyla etkinleşti. Ürettiği semender
+paketi bir kaplama seçimi hatasını ortaya çıkardı: etkin olmayan eski sürüm varlıkları geçerli pakete
+düzleştiriliyordu. Kaplamaları Minecraft'ın doğrulanmış paket biçimine göre seçtikten ve açık vanilla doku
+referanslarını doğrulanmış istemci önbelleğinden çözdükten sonra katı dönüşüm 70/70 çevrim dışı tanımı ve
+72/72 canlı toplanan adayı raporlanmış sorun olmadan geçti. Aşağıdaki R4.1.0 sonucu tarihsel olarak kalır.
+
+Sonraki canlı ModelEngine denemesi iki bağımsız görüntü meta veri hatasını ortaya çıkardı: temel varlık
+görünmezliği görünür Java görüntü ağlarını yanlışlıkla gizliyordu ve yok sayılan sıfır görüş menzili
+etkin olmayan ateş katmanlarını açığa çıkarıyordu. Köprü artık bu durumlarda Java'nın görünürlük
+davranışını izliyor. İki doğrudan API modeli ve yeni doğurulan bir MythicMobs modeli tam yeniden
+başlatmadan sonra iki istemcide de birleşik göründü. Başarılı yeni doğuştan önce MythicMobs tanımları
+yeniden yüklendi; modeli bağlı olmayan önceki kontrol domuzları geçen model denemesi sayılmaz.
+
+| Java, dondurulmuş ModelEngine saldırısı | Bedrock, aynı dondurulmuş saldırı ve kamera konumu |
+|---|---|
+| Java ModelEngine saldırısı | Bedrock ModelEngine saldırısı |
+
+Sağlayıcı animasyon saati bu poz karşılaştırması için yaklaşık 0,20 saniyede donduruldu. Alçak poz iki
+istemcide de platformla kesişiyor. Farklı istemci görüş alanı ve ışıklandırması piksel eşitliği iddiasını
+engeller. Bu, tam animasyon zamanlamasını, ateş animasyonunu veya renk eşdeğerliğini değil, örneklenen pozu
+doğrular.
+
+| Java, ModelEngine ile MythicMobs | Bedrock, aynı sabit MythicMobs taşıyıcısı |
+|---|---|
+| Java MythicMobs ModelEngine | Bedrock MythicMobs ModelEngine |
+
+Öne bakan ortalanmış model yeni MythicMobs doğuşudur. Bekleme görüntüleri aynı animasyon karesine
+eşzamanlanmadı. Kaydedilmiş dört test oyuncusu ölüm sayacının hepsi sıfır kaldı. Bu denetimler hasar
+almayan sabit taşıyıcılar ve doğrudan animasyon oynatımı kullandı; üretim savaş becerileri içe aktarılmadı.
+
+Önceki eksik Bedrock HUD'u sonraki yeni bir katılımdan sonra artık görülmedi. Önceki sohbet/arayüz
+başarısızlıkları bu yüzden içeriğe özgü yeni bir yeniden test gerektirir; kesin olarak istemci/protokol
+sürüm uyumsuzluğuna bağlanmamalıdır.
+
+#### İlk BetterModel, MythicMobs ve ModelEngine denemeleri (köprüden önce)
+
+| Deneme | Java/sunucu gözlemi | Bedrock gözlemi | Sonuç |
+|---|---|---|---|
+| BetterModel 3.4.2-SNAPSHOT-516, özgün `meleesalamander` | Eklenti etkin; sabit bir domuz üzerinde doğrudan doğuş modeli gösterdi. | Tam kayıt yeniden başlatması ve yeni istemci katılımından sonra birleşik model yok. | Varlık eşdeğerliği başarısız. |
+| MythicMobs 5.13.1-SNAPSHOT-88530541, sabit kontrol domuzu | Doğuş komutu başarılı; domuzun AI'ı kapalı, hasarı sıfır ve hasar almıyor. | Kontrol domuzları görünür. | Temel doğuş/görünürlük gözlendi; savaş/beceri kabul iddiası yok. |
+| BetterModel `model{mid=meleesalamander}` ile MythicMobs | Doğuş komutu başarılı ve özel model göründü. | Kontrol domuzları görünür kalırken özel semender yok. | Özel varlık eşdeğerliği başarısız. |
+| ModelEngine R4.1.0, yerel lisanslı JAR | Etkinleştirme `Unsupported NMS Version: 26.2` ile başarısız. | Doğuş karşılaştırması için çalışan sağlayıcı yok. | Sağlayıcı/sunucu sürümüyle engellendi. |
+
+BetterModel'in ürettiği kaynaklar ayrıca dönüştürüldü: katı modda, sıfır raporlanmış sorunla **34/34
+hacimli kemik eşyası**. Geyser yerleşik eşyası dahil 35 özel eşya kaydetti. Paket Bedrock istemcisi
+tarafından indirildi. Bu, varlık iskeleti dönüşümünü değil, eşya kaynağı dönüşümünü doğrular. Bu ilk sonuç
+yukarıda anlatılan çalışma zamanı köprüsünden önce geldi.
+
+| Java sabit model/kontrol sahnesi | Yeni katılımdan sonra Bedrock — özel modeller yok |
+|---|---|
+| Java BetterModel ve MythicMobs sabit sahnesi | Bedrock kontrol domuzları görünür ama özel semenderler yok |
+
+Kamera konumları biraz farklı, ancak ikisi de sabit test alanına bakıyor. İki kontrol domuzu görünür bir
+sahne referansı sağlar. İki test oyuncusunun da canı 20/20 ve kayıtlı ölümü sıfırdı. Test moblarının AI'ı
+kapalıydı; üretim mob yapılandırmalarından savaş becerisi yüklenmedi. Sabit, taşıyıcının hareket
+etmediği anlamına gelir; sağlayıcı bekleme animasyonlarının dondurulduğu veya kabul edildiği iddia
+edilmedi.
+
+Twilight artık devre dışı sağlayıcılar için kanca kaydını atlıyor; bu, ModelEngine'in etkinleştirme
+hatasından sonra ikincil kapalı sınıf yükleyici uyarılarını önler. BetterModel ve MythicMobs açılışı/doğuşu
+yerel eklenti kopyalarıyla test edildi; bu depoda hiçbir üçüncü taraf dosyası veya özel model yoktur.
+
+Birincil sağlayıcı referansları: [BetterModel komutları](https://github.com/toxicity188/BetterModel/blob/v3/core/bukkit-core/src/main/kotlin/kr/toxicity/model/bukkit/command/Commands.kt),
+[ModelEngine komutları](https://wiki.mythiccraft.io/modelengine/Commands-and-Permissions) ve
+[MythicMobs yapılandırması](https://wiki.mythiccraft.io/mythicmobs/config/config-mobs). BetterModel
+toxicity188 ve katkıcılarına, ModelEngine Ticxo'ya, MythicMobs Lumine'e aittir. Bunlar paketlenmiş
+bağımlılıklar değil, uyumluluk denemeleridir.
+
+#### Derleme ve kanıt bütünlüğü
+
+En son yerel geliştirme derlemesi 17 paketteki 67 testi sıfır başarısızlık veya hatayla geçti. Regresyon
+testleri bağımsız poz tabanlarını ve döndürülmüş köşeleri, sol el aynalamasını, Euler tekilliklerini, UV
+dönüşü/varsayılanlarını, animasyon karesi seçimini, uzun durağan dokuları, font reddini ve kalıcı Geyser
+yeniden başlatma gereksinimlerini içerir.
+
+[Geliştirme dosyası](../artifacts/) canlı köprüyü, görünürlük düzeltmelerini ve otomatik
+[bulut çapası uyarlamasını](CLOUD_ANCHORS_2026-09-29.md) içerir; kabul edilmiş bir sürüm değildir. Ekran
+görüntüsü karmaları [ilk manifestte](images/acceptance/2026-09-27/sha256.json) ve
+[ModelEngine manifestinde](images/acceptance/2026-09-28/sha256.json) bulunur. Özel son eşya test paketinin
+SHA-256 değeri `99c00c4150e6a8ae02189e06e6bbec1df9918d7c8957dd499e55bb8b4a20373c`.
+
+Bu ekran görüntüleri işletmecinin sağladığı varlıkların uyumluluk testini gösterir; özgün paketleri yeniden
+dağıtma lisansı vermez. Görseller ve Minecraft sunumu ilgili yaratıcılarına atfedilir. Sağlayıcı adları
+test edilen entegrasyonları anlatır ve herhangi bir bağlılık ima etmez.

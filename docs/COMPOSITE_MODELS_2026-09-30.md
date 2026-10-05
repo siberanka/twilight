@@ -1,5 +1,7 @@
 # New samples and composite transforms — 30 September–1 October 2026
 
+> Türkçe: [aşağıda](#türkçe)
+
 > The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
 
 New real-source samples exposed a conversion defect: static composite children
@@ -105,3 +107,106 @@ sanitized counts and source-integrity checks in
 [measurements.json](images/acceptance/2026-09-30-composites/measurements.json).
 This is a tested development correction, not a claim of perfect conversion for
 every model or animation.
+
+---
+
+## Türkçe
+
+### Yeni örnekler ve bileşik dönüşümler — 30 Eylül–1 Ekim 2026
+
+> Bu raporun ekran görüntüleri 4 Ekim 2026'da güncel görüntüler lehine kaldırıldı; aşağıdaki ölçümler
+> geçerlidir. Güncel Java/Bedrock görüntüleri [README](../README.md#visual-acceptance-tests) içindedir.
+
+Gerçek kaynaklardan yeni örnekler bir dönüşüm hatasını ortaya çıkardı: durağan bileşik alt modeller
+kendi Java görüntü dönüşümlerini kaybediyordu. BetterModel'in `demon_knight` kafası farklı `fixed`
+dönüşlerine sahip 27 alt model içerir. Küplerini birleştirip ilk alt modelin pozunu uygulamak boynuzları
+ayırıyor ve diğer parçaları eğiyordu. `blue_wizard` de yanlış bir kafa açısı gösteriyordu.
+
+Derleyici artık her alt ağı ve yazarın verdiği bağlam dönüşümlerini korur. Görüntü varlıkları ve
+eklentiler ayrı alt kemikler alır; arayüz çizimi her alt modelin arayüz pozunu ve ışığını ortak bir
+derinlik tamponuyla uygular. Üretilen sprite alt modelleri küboid alt modellerin yanında korunur. Bu,
+model adı istisnası veya kaynak dosya düzenlemesi olmadan kendiliğinden yapılan bir dönüşümdür.
+
+#### Kapsam ve derleme denetimleri
+
+- Önceki iki eşya seçiminde olmayan 36 eşya modeli ve 24 emoji. Seçim sabit bir tohum kullandı ve
+  farklı ad alanlarını ve model türlerini tercih etti.
+- Dört yeni sağlayıcı modeli: BetterModel `blue_wizard` (211 öğe) ve `demon_knight` (323), ModelEngine
+  `bl_earth_small_spider` (49) ve `angel_gm_lancer_one` (24). Mızrakçı ayrıca MythicMobs üzerinden
+  bağlandı.
+- Sağlayıcı keşfi canlı eşya toplayıcısını kullandı. BetterModel test düzeneği 36 yeni eşya tanımı ve
+  önceden bekletilen altı eşya dahil 167/168 eşleme derledi. ModelEngine düzeneği 278/278 eşleme derledi:
+  139 tanımlayıcı için eski ve modern eşlemeler, **278 ayrı mob değil**.
+- İki tekrarlanan derleme özdeş paketler üretti. Katı mod ModelEngine düzeneğini kabul etti. BetterModel
+  düzeneğindeki eksik kaynak dokusunu reddetti ve tanı paketini bayt bayt korudu.
+- 18 paketteki 80 test yerelde geçti. Yeni regresyonlar bağımsız bileşik arayüz dönüşümlerini ve ortak
+  derinliği, karışık sprite/küboid alt modelleri, ayrı elde tutma pozlarını, sabit dönüşleri ve sol el
+  yedeklerini sınar.
+- 135 ayrı kopyalanmış dosyayı ve dört özgün model dosyasını kapsayan 163 kaynak manifest girdisinin
+  değişmediği karma ile doğrulandı. Üçüncü taraf kaynak paketleri, modeller, sunucu yapılandırmaları ve
+  ham günlükler depo dışında tutulur.
+
+Geliştirme [dosyasının](../artifacts/README.md) SHA-256 değeri
+`152fd07575e4a2c26b910f5ba9974ebf08c6e501eeb04e43f9c4c8f1010f24c5`. Temel çizgi görüntüleri önceki
+`8cb2ceff…` derlemesini kullanır; yayımlanan her çift tam derleme karmasını
+[results.json](images/acceptance/2026-09-30-composites/results.json) içinde kaydeder.
+
+#### İstemci gözlemleri
+
+| Java referansı | Bedrock önce | Bedrock sonra |
+| --- | --- | --- |
+| Java şeytan şövalye | Düzeltmeden önce ayrık kafa parçaları | Düzeltmeden sonra birleşmiş kafa |
+| Java mavi büyücü | Düzeltmeden önce yanlış kafa eğimi | Düzeltilmiş alt poz |
+
+| Örnek | Denetimler | Gözlenen sonuç |
+| --- | --- | --- |
+| blue_wizard | bekleme, yürüme | Yanlış kafa eğimi düzeldi; ağ birleşik kalıyor. |
+| demon_knight | bekleme, yürüme, savunma, hammer_attack_1 | Ayrık kafa/boynuz parçaları düzeldi; savunma ve saldırı pozları Bedrock'a ulaşıyor. |
+| bl_earth_small_spider | bekleme, yürüme, fangs_attack | Geometri iki istemcide de görünür; poz örnekleri karşılaştırma için saklandı. |
+| angel_gm_lancer_one | bekleme, yürüme, attack2 | Geometri ve örneklenen poz değişiklikleri iki istemcide de görünür. |
+| MythicMobs mızrakçı | sabit, hasar almayan taşıyıcı ve ModelEngine bağlantısı | Tam model iki istemcide de görünür. |
+| 36 eşyalık envanter | silahlar, mobilya, kozmetikler, model parçaları, simgeler | 35 Bedrock önizlemesi çizildi; 34'ünün kullanılabilir Java referansı var. İstisnalar aşağıda. |
+| Altı elde tutulan eşya | mızrak, arbalet, hançer, asa, kazma, kalkan | Modeller görünür; birinci şahıs açısı, konumu ve ölçeği hâlâ farklı. |
+| 24 emoji | bitişik `Agjp` yazılı dört satır | Glifler aktarılıyor; taban çizgisi, boyut ve alt satır kırpılması farklı kalıyor. |
+
+Son MythicMobs çifti 1 Ekim'de yeniden çekildi. Kaydedilmiş taşıyıcı, yalıtılmış sunucunun yeniden
+başlatılmasından sonra ve dönüşümden önce ModelEngine bağlantısını kaybetmişti; çalışan örnek sayılmadı.
+Yeni ve sabit bir MythicMobs doğuşu sağlayıcı bağlantısını geri getirdi; çekimden önce ModelEngine API'si
+ile doğrulandı. Sağlayıcı bağlantısının yeniden başlatmadan sonra kalıcılığı doğrulanmadı.
+
+Envanter yuvası 26 (`spectra_aurelium_skills:skill_ship`) `#missing` dokusuna başvurur; Java eksik doku
+desenini gösterir ve tanı amaçlı Bedrock çıktısı eşlenmemiş kağıt bırakır. Yuva 19
+(`iasurvival:item/shields/ruby_shield`) bu düzenekte eksik dokulu bir Java referansına sahipken Bedrock
+kırmızı bir kalkan çizer. Java referansının incelenmesi gerekir; görsel eşdeğerlik geçişi **sayılmaz**.
+Testi geçirmek için iki kaynak da değiştirilmedi.
+
+| Java envanteri | Bedrock envanteri |
+| --- | --- |
+| İki eksik dokulu hücre dahil 36 Java referansı | 35 çizilmiş önizleme ve bir eşlenmemiş kağıt eşya |
+
+Dünya kameraları iki istemcide aynı komutla verilen konum ve yönleri kullandı. İstemci en-boy oranları,
+arayüz ölçekleri ve çiziciler farklıdır. Düzeltme sonrası BetterModel animasyonları olağan çalıştı ve
+sırayla çekildi; görüntüleri eşzamanlı kare zamanlaması kanıtlamaz. Önceki sıfır hızlı BetterModel
+örnekleri yalnızca bileşik birleştirme hatasını göstermek için saklandı. İzleyici kameraları Java'da yarı
+saydam görünmez bir taşıyıcıyı gösterebilir.
+
+Eşya testleri seçili eşya modeli bileşenine sahip kağıt kullanır. Silah hasarını, arbalet doldurmayı veya
+üretim eklentisi oynanışını değil, görünümü doğrular. Envanter bir test kabıdır; özel menü arka
+planlarının veya becerilerin aynı davrandığının kanıtı değildir. Önceki [menü hataları](BROAD_CONTENT_2026-09-29.md)
+açık kalıyor. Tam animasyonlu doku oynatımı, renk/malzeme eşdeğerliği, birinci şahıs poz eşdeğerliği ve
+glif/arayüz yerleşimi bu kontrol noktasıyla kabul edilmez.
+
+#### Kanıt ve test güvenliği
+
+İstemci bağlantısı ve iletişim kutularının işlenmesi yeniden kullanılabilir betikler kullandı. Çekim
+otomasyonu artık bir çift çekmeden önce iki test oyuncusunun da bağlı olduğunu denetliyor; bağlantı kesik
+menü görüntüleri ve duraklatılmış bir elde tutma görüntüsü hariç tutuldu ve yeniden çekildi. Düzenekler
+sabit, hasar almayan taşıyıcılar kullanır. Test oyuncuları yaratıcı/izleyici modundadır, güvenli bir
+platforma döner ve kaydedilmiş on oyuncu istatistiğinin hepsinde ölüm sıfırdır.
+
+Yayımlanan görüntüler değiştirilmemiş çekimlerdi; dosya başına karmalar
+[sha256.json](images/acceptance/2026-09-30-composites/sha256.json), tek tek sonuçlar
+[results.json](images/acceptance/2026-09-30-composites/results.json), arındırılmış sayılar ve kaynak
+bütünlüğü denetimleri [measurements.json](images/acceptance/2026-09-30-composites/measurements.json)
+içindedir. Bu, her model veya animasyon için kusursuz dönüşüm iddiası değil, test edilmiş bir geliştirme
+düzeltmesidir.

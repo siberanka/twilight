@@ -1,5 +1,7 @@
 # Twilight 1.0.0-pre.9 - prerelease
 
+> Türkçe: [aşağıda](#türkçe)
+
 This prerelease adds twilight-proxy: per-server Bedrock packs for networks that run Geyser on a
 Velocity or BungeeCord proxy.
 
@@ -59,7 +61,6 @@ with Java 26.2 and Bedrock 1.26.5203.0). The display adapter, text layout, biome
 name and translation bridges target Geyser 2.11.3 build 1247 on the same server;
 other Geyser core versions require validation.
 
-
 ## Twilight 1.0.0-pre.7 - prerelease
 
 This prerelease converts the content Java players actually receive from CraftEngine,
@@ -97,7 +98,6 @@ The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom
 content enabled. The display adapter, text layout, biome and translation bridges
 target Geyser 2.11.3 build 1247; other Geyser core versions require validation.
-
 
 ## Twilight 1.0.0-pre.6 - prerelease
 
@@ -139,7 +139,6 @@ The [JAR and SHA-256](artifacts/) were built locally under siberanka using Java 
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with custom
 content enabled. The display adapter and text layout target Geyser 2.11.3 build
 1247; other Geyser core versions require validation.
-
 
 ## Twilight 1.0.0-pre.5 - prerelease
 
@@ -204,7 +203,6 @@ Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, and Geyser with cust
 content enabled. The development display adapter specifically targets Geyser
 2.11.3 build 1247; other Geyser core versions require validation.
 
-
 ## Twilight 1.0.0-pre.3 - prerelease
 
 This prerelease corrects custom item rotation and texture conversion and makes
@@ -256,3 +254,259 @@ Final font captures verify six exact normalized height/baseline combinations,
 modulation, wide rank tags and full custom UI backgrounds remain unsupported
 or visually different. Oversized content is reported rather than downscaled.
 See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise scope.
+
+---
+
+## Türkçe
+
+### Twilight 1.0.0-pre.9 - ön sürüm
+
+Bu ön sürüm twilight-proxy'yi ekler: Geyser'ı bir Velocity veya BungeeCord proxy'sinde çalıştıran ağlar için
+sunucu başına Bedrock paketleri.
+
+- `TwilightProxy.jar` eklendi. Her arka ucun paketi o arka uçtaki Twilight'tan (`auto`),
+  `plugins/twilight-proxy/packs/` içindeki bir dosyadan veya doğrudan bir indirme bağlantısından gelir. Bir
+  Bedrock oyuncusu katıldığı sunucunun paketini yükler; başka paketli bir sunucuya geçiş istemciyi Geyser'a
+  yeniden bağlar (önbellekteki bir paketle yaklaşık beş saniye) ve yönlendirir. Velocity 4.2.0 ve
+  BungeeCord 26.1 üzerinde iki arka uçla canlı test edildi; [proxy testine](docs/PROXY_2026-10-05.md) bakın.
+- Twilight dışa aktardığı paketi imzalı eklenti mesajlarıyla paylaşır. Gizli anahtar, proxy'nin
+  sunucularıyla zaten paylaştığı anahtardır (Velocity yönlendirmesi, BungeeGuard) veya `proxy.secret`'tir;
+  istekler zaman damgası ve tek kullanımlık nonce taşır, istemciler kanalı ne okuyabilir ne de sahteleyebilir,
+  aktarımlar sınırlıdır ve her paket Geyser görmeden önce boyutla sınırlanır ve denetlenir.
+- Yazı yerleşimi özel hazırlanmış girdiye karşı sınırlandı (16384 karakter, en fazla 2^20 birimlik
+  kaydırmalar).
+- Her komutu, yapılandırma anahtarını, dosyayı, API'yi ve güvenlik modelini içeren [wiki](WIKI.md) eklendi.
+
+Sürümler artık `Twilight.jar` (arka uçlar) ve `TwilightProxy.jar` (proxy'ler, isteğe bağlı) içeriyor.
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 36 paketteki 191
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.8 - ön sürüm
+
+Bu ön sürüm üst üste menü görsellerini ve ad etiketlerini yeniden üretir, özel ve mevsimsel biyomları
+birebir renkleriyle gösterir ve her derlemeyi kurulumsuz çalışır hâle getirir.
+
+- Java'nın öncekilerin üzerine geri aldığı yazı ve görseller (üst üste menü görselleri, CustomNameplates
+  arka planları, kaydırılmış yazı) sandık başlıklarında, aksiyon çubuğunda ve boss çubuklarında katman başına
+  bir Bedrock etiketiyle çizildi. Dört üst üste görsel ve yuvaların üzerinde yarı saydam bir vurgu dahil
+  dokuz özgün görselli menü stili Java'nın piksellerine oturuyor.
+- Özel biyomlar yeniden tanımlanmış 25 Bedrock biyomuyla birebir renkleri ve iklimleriyle gösterildi.
+  RealisticSeasons'ın mevsimsel biyomları sunucu kayıt defterinden okunur ve geçerli mevsim önce gelir; biyom
+  değişiklikleri Bedrock oyuncularına yeniden katılmadan ulaşır.
+- Binilen oyuncuların ve mobların Bedrock adı Java gibi, CustomNameplates ile Bedrock'un ad etiketi kutusu da
+  gizlendi; böylece ad etiketleri yalnızca etiketi gösterir.
+- `sources.providers` (sağlayıcı başına auto, generated, contents veya kapalı), `sources.datapacks`,
+  `geyser.send-pack-to-bedrock` ve bir proxy Geyser'ı veya paketi gönderen başka bir eklenti için her
+  derlemenin `plugins/Twilight/export` dizinine dışa aktarımı eklendi.
+- Java'nın tolere ettiği içerik (eksik dokular ve modeller, ekran boyutunda kaplamalar, değiştirilmiş vanilla
+  sesler) Java'nın gösterdiği şekilde dönüştürüldü: yedi üretim sunucusunun tam derlemeleri varsayılan
+  yapılandırmayla katı yayını geçiyor.
+
+Sonuçlar ve kalan farklar (moblardaki yazı görüntüleri yaklaşık 0,4 blok aşağıda duruyor, ad etiketi kutusu
+genel olarak gizleniyor, hex yazı Bedrock'un 28 rengini kullanıyor)
+[üst üste görseller, ad etiketleri ve birebir biyomlar](docs/LAYERS_BIOMES_2026-10-04.md) belgesindedir.
+
+[JAR ve SHA-256](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 34 paketteki 183 test geçti.
+Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+ ve özel içeriği açık Geyser. Twilight
+önce en yeni Java ve Bedrock sürümlerini hedefler (Java 26.2 ve Bedrock 1.26.5203.0 ile test edildi).
+Görüntü bağdaştırıcısı, yazı yerleşimi, biyom, ad ve çeviri köprüleri aynı sunucudaki Geyser 2.11.3 derleme
+1247'yi hedefler; diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+#### Twilight 1.0.0-pre.7 - ön sürüm
+
+Bu ön sürüm Java oyuncularının CraftEngine, ItemsAdder, Nexo ve diğer sağlayıcılardan gerçekten aldığı
+içeriği dönüştürür, datapack biyomlarını ve paket çevirilerini Bedrock'ta gösterir; 104 gerçek menü ve
+özgün görselli bir menü stil takımıyla doğrulandı.
+
+- Her sağlayıcının ürettiği paket (CraftEngine `resource_pack.zip`, ItemsAdder çıktısı, Nexo/Oraxen
+  paketleri) çalışma klasörlerine göre yetkili kabul edildi. Kurulu olmayan veya başka bir sağlayıcı
+  gönderirken kendi paketini göndermeyen sağlayıcıların paketleri yalnızca boşlukları doldurur.
+  CustomNameplates ve BetterHUD paketleri keşfedilir; Nexo'nun vanilla varlık önbelleği yok sayılır. Altı
+  gerçek sunucunun tam derlemeleri artık örneğin Survival'da 1.932 özel eşyadan 1.905'ini dönüştürüyor.
+- Datapack ve eklenti biyomları (Terralith, Incendium, RealisticSeasons) Bedrock'ta Geyser'ın okyanus yedeği
+  yerine en yakın renklere ve yağışa sahip vanilla biyom olarak gösterildi (`world.bedrock-biome-matching`).
+- Kaynak paketlerinin çevirileri Java gibi birleştirildi: Bedrock oyuncuları datapack ve eklenti içeriğinin
+  adlarını ve ender sandığı başlığı olarak bir görsel veya gizli envanter etiketi gibi paket geçersiz
+  kılmalarını görür (`ui.java-translations`).
+- Renk kodu olmayan konteyner başlıklarının görselleri Java gibi, önceden koyulaştırılmış glif kopyalarıyla
+  koyulaştırıldı (`ui.java-glyph-tint`; test edilen en büyük sunucuda yaklaşık 330 MiB ek atlas belleği).
+- Kalın başlıklar Java'nın konumunda tutuldu (dört birim sağdaydılar) ve yerleştirilmiş yazıdaki eski renk
+  kodlarının yer kaplaması önlendi.
+
+Sonuçlar: 104 gerçek menünün her penceresi ve 97 başlık bandı Java ile eşleşti; diğer yedisi yalnızca
+Bedrock'un kendi yazı fontunda farklı. Stil takımında, Bedrock yazısının yeniden üretemediği önceki bir
+görselin üzerine geri alınan katmanlar dışında her teknik eşleşti. Özel bir datapack biyomu okyanus yerine en
+yakın vanilla biyomu (kiraz bahçesi) gösterdi. [Arayüz kampanyasına](docs/UI_CAMPAIGN_2026-10-04.md) bakın.
+Eşya adları ve açıklamaları yeniden yazılmaz ve yüksek çözünürlüklü glif örneklemesi farklıdır.
+
+[JAR ve SHA-256](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 28 paketteki 156 test geçti.
+Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+ ve özel içeriği açık Geyser. Görüntü
+bağdaştırıcısı, yazı yerleşimi, biyom ve çeviri köprüleri Geyser 2.11.3 derleme 1247'yi hedefler; diğer
+Geyser çekirdek sürümleri doğrulama gerektirir.
+
+#### Twilight 1.0.0-pre.6 - ön sürüm
+
+Bu ön sürüm Java font içeriğini her Bedrock yazı yüzeyinde doğru gösterir ve beş gerçek sunucunun tam
+derlemelerinin bulduğu dönüşüm hatalarını düzeltir.
+
+- Java yazısı Bedrock oyuncuları için sohbette, aksiyon çubuğunda, başlık ve alt başlıklarda, boss
+  çubuklarında, skor tablolarında, varlık adlarında, yazı görüntülerinde ve huni, fırın ve diğer
+  konteynerlerin başlıklarında yerleştirildi. Adlandırılmış font görselleri (örneğin CraftEngine rütbeleri),
+  yeniden eşlenmiş karakterler ve ItemsAdder kaydırmaları artık Java'nın konumlarında görünür; ortalı
+  satırlar Java'nın tam sayı ortalamasını izler ve sohbet kaydırma için boşluklarını korur.
+  `ui.java-text-surfaces` ile denetlenir; yazı yerleşimi artık konteyner yerleşimini gerektirmez.
+  [Yazı yüzeyi incelemesine](docs/TEXT_SURFACES_2026-10-04.md) bakın.
+- ItemsAdder'ın vanilla varlık kopyaları, geçici derleme klasörleri ve eskimiş iç içe paketler artık kaynak
+  sayılmıyor (yüzlerce özel eşyayı gizliyorlardı) ve `generated.zip` yoksa yeniden adlandırılmış bir
+  ItemsAdder çıktısı kullanılıyor.
+- Doku atlası sprite yeniden adlandırmaları çözüldü, korumalı PNG'ler Java gibi çözüldü, nesne biçimli model
+  dokuları okundu, özel seçicilerin arkasında vanilla modellere izin verildi ve tanımsız yüz dokuları için
+  Java'nın eksik dokusu kullanıldı.
+- Java'nın kendi font sayfalarındaki karakterler Bedrock yazısı olarak tutuldu ve ekran dışı veya saydam
+  aralık görselleri ilerleme sayıldı; bu, gerçek sunuculardaki özel kullanım sayfası taşmasını giderdi.
+- Java'nın da reddettiği içerik (bozuk fontlar, okunamayan TrueType dosyaları, hiçbir pakette bulunmayan ses
+  dosyaları, kaplamayla çizilen kafalar) katı derlemeleri başarısız kılmak yerine `build-report.json` içinde
+  bildirim olarak raporlandı.
+
+Her yeni yüzey bağımsız SkyBlock içeriğiyle (CraftEngine rütbeleri ve simgeleri, CustomNameplates arka
+planları) Java'ya karşı sıfır kayma ölçtü; altı gerçek Survival menüsü ve türlü konteyner ekranları
+değişmedi. Aynı beş sunucunun tam derlemeleri iyileşti; örneğin Survival'da 130 özel eşyadan 125'inden 841
+özel eşyadan 837'sine. Kalan farklar: eşya adları ve açıklamaları yeniden yazılmıyor, yazının hemen ardından
+boşluksuz gelen bir glif ve üst üste binen katmanlar bir birim kayık, bitmap renklendirmesi ve yüksek
+çözünürlüklü glif örneklemesi farklı.
+
+[JAR ve SHA-256](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 25 paketteki 138 test geçti.
+Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+ ve özel içeriği açık Geyser. Görüntü
+bağdaştırıcısı ve yazı yerleşimi Geyser 2.11.3 derleme 1247'yi hedefler; diğer Geyser çekirdek sürümleri
+doğrulama gerektirir.
+
+#### Twilight 1.0.0-pre.5 - ön sürüm
+
+Bu ön sürüm Java font görselli menü başlıklarını Bedrock'ta Java font ölçüleriyle yerleştirir; böylece
+gerçek menü görselleri Java'nın arayüz piksellerine oturur.
+
+- Sandık başlıkları Bedrock oyuncuları için Java font ölçüleriyle yerleştirildi. Boşluk sağlayıcıları,
+  negatif yükseklikli bitmap kaydırmaları ve ItemsAdder kaydırmaları birebir görünmez aralık gliflerine
+  dönüşür; bitmap glif kenar payları düzeltilir (önceki bir birimlik kayma kaldırıldı); Java'nın varsayılan
+  veya adlandırılmış fontlarda yeniden eşlediği karakterler Bedrock'un gliflerinin yerini almak yerine özel
+  kullanım takma adları alır. `ui.java-text-layout` ile denetlenir.
+  [Yazı yerleşimi incelemesine](docs/TEXT_LAYOUT_2026-10-03.md) bakın.
+- Her kaynak paketinin font tanımları Java gibi birleştirildi ve Java'nın yükleyemediği TrueType fontlar yok
+  sayıldı.
+- Dokunmatik yerleşimin yerel ortalı başlığı yalnızca glif değiştirmeyle korundu.
+
+Altı gerçek Survival menüsü (negatif yükseklik kaydırmaları, bir ItemsAdder kaydırması ve 512 piksellik bir
+görsel) başlık alanında ve ölçülen tüm yuva satırlarında Java ile eşleşti; huni, fırın ve fırlatıcı ekranları
+vanilla Bedrock ile aynı kaldı. Kalan farklar: yazının hemen ardından boşluksuz gelen bir glif bir birim
+sağda, üst üste binen başlık katmanları yeniden üretilmiyor, bitmap renklendirmesi farklı ve sohbet,
+açıklamalar, skor tabloları ve boss çubukları henüz yerleştirilmiyor.
+
+[JAR ve SHA-256](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 22 paketteki 109 test geçti.
+Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+ ve özel içeriği açık Geyser. Görüntü
+bağdaştırıcısı ve başlık yerleşimi Geyser 2.11.3 derleme 1247'yi hedefler; diğer Geyser çekirdek sürümleri
+doğrulama gerektirir.
+
+#### Twilight 1.0.0-pre.4 - ön sürüm
+
+Bu ön sürüm Java font görselli menüleri Bedrock masaüstü sandık ekranlarında kullanılabilir yapar ve geniş
+bitmap glifleri yazarın verdiği boyutta korur.
+
+- Bedrock masaüstü sandık ekranları için bir Java konteyner yerleşimi üretildi. Geniş başlık görselleri artık
+  kaydırılmaz, kısa çizgiyle bölünmez veya kırpılmaz; başlık ve envanter etiketleri Java'nın konumlarını,
+  rengini ve çizim sırasını kullanır; sandık, oyuncu envanteri ve kısayol çubuğu satırları 1 ile 6 sandık
+  satırı için Java'nın aralığını korur. Kısmi arayüz Bedrock'un vanilla arayüzüyle birleşir ve
+  `ui.java-container-layout` ile kapatılabilir. [Konteyner yerleşimi incelemesine](docs/CONTAINER_LAYOUT_2026-10-03.md)
+  bakın.
+- Bitmap font atlas hücreleri her glifin Java görüntü boyutu ve ascent değeri korunarak kendiliğinden
+  büyütüldü; böylece geniş rütbe etiketleri ve büyük arayüz/HUD görselleri artık küçültülmez veya atlanmaz.
+  [Geniş glif incelemesine](docs/WIDE_GLYPHS_2026-10-02.md) bakın.
+- Başlık yerleşimi ve katmanları, yuva aralığı, diğer ekranlar için vanilla varsayılanlar, glif ad
+  alanları, çok satırlı glif sayfaları, geniş glif pikselleri ve komşu hücreler için regresyonlar eklendi.
+- Kabul sözleşmesi 40 alana ve 289 gerekli senaryoya genişletildi.
+
+Eşlenmiş Java/Bedrock görüntüleri 9'dan 54 yuvaya her sandık boyutunu ölçtü ve huni, fırlatıcı ve fırın
+ekranlarının vanilla Bedrock arayüzüyle aynı kaldığını doğruladı. Bilinen farklar sürüyor: Bedrock bitmap
+glifleri yazı rengiyle renklendirmez, her bitmap glifi bir arayüz birimi sağa çizer, saydam sol dolguyu
+kırpar ve kesirli boyutları farklı örnekler. Java boşluk ilerlemeleri, diğer konteyner türleri, dokunmatik
+yerleşimler, açıklama kutuları, canlı HUD'lar, tam animasyon ve birinci şahıs eşdeğerliği henüz
+desteklenmiyor.
+
+[JAR ve SHA-256](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 20 paketteki 95 test geçti.
+Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+ ve özel içeriği açık Geyser. Geliştirme
+aşamasındaki görüntü bağdaştırıcısı özellikle Geyser 2.11.3 derleme 1247'yi hedefler; diğer Geyser çekirdek
+sürümleri doğrulama gerektirir.
+
+#### Twilight 1.0.0-pre.3 - ön sürüm
+
+Bu ön sürüm özel eşya dönüşünü ve doku dönüşümünü düzeltir; desteklenmeyen arayüz dönüşümünü ve Geyser
+yeniden başlatma gereksinimlerini açık hâle getirir.
+
+- Bitmap glif taban çizgileri Java yükseklik/ascent değerleri ve ölçülmüş Bedrock hücre koordinatlarıyla
+  düzeltildi; negatif ascent, taşma ve sayfa bağımsızlığı regresyonları eklendi.
+  [Font ölçüleri incelemesine](docs/FONT_METRICS_2026-10-01.md) bakın.
+- Envanter simgeleri ilk ham dokuyu dışa aktarmak yerine model yüzlerinden ve devralınan Java arayüz
+  pozundan çizildi.
+- Tek tek durağan bileşik alt model pozları korunarak ayrık BetterModel kafa parçaları ve istenmeyen eğim
+  [yeni örnek regresyonunda](docs/COMPOSITE_MODELS_2026-09-30.md) düzeltildi.
+- Üçüncü şahıs model çerçevesi dönüşümü, sol el aynalaması ve bir Euler tekilliği düzeltildi.
+- Döndürülmüş küboid eksenleri, varsayılan yüz UV'leri ve yüz UV dönüşü düzeltildi.
+- Sprite sayfalarını germek yerine yazarın verdiği ilk animasyon karesi dışa aktarıldı; tam animasyon
+  oynatımı desteklenmiyor.
+- Aşırı büyük arayüz glifleri, görünür taban çizgisi taşması ve özel aralık katı modda reddedildi. Tanı
+  dışa aktarımları atlamaları raporlar.
+- Eşleme yeniden başlatma durumu yapılandırma yeniden yüklemesi, tekrarlanan dağıtımlar ve geri alma boyunca
+  korundu. Geyser yeniden yüklemesi değişen eşya eşlemelerini etkinleştiremez.
+- Geyser eşleme enum ayrıştırmasını bozan JVM yerel ayarları için bir uyarı eklendi.
+- Canlı bir eşya görüntüsü köprüsü eklendi ve sabit MythicMobs modelleri dahil örneklenen BetterModel ve
+  ModelEngine pozları doğrulandı.
+- Görüntü görünmezliği ve sıfır görüş menzili işleme düzeltildi; etkin olmayan ModelEngine ateş katmanları
+  artık başıboş düzlemler olarak görünmüyor.
+- Bağlı görüntülerin yönü kafa ve gövde yaw değerleri hizalanıp yinelenen ağ yaw değeri kaldırılarak
+  düzeltildi.
+- Görünmez sıfır yarıçaplı bulut çapaları kendiliğinden uyarlandı; olağan bulutlar ve bağlı yolcular
+  korunurken istenmeyen ModelEngine parçacıkları kaldırıldı.
+- Buluta binen görüntü yüksekliği Java ile eşleşecek şekilde düzeltildi; test edilen sepetin katı zemindeki
+  karanlık görünümü gündüz/gece ışıklandırması korunarak giderildi.
+- Kaynak paketi kaplamaları hedef Minecraft sürümüne göre seçildi ve açık vanilla doku bağımlılıkları çözüldü.
+- Noktalı ve büyük harfli kaplama dizin adları kabul edilerek sürümlü Survival içeriğinin keşfi düzeltildi.
+- Devre dışı sağlayıcılar için olay kancaları atlandı.
+
+[Gerçek içerik incelemesi](docs/REAL_CONTENT_REVIEW.md) Java referanslarını, Bedrock gözlemlerini ve kabul
+edilmemiş sohbet/arayüz denetimlerini içerir. Java kaynak varlıkları değişmedi. Bu kontrol noktası tam görsel
+eşdeğerlik veya üretim arayüz desteği iddia etmez. [Ek yedi modellik matris](docs/MODEL_MATRIX_2026-09-28.md)
+yön, ışıklandırma ve parçacık hatalarını düzeltmelerin devam kanıtıyla kaydeder.
+[Bulut çapası regresyonu](docs/CLOUD_ANCHORS_2026-09-29.md) dört ModelEngine modelini, canlı
+yarıçap/görünürlük değişikliklerini, yolcu korunmasını ve istemci yeniden bağlanmasını kapsar.
+[Binek yüksekliği regresyonu](docs/DISPLAY_SEATS_2026-09-29.md) Java'nın bağlantı noktasını ölçer ve sepeti
+değişmemiş taş üzerinde gündüz ve gece doğrular. [Genişletilmiş içerik denetimleri](docs/BROAD_CONTENT_2026-09-29.md)
+tüm kaynak derlemesini, 36 envanter örneğini, altı ek elde tutulan eşyayı, 28 emojiyi ve Survival menü
+görsellerini kapsar; tam birinci şahıs, animasyonlu doku ve menü eşdeğerliğinin hâlâ olmadığını doğrular.
+
+[JAR ve SHA-256](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 19 paketteki 84 test geçti.
+Barındırılan CI çalıştırılmadı. Otomatik GitHub/GitLab hat tetikleyicileri kapalı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+ ve özel içeriği açık Geyser. Geliştirme
+aşamasındaki görüntü bağdaştırıcısı özellikle Geyser 2.11.3 derleme 1247'yi hedefler; diğer Geyser çekirdek
+sürümleri doğrulama gerektirir. Tam animasyonlu dokular, renklendirme, billboard davranışı ve arayüz
+uyarlaması açık kabul işi olarak kalıyor.
+
+Son font görüntüleri altı birebir normalleştirilmiş yükseklik/taban çizgisi birleşimini, desteklenen 35
+gerçek glifi ve test edilen envanter başlığını doğrular. Java başlık renk modülasyonu, geniş rütbe etiketleri
+ve tam özel arayüz arka planları desteklenmiyor veya görsel olarak farklı. Aşırı büyük içerik küçültülmek
+yerine raporlanır. Kesin kapsam için [ölçülmüş karşılaştırmaya](docs/FONT_METRICS_2026-10-01.md) bakın.

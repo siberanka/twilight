@@ -1,5 +1,7 @@
 # Cloud-mounted display height and lighting — 29 September 2026
 
+> Türkçe: [aşağıda](#türkçe)
+
 > The screenshots of this report were retired on 4 October 2026 in favour of current captures; the measurements below remain. Current Java/Bedrock captures are in the [README](../README.md#visual-acceptance-tests).
 
 The potion basket now retains its colors above the original stone platform.
@@ -71,3 +73,77 @@ remains owned by its creators; the source asset packs are not redistributed.
 |---|---|
 | Basket noon Java | Basket noon Bedrock |
 | Basket midnight Java | Basket midnight Bedrock |
+
+---
+
+## Türkçe
+
+### Buluta binen görüntü yüksekliği ve ışıklandırma — 29 Eylül 2026
+
+> Bu raporun ekran görüntüleri 4 Ekim 2026'da güncel görüntüler lehine kaldırıldı; aşağıdaki ölçümler
+> geçerlidir. Güncel Java/Bedrock görüntüleri [README](../README.md#visual-acceptance-tests) içindedir.
+
+İksir sepeti artık özgün taş platformun üzerinde renklerini koruyor. Twilight, Java alan etkisi
+bulutlarına binen eşya görüntülerinin bağlantı yüksekliğini düzeltir. Bu, model adlarından ve
+sağlayıcılardan bağımsız olarak eşleşen varlıklara kendiliğinden uygulanır. Dokular, malzemeler,
+dünya blokları ve Java dosyaları değişmez.
+
+Java 26.2 bir yolcuyu bulutun tam yüksekliğine bağlar. Eşya görüntüleri ayaklarından bağlanır ve göz
+yükseklikleri sıfırdır. Geyser'ın genel binme hesabı ise bulut yüksekliğinin %75'ini kullanıyordu.
+Test edilen sepet için Y=199,5'teki bulut görüntüyü Y=200 yerine Y=199,875'e koyuyordu. Işık örneği taş
+platformun içine düşüyordu. Java bağlantı yüksekliğini kullanmak hem konumu hem ışık örneklemesini
+düzeltir; tam parlak malzeme veya parlaklık geçersiz kılma eklenmez.
+
+| Ölçüm | Değer |
+|---|---|
+| Java bulut yüksekliği | 0,5 blok |
+| Java bulut konumu | Y=199,5 |
+| Java yolcu konumu | Y=200 |
+| Java görüntü araç bağlantısı / göz yüksekliği | Sıfır / sıfır |
+| Önceki çevrilmiş oturma kayması | Y=0,375 |
+| Düzeltilmiş çevrilmiş oturma kayması | Y=0,5 |
+
+Java değerleri yalıtılmış Paper 26.2 ortamında doğurulmamış vanilla varlıklardan ölçüldü. Temiz bir
+yeniden başlatmadan sonra salt okunur Geyser incelemesi, canlı buluta binen görüntülerde düzeltilmiş
+kaymaları doğruladı. Bu kabul sürecinde tanı amaçlı oturma değişikliği kullanılmadı. Bulut dışı
+binekler mevcut kaymalarını korur.
+
+#### Testler ve sınırlar
+
+Yerel derleme 17 paketteki 67 testi geçti. İki yalıtılmış sunucu da aynı JAR'ı aldı. ModelEngine'in
+ayısı, yengeci, okçusu ve sepeti yedi Java/Bedrock çiftinde yeniden örneklendi. Sepet ayrıca değişmemiş
+taşın üzerinde öğlen ve gece yarısı karşılaştırıldı: renkleri görünür kalıyor ve parlaklığı dünya
+zamanını izliyor. Dört ağ da görünür ve önceki istenmeyen parçacık düzeltmesi etkin kalıyor.
+
+BetterModel'in baykuşu aynı derlemeyle temiz bir yeniden başlatmadan sonra boşta ve açık durumlarda
+denetlendi. İki ağ ve yönleri doğru kalıyor; ardışık canlı animasyon örnekleri eşleşen kare evresi
+kanıtlamaz. Bu kontrol noktası incelenmiş 11 Java/Bedrock çifti (22 görüntü) içerir.
+
+Yeni, sabit ve hasar almayan bir MythicMobs semenderi API ile doğuruldu ve ModelEngine bağlantısı
+doğrulandı. İki istemci de modeli yakın çekimlerde gösterdi, ancak bu çekimler kafasını kesiyor. Tam
+kare yeniden çekim ön plandaki oyun penceresini alamadı; bu yüzden MythicMobs görsel kabulü eksik kaldı
+ve bu görüntüler hariç tutuldu. Daha eski kalıcı bir taşıyıcının Java'da da ModelEngine bağlantısı
+yoktu ve başarılı dönüşüm sayılmaz.
+
+Devamı: [genişletilmiş içerik denetimleri](BROAD_CONTENT_2026-09-29.md) artık iki istemcide de
+tamamlanmış tam kare MythicMobs yeniden çekimini içeriyor. Animasyon karesi eşitliği hâlâ iddia
+edilmiyor.
+
+[Örnek sonuçları](images/acceptance/2026-09-29-seats/results.json),
+[görüntü karmaları](images/acceptance/2026-09-29-seats/sha256.json) ve
+[çalışma zamanı ölçümleri](images/acceptance/2026-09-29-seats/measurements.json) kanıtı saklar.
+[Önceki bulut raporu](CLOUD_ANCHORS_2026-09-29.md) karanlık sepet temel çizgisini içerir. Özgün yedi
+kaynak dosya karması hâlâ eşleşiyor; kaydedilmiş on oyuncu ölüm sayacı da sıfır. Test mobları sabit ve
+hasar almaz. Test bağlantısı ve bilinen kaplamalar, Bedrock uzakta kaplaması dahil, özel
+`ai/client-join/join.py` otomasyonuyla yönetilir.
+
+Bu, belirli bir binek ve ışıklandırma hatasını düzeltir. Tam animasyon zamanlaması, malzemeler, açık
+parlaklık geçersiz kılmaları, billboard davranışı, glifler ve arayüz eşdeğerliği açık kalıyor.
+Ardışık ekran görüntüleri kare kare birebir animasyon karşılaştırması değildir. Bu kabul edilmiş bir
+sürüm değil, bir geliştirme kontrol noktasıdır. Görseller yaratıcılarına aittir; kaynak paketler
+yeniden dağıtılmaz.
+
+| Java | Bedrock |
+|---|---|
+| Sepet öğlen Java | Sepet öğlen Bedrock |
+| Sepet gece yarısı Java | Sepet gece yarısı Bedrock |

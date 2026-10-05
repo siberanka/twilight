@@ -1,5 +1,7 @@
 # Live display bridge (development)
 
+> Türkçe: [aşağıda](#türkçe)
+
 This implementation is under visual validation. It is not a claim of complete
 BetterModel, ModelEngine, MythicMobs, or arbitrary Java entity support.
 
@@ -70,3 +72,72 @@ coverage; they are not implied by successful item-display registration.
 The adapter and compiler code are authored by siberanka under Twilight's
 LGPL-3.0-or-later license. See the upstream projects for their complete license
 texts and contributor histories.
+
+---
+
+## Türkçe
+
+### Canlı görüntü köprüsü (geliştirme)
+
+Bu uygulama görsel doğrulama aşamasındadır. BetterModel, ModelEngine, MythicMobs veya rastgele Java
+varlıkları için tam destek iddiası değildir.
+
+Twilight dönüştürülen her özel ağ için bağımsız, ortalanmış bir geometri üretir. Java eşya
+geometrisi ile el eklentisi ayrı kalır. Ortak bir Bedrock istemci varlığı, üretilen görüntü dizinini
+kullanarak ağını ve dokusunu seçer. Köprü bu dizini sunucu açılışında **dağıtılmış** paketten okur.
+Bu dizini değiştirmek veya kaldırmak, eşya eşlemeleri değişmese bile sunucunun tamamen yeniden
+başlatılmasını gerektirir. Yalnızca dokuyu etkileyen değişiklikler olağan yeniden yükleme yolunu korur.
+
+Geyser'ın şu anda eşya görüntüsü çevirmeni kaydı için herkese açık bir API'si yoktur. Bu nedenle
+bağdaştırıcı sabitlenmiş Geyser çekirdek derlemesi `2.11.3-20260925.135253-13` ile derlenir. Java
+`item_display` çevirmenini yalnızca bu türün başka bir çevirmeni yoksa kaydeder. Her bağlantının
+doğuş, hareket, meta veri, kaldırma ve boyut yaşam döngüsünden Geyser sorumlu kalır. Hiçbir Java
+sunucu varlığı veya sağlayıcı animasyon durumu değiştirilmez.
+
+Her güncelleme hem öteleme/ölçek/dördey uç noktalarını taşır. Kaynak paketi çizim anında en kısa yay
+dördey SLERP'i kullanır; neredeyse aynı dönüşler için normalleştirilmiş doğrusal bir yedeği vardır.
+Düzgün olmayan ölçek etrafında sol ve sağ dönüşler ayrı kalır. Paketlenmiş bir eşya/bağlam özelliği,
+zamanlama ve sürüm dahil, protokolü Bedrock'un 32 özellik sınırı içinde tutar. Düzen, görüntü
+dönüşümünden sonra Java'nın ek Y=180 eşya çerçevesini içerir. Varlık sapması Bedrock aktörü
+tarafından bir kez uygulanır. Doğuş ve hareket paketleri kafa sapmasını gövde sapmasına eşit tutar,
+çünkü Java görüntülerinin bağımsız bir kafası yoktur. Bu, Bedrock'un canlı gövde dönüşünün binilen
+ağları varsayılan bir kafa yönüne çevirmesini önler. Üretilen düzen gövde sapmasını yeniden uygulamaz.
+Açık ve yedek sol el eşya bağlamlarının ikisi de Java aynalamasını alır. Görüntü ağı, Java'daki gibi
+temel varlığın görünmezlik bayrağını yok sayar. Sıfır görüş menzili bir görüntüyü seçili eşyasını
+veya dönüşümünü kaybetmeden gizler; menzil geri gelince güncel görünümü de geri gelir. Pozitif
+mesafeli kırpma hâlâ ayrı istemci çizim mesafesi denetimi gerektirir.
+
+Ara değerleme saatini yalnızca başlangıç gecikmesi meta verisi sıfırlar. Yalnızca süre içeren
+güncellemeler iki uç noktayı da korur; başlangıç farkı olmayan poz güncellemeleri mevcut saati korur.
+Negatif gecikme ve yarıda kesilen ara değerlemenin ayrı testleri vardır. Dördeyden Euler'e çıkarım iki
+gimbal kutbunu da işler; üretilen sayısal Molang, bağımsız olarak oluşturulan dördeylere karşı
+değerlendirilerek denetlenir.
+
+Yerel gerçek model denemesi artık özgün semenderi iki istemcide de birleştiriyor; saldırı pozu
+incelenen görüntülerde görünür. Üç sabit taşıyıcı oturum başına 105 görüntü üretti. Bu bir gerçek
+model için görsel kanıttır, tam sağlayıcı veya rastgele model sertifikası değildir.
+
+Daha sonraki bir ModelEngine R4.1.1 denemesi iki doğrudan API modelini ve bir yeni MythicMobs modelini
+iki istemcide doğruladı. Varlık görünmezliği ve sıfır görüş menzili işlenişi düzeltildikten sonra
+dondurulmuş bir saldırı pozu Java referansıyla eşleşti. Eşlenmiş görüntüler ve sınırlar için
+[gerçek içerik incelemesine](REAL_CONTENT_REVIEW.md) bakın.
+
+Sonraki doğrulamalar binilen görüntü kaymalarını, izleyiciye özel değişiklikleri, negatif ölçeği,
+tekilliğe yakın dönüşleri, eşya değişimini, yeniden yükleme/yeniden bağlanmayı ve kaldırmayı
+içermelidir. Font/arayüz uyarlaması, animasyonlu dokular, zırh askılığı model sağlayıcıları,
+renklendirme, billboard kısıtları ve ışıklandırma kendi kapsamlarını gerektirir; başarılı eşya
+görüntüsü kaydı bunları kapsamaz.
+
+#### Kaynak projeler ve lisanslar
+
+- [Geyser](https://github.com/GeyserMC/Geyser), GeyserMC ve katkıda bulunanlar, telif 2019–2026,
+  MIT lisansı. Geyser yalnızca derleme bağımlılığı ve ayrıca kurulan bir çalışma zamanı eklentisidir.
+  Twilight onun sınıflarını içermez.
+- [BetterModel](https://github.com/toxicity188/BetterModel), toxicity188 ve katkıda bulunanlar, telif
+  2024–2026, MIT lisansı. Görüntü davranışını anlamak için herkese açık API'si ve protokol uygulaması
+  incelendi. BetterModel'in kodu, JAR'ı ve kullanıcı model dosyaları Twilight ile dağıtılmaz.
+- ModelEngine ve MythicMobs test kurulumları özel kalır. Tescilli ikilileri ve kaynak içerikleri
+  herkese açık dosyalara giremez.
+
+Bağdaştırıcı ve derleyici kodu siberanka tarafından Twilight'ın LGPL-3.0-or-later lisansıyla
+yazılmıştır. Tam lisans metinleri ve katkıda bulunan geçmişleri için kaynak projelere bakın.
