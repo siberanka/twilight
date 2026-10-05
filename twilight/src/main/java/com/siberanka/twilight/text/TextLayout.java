@@ -222,6 +222,8 @@ public final class TextLayout {
             if (entry == null && codePoint == ' ' && (font == null || TextLayoutTable.DEFAULT_FONT.equals(font))) {
                 entry = TextLayoutTable.Entry.advanceOnly(4); // Java's vanilla space provider
                 if (mode != Mode.CONTAINER) pendingSpaces++;
+            } else if (entry != null && codePoint == ' ' && !entry.visible() && entry.advance() == 4 && mode != Mode.CONTAINER) {
+                pendingSpaces++; // a named font's own four-unit space (CustomNameplates' shift fonts) stays a space
             }
             if (entry == null) {
                 align(out, 0);
@@ -312,6 +314,15 @@ public final class TextLayout {
             return;
         }
         int gap = (int) Math.round(required - delta);
+        if (gap < 0 && spaces > 0) {
+            // Bedrock is already past Java's pen (text Java draws back over an image, one label only): the
+            // position is approximate anyway, but words keep their spaces.
+            approximations++;
+            forgetGlyph();
+            delta += 4 * spaces;
+            out.repeat(' ', spaces);
+            return;
+        }
         // Pending spaces stay literal when the rest of the gap can still be reproduced.
         int literal = spaces > 0 && gap >= 4 * spaces && reproducible(gap - 4 * spaces) ? spaces : 0;
         int rest = gap - 4 * literal;

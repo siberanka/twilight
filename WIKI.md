@@ -266,6 +266,7 @@ In Geyser's folder Twilight owns `packs/twilight.zip`, `custom_mappings/twilight
 | `ui/chest_screen.json`, `ui/hud_screen.json`, `ui/ui_common.json` | Chest layout and text layer labels |
 | `biomes/<name>.client_biome.json`, `fogs/twilight_<name>.json` | Redefined Bedrock biomes for custom biome looks |
 | `materials/ui3D.material` | Hidden name tag box (`ui.nametag-background`) |
+| `textures/ui/twilight_boss_bar/` | Boss bar sprites a pack redraws, drawn by the HUD like Java |
 | `texts/*.lang` | Pack translations for Bedrock UI keys |
 | `sounds/sound_definitions.json`, `sounds/` | Converted sounds |
 | `twilight/*.json` | Tables for Twilight's runtime bridges (text layout, biome slots, display variants); Bedrock ignores them |
@@ -661,6 +662,7 @@ Geyser klasöründe Twilight yalnızca `packs/twilight.zip`, `custom_mappings/tw
 | `ui/chest_screen.json`, `ui/hud_screen.json`, `ui/ui_common.json` | Sandık yerleşimi ve yazı katmanı etiketleri |
 | `biomes/<ad>.client_biome.json`, `fogs/twilight_<ad>.json` | Özel biyom görünümleri için yeniden tanımlanmış Bedrock biyomları |
 | `materials/ui3D.material` | Gizli ad etiketi kutusu (`ui.nametag-background`) |
+| `textures/ui/twilight_boss_bar/` | Bir paketin yeniden çizdiği boss çubuğu sprite'ları; HUD bunları Java gibi çizer |
 | `texts/*.lang` | Bedrock arayüz anahtarları için paket çevirileri |
 | `sounds/sound_definitions.json`, `sounds/` | Dönüştürülmüş sesler |
 | `twilight/*.json` | Twilight'ın çalışma zamanı köprüleri için tablolar (yazı yerleşimi, biyom yuvaları, görüntü çeşitleri); Bedrock bunları yok sayar |

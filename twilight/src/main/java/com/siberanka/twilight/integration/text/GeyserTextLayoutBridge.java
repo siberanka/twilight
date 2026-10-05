@@ -145,20 +145,52 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
         return key -> keys.contains(key) ? org.geysermc.geyser.text.MinecraftLocale.getLocaleString(key, locale) : null;
     }
 
-    /** Colour of every boss bar per session (titles arrive without it after the first packet). */
-    private final Map<String, String> bossBarColours = new ConcurrentHashMap<>();
+    /**
+     * Colour, overlay and last Java title of every boss bar of a session: titles arrive without the
+     * style after the first packet, and a style change must re-send the title with the new marker.
+     * Sessions are weak keys, so bars of closed sessions are released.
+     */
+    private final Map<GeyserSession, Map<java.util.UUID, BossBarState>> bossBars =
+            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+    /** Packets a rewrite asks to translate after the current one (same thread). */
+    private final ThreadLocal<List<Packet>> followUps = ThreadLocal.withInitial(ArrayList::new);
+
+    private static final class BossBarState {
+        int colour = -1;
+        int overlay;
+        Object title;
+        String marker = "";
+    }
 
     private ClientboundBossEventPacket bossBar(GeyserSession session, ClientboundBossEventPacket packet,
                                                TextLayoutTable table) throws ReflectiveOperationException {
-        String key = session.javaUuid() + "/" + packet.getUuid();
+        Map<java.util.UUID, BossBarState> bars = bossBars.computeIfAbsent(session, ignored -> new ConcurrentHashMap<>());
         if (packet.getAction() == org.geysermc.mcprotocollib.protocol.data.game.BossBarAction.REMOVE) {
-            bossBarColours.remove(key);
-        } else if (packet.getColor() != null) {
-            bossBarColours.put(key, BOSS_BAR_COLOURS.get(packet.getColor().ordinal()));
+            bars.remove(packet.getUuid());
+            return packet;
         }
-        boolean hidden = table.bossBarHidden(bossBarColours.getOrDefault(key, ""));
-        String lead = hidden ? LayerEncoding.HIDDEN_BAR : "";
-        java.util.function.Function<List<Object>, Object> encode = layers(session, table, TextLayoutTable.BOSS_LAYERS, lead);
+        BossBarState state = bars.computeIfAbsent(packet.getUuid(), ignored -> new BossBarState());
+        if (packet.getColor() != null) state.colour = packet.getColor().ordinal();
+        if (packet.getDivision() != null) state.overlay = packet.getDivision().ordinal();
+        String colour = state.colour < 0 || state.colour >= BOSS_BAR_COLOURS.size() ? "" : BOSS_BAR_COLOURS.get(state.colour);
+        String lead = table.bossBarHidden(colour) ? LayerEncoding.HIDDEN_BAR
+                : table.bossBarStyled(colour) ? LayerEncoding.styledBar(state.colour, Math.min(state.overlay, 9)) : "";
+        // By name: Geyser relocates Adventure on some platforms, so getTitle() cannot be linked directly.
+        Object title = TextSurfaces.get(packet, "Title");
+        if (title == null) {
+            // A style change: Geyser updates only the colour, so the marker in the name is sent again.
+            if (!lead.equals(state.marker) && state.title != null) {
+                followUps.get().add(TextSurfaces.with(
+                        packet.withAction(org.geysermc.mcprotocollib.protocol.data.game.BossBarAction.UPDATE_TITLE),
+                        "Title", state.title));
+            }
+            return packet;
+        }
+        state.title = title;
+        state.marker = lead;
+        // Layered names start with their own marker: the HUD shows other names whole, however long.
+        java.util.function.Function<List<Object>, Object> encode = layers(session, table, TextLayoutTable.BOSS_LAYERS,
+                LayerEncoding.LAYERED + lead);
         boolean[] layered = {false};
         java.util.function.Function<List<Object>, Object> tracked = encode == null ? null : components -> {
             Object encoded = encode.apply(components);
@@ -168,7 +200,7 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
         TextSurfaces.Options options = new TextSurfaces.Options(translations(session), false, tracked, 1, true);
         ClientboundBossEventPacket laidOut = TextSurfaces.rewrite(packet, table, options, TextLayout.Mode.CENTERED, "Title");
         // Layered titles carry the marker in their first block; others get it in front.
-        return !hidden || layered[0] ? laidOut : TextSurfaces.prepend(laidOut, "Title", LayerEncoding.HIDDEN_BAR);
+        return lead.isEmpty() || layered[0] ? laidOut : TextSurfaces.prepend(laidOut, "Title", lead);
     }
 
     /** Java's boss bar colour names in protocol order. */
@@ -191,13 +223,14 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
         if (current == null || !current.layers(surface)) return null;
         boolean bossBar = TextLayoutTable.BOSS_LAYERS.equals(surface);
         int block = LayerEncoding.BLOCK_BYTES.get(surface);
+        int first = LayerEncoding.FIRST_BLOCK_BYTES.get(surface);
         int characters = bossBar ? LayerEncoding.BOSS_CHARACTERS : Integer.MAX_VALUE;
         String locale = session.locale() == null ? "en_us" : session.locale();
         return components -> {
             try {
                 List<String> legacy = new ArrayList<>();
                 for (Object layer : components) legacy.add(GeyserMessages.convert(layer, locale, false));
-                String encoded = LayerEncoding.encode(legacy, block, characters, lead);
+                String encoded = LayerEncoding.encode(legacy, first, block, characters, lead);
                 // Geyser escapes percent signs in boss bar names, which would move the block boundaries.
                 if (encoded == null || bossBar && encoded.indexOf('%') >= 0) return null;
                 Object candidate = AdventureTextLayout.plainText(components.getFirst(), encoded);
@@ -292,6 +325,13 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
                 }
             }
             ((PacketTranslator<P>) original).translate(session, forwarded);
+            List<Packet> pending = followUps.get();
+            if (pending.isEmpty()) return;
+            List<Packet> next = List.copyOf(pending);
+            pending.clear();
+            for (Packet followUp : next) {
+                if (type.isInstance(followUp)) translate(session, type.cast(followUp));
+            }
         }
 
         @Override public boolean shouldExecuteInEventLoop() {

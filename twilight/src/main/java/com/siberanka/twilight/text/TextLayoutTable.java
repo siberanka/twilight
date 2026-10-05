@@ -51,6 +51,7 @@ public final class TextLayoutTable {
     private final java.util.Set<String> layerSurfaces;
     private Map<String, Integer> nativeFonts = Map.of();
     private java.util.Set<String> hiddenBossBars = java.util.Set.of();
+    private java.util.Set<String> styledBossBars = java.util.Set.of();
 
     public TextLayoutTable(Map<String, Map<Integer, Entry>> fonts, int spacerFirst, int spacerCount) {
         this(fonts, spacerFirst, spacerCount, ORIGIN);
@@ -102,13 +103,15 @@ public final class TextLayoutTable {
     /** Same metrics for a pack whose chest title label does (or does not) start left of Java's origin. */
     public TextLayoutTable withContainerOrigin(int origin) {
         return new TextLayoutTable(fonts, spacerFirst, spacerCount, origin, textAdvances, shades, layerSurfaces)
-                .withNativeFonts(nativeFonts).withHiddenBossBars(hiddenBossBars);
+                .withNativeFonts(nativeFonts).withHiddenBossBars(hiddenBossBars)
+                .withStyledBossBars(styledBossBars);
     }
 
     /** Same metrics for a pack whose UI shows layered text on these surfaces. */
     public TextLayoutTable withLayers(java.util.Set<String> surfaces) {
         return new TextLayoutTable(fonts, spacerFirst, spacerCount, containerOrigin, textAdvances, shades, surfaces)
-                .withNativeFonts(nativeFonts).withHiddenBossBars(hiddenBossBars);
+                .withNativeFonts(nativeFonts).withHiddenBossBars(hiddenBossBars)
+                .withStyledBossBars(styledBossBars);
     }
 
     /**
@@ -122,6 +125,7 @@ public final class TextLayoutTable {
                 shades, layerSurfaces);
         copy.nativeFonts = Collections.unmodifiableMap(new TreeMap<>(fonts));
         copy.hiddenBossBars = hiddenBossBars;
+        copy.styledBossBars = styledBossBars;
         return copy;
     }
 
@@ -130,6 +134,18 @@ public final class TextLayoutTable {
         TextLayoutTable copy = withNativeFonts(nativeFonts);
         copy.hiddenBossBars = java.util.Set.copyOf(colours);
         return copy;
+    }
+
+    /** Same metrics plus the boss bar colours the generated HUD draws with the packs' sprites. */
+    public TextLayoutTable withStyledBossBars(java.util.Set<String> colours) {
+        TextLayoutTable copy = withNativeFonts(nativeFonts);
+        copy.styledBossBars = java.util.Set.copyOf(colours);
+        return copy;
+    }
+
+    /** Whether the generated HUD draws boss bars of this colour (lower-case Java name) with the packs' sprites. */
+    public boolean bossBarStyled(String colour) {
+        return styledBossBars.contains(colour);
     }
 
     /** Whether Java draws boss bars of this colour (lower-case Java name) invisibly. */
@@ -151,6 +167,8 @@ public final class TextLayoutTable {
     public static final String ACTIONBAR_LAYERS = "actionbar";
     /** Boss bar names of the generated HUD. */
     public static final String BOSS_LAYERS = "boss";
+    /** Version of the layered UI contract; 2 adds {@link LayerEncoding#LAYERED} boss names. */
+    public static final int LAYER_FORMAT = 2;
 
     /** Whether the pack's UI shows layered text on a surface. */
     public boolean layers(String surface) {
@@ -233,6 +251,11 @@ public final class TextLayoutTable {
             new java.util.TreeSet<>(hiddenBossBars).forEach(hidden::add);
             root.add("hidden_boss_bars", hidden);
         }
+        if (!styledBossBars.isEmpty()) {
+            JsonArray styled = new JsonArray();
+            new java.util.TreeSet<>(styledBossBars).forEach(styled::add);
+            root.add("styled_boss_bars", styled);
+        }
         if (!nativeFonts.isEmpty()) {
             JsonObject native_ = new JsonObject();
             nativeFonts.forEach(native_::addProperty);
@@ -244,6 +267,7 @@ public final class TextLayoutTable {
             new java.util.TreeSet<>(layerSurfaces).forEach(surface -> layers.addProperty(surface,
                     LayerEncoding.BLOCK_BYTES.get(surface)));
             root.add("layers", layers);
+            root.addProperty("layer_format", LAYER_FORMAT);
         }
         if (!shades.isEmpty()) {
             JsonObject shaded = new JsonObject();
@@ -293,6 +317,9 @@ public final class TextLayoutTable {
                 Integer block = LayerEncoding.BLOCK_BYTES.get(entry.getKey());
                 if (block != null && entry.getValue().getAsInt() == block) layerSurfaces.add(entry.getKey());
             }
+            // Boss names carry the layered marker since format 2; an older pack's HUD would cut them.
+            int format = root.has("layer_format") ? root.get("layer_format").getAsInt() : 1;
+            if (format < LAYER_FORMAT) layerSurfaces.remove(BOSS_LAYERS);
         }
         Map<String, Integer> nativeFonts = new LinkedHashMap<>();
         if (root.has("native_fonts")) {
@@ -300,13 +327,13 @@ public final class TextLayoutTable {
         }
         return new TextLayoutTable(fonts, root.get("spacer_first").getAsInt(), root.get("spacer_count").getAsInt(),
                 origin, text, shades, layerSurfaces).withNativeFonts(nativeFonts)
-                .withHiddenBossBars(hiddenBossBars(root));
+                .withHiddenBossBars(colours(root, "hidden_boss_bars")).withStyledBossBars(colours(root, "styled_boss_bars"));
     }
 
-    private static java.util.Set<String> hiddenBossBars(JsonObject root) {
-        java.util.Set<String> hidden = new java.util.HashSet<>();
-        if (root.has("hidden_boss_bars")) root.getAsJsonArray("hidden_boss_bars").forEach(colour -> hidden.add(colour.getAsString()));
-        return hidden;
+    private static java.util.Set<String> colours(JsonObject root, String key) {
+        java.util.Set<String> colours = new java.util.HashSet<>();
+        if (root.has(key)) root.getAsJsonArray(key).forEach(colour -> colours.add(colour.getAsString()));
+        return colours;
     }
 
 }

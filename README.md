@@ -17,11 +17,13 @@ HUDs. These are acceptance obligations, not a count of passing tests.
 
 ## Visual acceptance tests
 
-Every capture below is original art or a vanilla scene from the isolated test
-server, taken on 4 October 2026 with the 1.0.0-pre.8 build on Java 26.2 and Bedrock
-1.26.5203.0 (Geyser 2.11.3). The animations alternate the Java and the Bedrock frame
-of the same menu: nothing moves because the art lands on the same pixels. Details,
-measurements and hashes are in [stacked images, nameplates and exact biomes](docs/LAYERS_BIOMES_2026-10-04.md).
+Every capture below is original art, a vanilla scene or CustomNameplates' own default art
+(Apache-2.0) from the isolated test server, on Java 26.2 and Bedrock 1.26.5203.0 (Geyser 2.11.3).
+The menu animations alternate the Java and the Bedrock frame of the same menu: nothing moves
+because the art lands on the same pixels. Details, measurements and hashes are in
+[stacked images, nameplates and exact biomes](docs/LAYERS_BIOMES_2026-10-04.md) (4 October, 1.0.0-pre.8)
+and [custom boss bars, CustomNameplates' boss bar and an animated model](docs/BOSSBARS_MODELS_2026-10-05.md)
+(5 October, 1.0.0-pre.10).
 
 <table>
   <tr>
@@ -52,6 +54,26 @@ measurements and hashes are in [stacked images, nameplates and exact biomes](doc
     <td><img src="docs/images/acceptance/2026-10-04-layers/biome.png" alt="Java and Bedrock side by side: grass of a custom biome in the same colour" width="100%"></td>
     <td><img src="docs/images/acceptance/2026-10-04-layers/biome-live.gif" alt="Animation: a grid of 25 custom biomes on Bedrock changing colours after each fillbiome" width="100%"></td>
   </tr>
+  <tr>
+    <th colspan="2">Boss bars with redrawn sprites: framed health bar, notched mana bar, vanilla bar</th>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/acceptance/2026-10-05-showcase/bossbars.png" alt="Java and Bedrock side by side: a red framed health bar, a purple mana bar with ten gold notches and a vanilla green bar" width="100%"></td>
+  </tr>
+  <tr>
+    <th colspan="2">CustomNameplates' default boss bar: backgrounds, icons and shifted text (Java above, Bedrock below)</th>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/acceptance/2026-10-05-showcase/customnameplates-bossbar.png" alt="Java above, Bedrock below: three dark backgrounds with icons and the time, location and weather" width="100%"></td>
+  </tr>
+  <tr>
+    <th>Animated BetterModel mob: walk</th>
+    <th>Animated BetterModel mob: idle</th>
+  </tr>
+  <tr>
+    <td><img src="docs/images/acceptance/2026-10-05-showcase/golem-walk.gif" alt="Java and Bedrock side by side: an original golem model in a walk cycle" width="100%"></td>
+    <td><img src="docs/images/acceptance/2026-10-05-showcase/golem-idle.gif" alt="Java and Bedrock side by side: the golem bobbing, turning its head and swaying its antenna" width="100%"></td>
+  </tr>
 </table>
 
 Further side-by-side menus:
@@ -65,7 +87,7 @@ Further side-by-side menus:
 styles land at offset 0, 0 in GUI units. Complete strict builds of seven production
 servers passed with the default configuration. The [UI campaign](docs/UI_CAMPAIGN_2026-10-04.md)
 covers 104 real menus of two servers (measurements only). The locally built
-[1.0.0-pre.9 JARs and checksums](artifacts/) accompany the source. Full visual parity
+[1.0.0-pre.10 JARs and checksums](artifacts/) accompany the source. Full visual parity
 is not established; known differences are listed in the report.
 
 Older reports keep their measurements:
@@ -221,16 +243,19 @@ yükümlülükleridir.
 
 #### Görsel kabul testleri
 
-Yukarıdaki her görüntü özgün görsel veya yalıtılmış test sunucusundan vanilla bir sahnedir; 4 Ekim 2026'da
-1.0.0-pre.8 derlemesiyle Java 26.2 ve Bedrock 1.26.5203.0 (Geyser 2.11.3) üzerinde çekildi. Animasyonlar
-aynı menünün Java ve Bedrock karesini dönüşümlü gösterir: görsel aynı piksellere oturduğu için hiçbir şey
-kımıldamaz. Ayrıntılar, ölçümler ve karmalar [üst üste görseller, ad etiketleri ve birebir biyomlar](docs/LAYERS_BIOMES_2026-10-04.md)
-belgesindedir.
+Yukarıdaki her görüntü özgün görsel, vanilla bir sahne veya CustomNameplates'in kendi varsayılan görselleridir
+(Apache-2.0); yalıtılmış test sunucusunda Java 26.2 ve Bedrock 1.26.5203.0 (Geyser 2.11.3) üzerinde çekildi.
+Menü animasyonları aynı menünün Java ve Bedrock karesini dönüşümlü gösterir: görsel aynı piksellere oturduğu
+için hiçbir şey kımıldamaz. Ayrıntılar, ölçümler ve karmalar [üst üste görseller, ad etiketleri ve birebir
+biyomlar](docs/LAYERS_BIOMES_2026-10-04.md) (4 Ekim, 1.0.0-pre.8) ve [özel boss çubukları, CustomNameplates boss
+çubuğu ve animasyonlu bir model](docs/BOSSBARS_MODELS_2026-10-05.md) (5 Ekim, 1.0.0-pre.10) belgelerindedir.
 
 Görüntüler: üst üste görseller (panel, afiş, rozet ve yazı), yuvaların üzerinde yarı saydam vurgu, görsellerin
 üzerine çizilen boss çubuğu ve aksiyon çubuğu yazısı, ad etiketi (adlı bir köylüye binen yazı görüntüsü;
 aracın kendi adı Java'daki gibi gizli), birebir renkleriyle özel datapack biyomu ve yeniden katılmadan
-Bedrock'a ulaşan biyom değişiklikleri.
+Bedrock'a ulaşan biyom değişiklikleri. Yeni görüntüler: sprite'ları yeniden çizilmiş boss çubukları (çerçeveli can çubuğu, çentikli mana
+çubuğu, vanilla çubuk), CustomNameplates'in varsayılan boss çubuğu (arka planlar, simgeler ve kaydırılmış yazı)
+ve yürüme ile bekleme animasyonlarıyla özgün bir BetterModel mob modeli.
 
 Diğer yan yana menüler: [katmanlı başlık](docs/images/acceptance/2026-10-04-layers/menus/layered-bold.png),
 [renksiz başlık](docs/images/acceptance/2026-10-04-layers/menus/header-uncoloured.png),
@@ -241,7 +266,7 @@ Diğer yan yana menüler: [katmanlı başlık](docs/images/acceptance/2026-10-04
 [kalın yazı](docs/images/acceptance/2026-10-04-layers/menus/bold-text.png). Dokuz stilin hepsi arayüz
 biriminde 0, 0 kaymasına oturuyor. Yedi üretim sunucusunun tam katı derlemeleri varsayılan yapılandırmayla
 geçti. [Arayüz kampanyası](docs/UI_CAMPAIGN_2026-10-04.md) iki sunucunun 104 gerçek menüsünü kapsar
-(yalnızca ölçüm). Yerelde derlenen [1.0.0-pre.9 JAR'ları ve sağlama toplamları](artifacts/) kaynakla
+(yalnızca ölçüm). Yerelde derlenen [1.0.0-pre.10 JAR'ları ve sağlama toplamları](artifacts/) kaynakla
 birlikte gelir. Tam görsel eşdeğerlik kanıtlanmadı; bilinen farklar raporda listelenir.
 
 Eski raporlar ölçümlerini korur: [gerçek içerik](docs/REAL_CONTENT_REVIEW.md),

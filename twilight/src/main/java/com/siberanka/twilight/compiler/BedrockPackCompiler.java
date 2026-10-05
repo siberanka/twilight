@@ -247,11 +247,21 @@ public final class BedrockPackCompiler {
                 layerSurfaces.add(TextLayoutTable.BOSS_LAYERS);
             }
         }
+        // Boss bars: colours Java draws transparent are hidden, colours with redrawn sprites keep them.
+        java.util.Set<String> styledBars = java.util.Set.of();
+        java.util.Set<String> barSprites = java.util.Set.of();
+        if (fonts.layout() != null && layerSurfaces.contains(TextLayoutTable.BOSS_LAYERS)) {
+            styledBars = BossBars.styled(resources);
+            barSprites = BossBars.writeSprites(resources, vanillaAssets, styledBars, packFiles);
+            styledBars = BossBars.drawn(styledBars, barSprites);
+        }
         if (fonts.layout() != null) {
             TextLayoutTable table = fonts.layout();
             // Bedrock's own chest UI keeps its title label at the left edge: no origin to reach.
             if (!config.javaContainerLayout()) table = table.withContainerOrigin(0);
-            if (layerSurfaces.contains(TextLayoutTable.BOSS_LAYERS)) table = table.withHiddenBossBars(BossBars.hidden(resources));
+            if (layerSurfaces.contains(TextLayoutTable.BOSS_LAYERS)) {
+                table = table.withHiddenBossBars(BossBars.hidden(resources)).withStyledBossBars(styledBars);
+            }
             packFiles.put(TextLayoutTable.PATH, table.withLayers(layerSurfaces).toJson().toString()
                     .getBytes(StandardCharsets.UTF_8));
         }
@@ -261,7 +271,7 @@ public final class BedrockPackCompiler {
             packFiles.put(JavaContainerUi.COMMON_PATH, jsonBytes(JavaContainerUi.commonScreen()));
         }
         if (layerSurfaces.contains(TextLayoutTable.BOSS_LAYERS)) {
-            packFiles.put(JavaHudUi.PATH, jsonBytes(JavaHudUi.hudScreen()));
+            packFiles.put(JavaHudUi.PATH, jsonBytes(JavaHudUi.hudScreen(styledBars, barSprites)));
             packFiles.put(JavaHudUi.CLEAR_TEXTURE + ".png", TextureSet.png(
                     new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)));
         }

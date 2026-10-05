@@ -184,11 +184,18 @@ public final class LayeredTextLayout {
         }
 
         void moveTo(double target) {
-            moveTo(target, -1);
+            moveTo(target, -1, true);
         }
 
-        /** @param segment run that takes the spacers: the next character's, unless it is bold (-1: unstyled) */
         void moveTo(double target, int segment) {
+            moveTo(target, segment, true);
+        }
+
+        /**
+         * @param segment run that takes the spacers: the next character's, unless it is bold (-1: unstyled)
+         * @param spaces  whether 4 and 8 unit moves may be spaces (not once the byte length is final)
+         */
+        void moveTo(double target, int segment, boolean spaces) {
             int units = (int) Math.rint(target - pen);
             if (units == 1) {
                 Run run = runs.get(widenRun);
@@ -198,7 +205,9 @@ public final class LayeredTextLayout {
                 runs.set(widenRun, new Run(run.segment(), text.toString()));
                 pen += 1;
             } else if (units >= table.minimumSpacer()) {
-                String spacers = spacers(units);
+                // Bedrock's space advances four units like Java's: one byte each instead of a three-byte spacer
+                // (boss bar names are limited to 256 characters, measured 4 October 2026).
+                String spacers = spaces && (units == 4 || units == 8) ? " ".repeat(units / 4) : spacers(units);
                 append(segment, spacers);
                 bytes += utf8(spacers);
                 pen += units;
@@ -306,7 +315,7 @@ public final class LayeredTextLayout {
             if (width >= 0) {
                 double end = width - 4 * spaces;
                 if (!layer.reachable(end)) return null;
-                layer.moveTo(end);
+                layer.moveTo(end, -1, false);
             }
             if (spaces > 0) {
                 layer.append(-1, " ".repeat(spaces));

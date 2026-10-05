@@ -105,6 +105,22 @@ class TextSurfaceLayoutTest {
     }
 
     @Test
+    void namedFontSpacesStaySpacesEvenWhenBedrockIsAhead() {
+        // CustomNameplates' shift fonts define their own four-unit space; text drawn back over an image keeps it.
+        TextLayoutTable table = new TextLayoutTable(Map.of(
+                TextLayoutTable.DEFAULT_FONT, TABLE.fonts().get(TextLayoutTable.DEFAULT_FONT),
+                "demo:shift", Map.of((int) ' ', TextLayoutTable.Entry.advanceOnly(4))),
+                SPACER_FIRST, 32, TextLayoutTable.ORIGIN, letters());
+        TextLayout.Result plain = TextLayout.layout(table, List.of(new TextLayout.Segment("Ab Cd", "demo:shift")),
+                TextLayout.Mode.LEFT);
+        assertEquals("Ab Cd", String.join("", plain.texts()));
+        TextLayout.Result back = TextLayout.layout(table, List.of(new TextLayout.Segment("", null),
+                new TextLayout.Segment("Ab Cd", "demo:shift")), TextLayout.Mode.LEFT);
+        assertTrue(String.join("", back.texts()).endsWith("Ab Cd"), "words keep their space");
+        assertTrue(back.approximations() > 0, "the backwards move is still reported");
+    }
+
+    @Test
     void legacyFormattingCodesTakeNoSpace() {
         // Pack translations carry legacy codes ("\u00a7f" before an image); both clients draw them with no advance.
         String laidOut = TextLayout.layout(TABLE, "\u00a7f\uE002\uE011\u00a7cH", TextLayout.Mode.LEFT);

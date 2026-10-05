@@ -1,4 +1,4 @@
-# Twilight 1.0.0-pre.9 prerelease build
+# Twilight 1.0.0-pre.10 prerelease build
 
 > Türkçe: [aşağıda](#türkçe)
 
@@ -8,7 +8,7 @@
 
 Built locally by siberanka using Java 25.0.2 and Gradle 9.6.0, with
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`.
-191 tests across 36 suites passed. No hosted CI was used.
+200 tests across 37 suites passed. No hosted CI was used.
 
 The corresponding source is in this commit under `twilight/`, `twilight-proxy/` and `protocol/`, with build files
 at the repository root. Licensed under [LGPL-3.0-or-later](../LICENSE.LESSER);
@@ -16,7 +16,10 @@ the accompanying [GPL text](../LICENSE) is also provided.
 
 Read the [release notes](../RELEASE_NOTES.md), the [wiki](../WIKI.md) and the
 [stacked images, nameplates and exact biomes](../docs/LAYERS_BIOMES_2026-10-04.md)
-report before deployment. This prerelease adds twilight-proxy, per-server Bedrock packs for
+report before deployment. This prerelease draws boss bars whose sprites a pack redraws with those
+sprites, shows long boss bar names whole and fits CustomNameplates' default boss bar into Bedrock's
+name limit ([boss bar and model review](../docs/BOSSBARS_MODELS_2026-10-05.md)). Since 1.0.0-pre.9,
+releases include twilight-proxy, per-server Bedrock packs for
 networks with Geyser on a Velocity or BungeeCord proxy
 ([proxy test](../docs/PROXY_2026-10-05.md)). It draws text and images that Java moves back
 over earlier ones (stacked menu art, CustomNameplates backgrounds) with one Bedrock
@@ -48,7 +51,7 @@ item, glyph and menu results.
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.9 ön sürüm derlemesi
+### Twilight 1.0.0-pre.10 ön sürüm derlemesi
 
 [Twilight.jar indir](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256) (arka uç sunucuları)
 
@@ -56,7 +59,7 @@ item, glyph and menu results.
 
 siberanka tarafından Java 25.0.2 ve Gradle 9.6.0 ile yerel olarak
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`
-komutuyla derlendi. 36 paketteki 191 test geçti. Barındırılan CI kullanılmadı.
+komutuyla derlendi. 37 paketteki 200 test geçti. Barındırılan CI kullanılmadı.
 
 İlgili kaynak kod bu commit içinde `twilight/`, `twilight-proxy/` ve `protocol/` altında, derleme
 dosyaları depo kökündedir. [LGPL-3.0-or-later](../LICENSE.LESSER) ile lisanslanmıştır;
@@ -64,8 +67,11 @@ eşlik eden [GPL metni](../LICENSE) de sağlanır.
 
 Dağıtımdan önce [sürüm notlarını](../RELEASE_NOTES.md), [wiki'yi](../WIKI.md) ve
 [üst üste görseller, isim plakaları ve birebir biyomlar](../docs/LAYERS_BIOMES_2026-10-04.md)
-raporunu okuyun. Bu ön sürüm, Geyser'ı Velocity veya BungeeCord proxy'si üzerinde çalıştıran ağlar
-için sunucuya özel Bedrock paketleri sunan twilight-proxy'yi ekler
+raporunu okuyun. Bu ön sürüm, sprite'larını bir paketin yeniden çizdiği boss çubuklarını bu sprite'larla
+çizer, uzun boss çubuğu adlarını tamamen gösterir ve CustomNameplates'in varsayılan boss çubuğunu Bedrock'un ad
+sınırına sığdırır ([boss çubuğu ve model incelemesi](../docs/BOSSBARS_MODELS_2026-10-05.md)). 1.0.0-pre.9'dan
+beri sürümler, Geyser'ı Velocity veya BungeeCord proxy'si üzerinde çalıştıran ağlar için sunucuya özel Bedrock
+paketleri sunan twilight-proxy'yi içerir
 ([proxy testi](../docs/PROXY_2026-10-05.md)). Java'nın önceki öğelerin üzerine geri çizdiği yazı ve
 görselleri (üst üste menü görselleri, CustomNameplates arka planları) katman başına bir Bedrock
 etiketiyle çizer, özel ve RealisticSeasons biyomlarını birebir renkleriyle gösterir, isim

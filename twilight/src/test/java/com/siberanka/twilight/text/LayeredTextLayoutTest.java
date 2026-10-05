@@ -51,6 +51,32 @@ class LayeredTextLayoutTest {
     }
 
     @Test
+    void fourAndEightUnitMovesUseSpacesToSaveBossBarCharacters() {
+        // Words on a background: their spaces stay one-byte spaces instead of three-byte spacers.
+        String line = " Ab Cd  Ef";
+        LayeredTextLayout.Result result = layout(line, TextLayout.Mode.CENTERED);
+        assertEquals(2, result.count());
+        assertExact(line, result, TextLayout.Mode.CENTERED);
+        String top = text(result.layers().get(1));
+        assertTrue(top.contains("Ab Cd"), "no spacer between the words: " + top);
+        // Whatever the widths, every layer stays a multiple of three bytes (the block padding needs it).
+        for (String other : List.of(" A", " Ab", " A b", "  Ab ",
+                "  Ab", " x y  z Cd")) {
+            for (TextLayout.Mode mode : List.of(TextLayout.Mode.CENTERED, TextLayout.Mode.CONTAINER)) {
+                LayeredTextLayout.Result layered = layout(other, mode);
+                if (layered != null) assertExact(other, layered, mode);
+            }
+        }
+        for (int letters = 0; letters <= 6; letters++) {
+            for (int spaces = 0; spaces <= 3; spaces++) {
+                String other = "" + " ".repeat(spaces) + "x".repeat(letters);
+                LayeredTextLayout.Result layered = layout(other, TextLayout.Mode.CENTERED);
+                if (layered != null) assertExact(other, layered, TextLayout.Mode.CENTERED);
+            }
+        }
+    }
+
+    @Test
     void severalBackgroundsShareTwoLayers() {
         // A CustomNameplates boss bar: three backgrounds, each with text drawn back over it, then a shift past it.
         String line = "\ue020\ue001 Ab \ue005\ue020\ue001 Cd \ue005\ue020\ue001 \u011fE";

@@ -1,6 +1,30 @@
-# Twilight 1.0.0-pre.9 - prerelease
+# Twilight 1.0.0-pre.10 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+This prerelease draws custom boss bars and CustomNameplates' boss bar like Java and adds captures of
+an animated mob model.
+
+- Boss bars whose sprites a pack redraws (health and mana bars, notched overlays) are drawn with
+  those sprites on Bedrock, in Java's order and cut at the bar's value; colour and style changes
+  arrive live. Untouched colours keep Bedrock's bar.
+- Long boss bar names are shown whole; before, a name longer than the first layer block was cut
+  into pieces.
+- CustomNameplates' default boss bar (three backgrounds with icons and shifted text) now fits
+  Bedrock's 256-character limit and lands at Java's position.
+- New report with captures and GIFs: [custom boss bars, CustomNameplates' boss bar and an animated
+  model](docs/BOSSBARS_MODELS_2026-10-05.md).
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 200 tests
+across 37 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.9 - prerelease
 
 This prerelease adds twilight-proxy: per-server Bedrock packs for networks that run Geyser on a
 Velocity or BungeeCord proxy.
@@ -24,8 +48,6 @@ across 36 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.8 - prerelease
 
@@ -259,7 +281,31 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.9 - ön sürüm
+### Twilight 1.0.0-pre.10 - ön sürüm
+
+Bu ön sürüm özel boss çubuklarını ve CustomNameplates boss çubuğunu Java gibi çizer ve animasyonlu bir mob
+modelinin görüntülerini ekler.
+
+- Sprite'larını bir paketin yeniden çizdiği boss çubukları (can ve mana çubukları, çentikli kaplamalar)
+  Bedrock'ta bu sprite'larla, Java'nın sırasıyla ve çubuğun değerinde kesilerek çiziliyor; renk ve stil
+  değişiklikleri canlı ulaşıyor. Dokunulmayan renkler Bedrock'un çubuğunu korur.
+- Uzun boss çubuğu adları tamamen gösteriliyor; önceden ilk katman bloğundan uzun bir ad parçalara
+  bölünüyordu.
+- CustomNameplates'in varsayılan boss çubuğu (simgeli ve kaydırılmış yazılı üç arka plan) artık Bedrock'un
+  256 karakter sınırına sığıyor ve Java'nın konumuna oturuyor.
+- Görüntüler ve GIF'lerle yeni rapor: [özel boss çubukları, CustomNameplates boss çubuğu ve animasyonlu bir
+  model](docs/BOSSBARS_MODELS_2026-10-05.md).
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 37 paketteki 200
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.9 - ön sürüm
 
 Bu ön sürüm twilight-proxy'yi ekler: Geyser'ı bir Velocity veya BungeeCord proxy'sinde çalıştıran ağlar için
 sunucu başına Bedrock paketleri.
@@ -284,8 +330,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.8 - ön sürüm
 

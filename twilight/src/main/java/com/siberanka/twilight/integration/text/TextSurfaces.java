@@ -158,6 +158,17 @@ final class TextSurfaces {
         return (P) accessor.wither.invoke(packet, AdventureTextLayout.prepend(value, text));
     }
 
+    /** One property of the packet by name (Geyser may relocate the property's type). */
+    static Object get(Object packet, String property) throws ReflectiveOperationException {
+        return accessor(packet.getClass(), property).getter.invoke(packet);
+    }
+
+    /** The packet with one property replaced by name (Geyser may relocate the property's type). */
+    @SuppressWarnings("unchecked")
+    static <P> P with(P packet, String property, Object value) throws ReflectiveOperationException {
+        return (P) accessor(packet.getClass(), property).wither.invoke(packet, value);
+    }
+
     @SuppressWarnings("unchecked")
     static <P> P originOnly(P packet, TextLayoutTable table, String property) throws ReflectiveOperationException {
         Accessor accessor = accessor(packet.getClass(), property);

@@ -59,9 +59,15 @@ final class LayerLabels {
 
     /** Text of block {@code layer} (block 0 is the top layer). */
     static String blockExpression(Source source, int layer, int blockBytes) {
+        return blockExpression(source, layer, blockBytes, blockBytes);
+    }
+
+    /** @param firstBytes size of block 0, see {@link LayerEncoding#FIRST_BLOCK_BYTES} */
+    static String blockExpression(Source source, int layer, int firstBytes, int blockBytes) {
         String text = source.operand();
-        String rest = layer == 0 ? text : "(" + text + " - ('%." + layer * blockBytes + "s' * " + text + "))";
-        return source.close("('%." + blockBytes + "s' * " + rest + ")");
+        int start = LayerEncoding.blockStart(layer, firstBytes, blockBytes);
+        String rest = layer == 0 ? text : "(" + text + " - ('%." + start + "s' * " + text + "))";
+        return source.close("('%." + (layer == 0 ? firstBytes : blockBytes) + "s' * " + rest + ")");
     }
 
     /**
@@ -69,11 +75,15 @@ final class LayerLabels {
      * vanilla label shows it unchanged and the further labels stay empty; no visibility switch is needed.
      */
     static void showBlock(JsonObject label, Source source, int layer, int blockBytes) {
+        showBlock(label, source, layer, blockBytes, blockBytes);
+    }
+
+    static void showBlock(JsonObject label, Source source, int layer, int firstBytes, int blockBytes) {
         label.addProperty("text", LAYER_PROPERTY);
         label.addProperty("localize", false);
         label.addProperty("line_padding", LINE_PADDING);
         JsonArray bindings = baseBindings(label, source);
-        bindings.add(view(blockExpression(source, layer, blockBytes), LAYER_PROPERTY));
+        bindings.add(view(blockExpression(source, layer, firstBytes, blockBytes), LAYER_PROPERTY));
         label.add("bindings", bindings);
     }
 
@@ -84,11 +94,15 @@ final class LayerLabels {
      * @return controls in drawing order: the last block (bottom layer) first
      */
     static JsonArray layerLabels(String prefix, JsonObject template, Source source, int blockBytes) {
+        return layerLabels(prefix, template, source, blockBytes, blockBytes);
+    }
+
+    static JsonArray layerLabels(String prefix, JsonObject template, Source source, int firstBytes, int blockBytes) {
         JsonArray controls = new JsonArray();
         for (int layer = LayeredTextLayout.MAX_LAYERS - 1; layer >= 1; layer--) {
             JsonObject label = template.deepCopy();
             label.addProperty("type", "label");
-            showBlock(label, source, layer, blockBytes);
+            showBlock(label, source, layer, firstBytes, blockBytes);
             JsonObject control = new JsonObject();
             control.add(prefix + "_layer_" + layer, label);
             controls.add(control);

@@ -4,6 +4,20 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.10 - 2026-10-05
+
+- Draw boss bars whose sprites a pack redraws (`boss_bar/<colour>_background`, `_progress` and the
+  `notched_*` overlays) with those sprites on Bedrock, in Java's order and cut at the bar's value;
+  colour and style changes are sent again live. Untouched colours keep Bedrock's bar.
+- Show long boss bar names whole: names that are not layered were cut into the layer labels when
+  they were longer than the first block. Layered names now carry their own marker.
+- Fit CustomNameplates' default boss bar (three backgrounds with text) into Bedrock's 256 characters:
+  a larger first block for the top layer and spaces instead of spacer glyphs for four- and eight-unit
+  moves. Named-font spaces (shift fonts) stay spaces when the line falls back to one label.
+- Add the [boss bar and model review](docs/BOSSBARS_MODELS_2026-10-05.md) with new captures: redrawn
+  boss bars, CustomNameplates' default boss bar and an original BetterModel mob in walk and idle
+  animations (GIFs). 200 tests pass (193 Twilight, 7 proxy).
+
 ## 1.0.0-pre.9 - 2026-10-05
 
 - Add twilight-proxy (`TwilightProxy.jar`) for Velocity and BungeeCord: every backend server gets
@@ -274,6 +288,22 @@ All notable changes in Twilight are documented here.
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-pre.10 - 2026-10-05
+
+- Sprite'larını bir paketin yeniden çizdiği boss çubukları (`boss_bar/<renk>_background`, `_progress` ve
+  `notched_*` kaplamaları) Bedrock'ta bu sprite'larla, Java'nın sırasıyla ve çubuğun değerinde kesilerek
+  çiziliyor; renk ve stil değişiklikleri canlı olarak yeniden gönderiliyor. Dokunulmayan renkler Bedrock'un
+  çubuğunu korur.
+- Uzun boss çubuğu adları tamamen gösteriliyor: katmanlı olmayan adlar ilk bloktan uzunsa katman
+  etiketlerine bölünüyordu. Katmanlı adlar artık kendi işaretlerini taşıyor.
+- CustomNameplates'in varsayılan boss çubuğu (yazılı üç arka plan) Bedrock'un 256 karakterine sığdırıldı:
+  üst katman için daha büyük bir ilk blok ve dört ile sekiz birimlik kaydırmalarda aralık glifleri yerine
+  boşluklar. Satır tek etikete geri düştüğünde adlandırılmış font boşlukları (kaydırma fontları) boşluk
+  olarak kalıyor.
+- Yeni görüntülerle [boss çubuğu ve model incelemesi](docs/BOSSBARS_MODELS_2026-10-05.md) eklendi: yeniden
+  çizilmiş boss çubukları, CustomNameplates'in varsayılan boss çubuğu ve yürüme ile bekleme animasyonlarında
+  özgün bir BetterModel mobu (GIF'ler). 200 test geçiyor (193 Twilight, 7 proxy).
 
 #### 1.0.0-pre.9 - 2026-10-05
 

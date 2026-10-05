@@ -50,6 +50,31 @@ class LayerEncodingTest {
     }
 
     @Test
+    void bossNamesHaveALargerFirstBlockForTextOverBackgrounds() {
+        int first = LayerEncoding.FIRST_BLOCK_BYTES.get(TextLayoutTable.BOSS_LAYERS);
+        int block = LayerEncoding.BLOCK_BYTES.get(TextLayoutTable.BOSS_LAYERS);
+        assertTrue(first > block);
+        // CustomNameplates' default boss bar: three backgrounds, three texts over them (measured 5 October 2026).
+        String text = "Time: 0:00 PM" + codes("@f81a") + "Your Location: " + codes("@7") + "Unknown world" + codes("@r")
+                + " (-104,200,0)" + codes("@f81a") + "Weather: Sunny ";
+        String backgrounds = codes("@f70c@f81f@f81c@f711@f801@f70f@f70d").repeat(3);
+        List<String> layers = List.of(backgrounds, codes("@f803@f702@f805@f60e@f70e@f808@f700"), codes("@f804@f738@f73a"), text);
+        String lead = LayerEncoding.LAYERED + LayerEncoding.HIDDEN_BAR;
+        String encoded = LayerEncoding.encode(layers, first, block, LayerEncoding.BOSS_CHARACTERS, lead);
+        assertNotNull(encoded, "fits Bedrock's 256 characters");
+        assertNull(LayerEncoding.encode(layers, block, block, LayerEncoding.BOSS_CHARACTERS, lead), "did not fit uniform blocks");
+        String sent = geyser(LayerEncoding.CLIENT_PREFIX + encoded);
+        assertEquals(LayerEncoding.CLIENT_PREFIX + encoded, sent);
+        byte[] all = sent.getBytes(StandardCharsets.UTF_8);
+        for (int index = 0; index < layers.size(); index++) {
+            int start = LayerEncoding.blockStart(index, first, block);
+            int size = index == 0 ? first : block;
+            String cut = new String(Arrays.copyOfRange(all, start, Math.min(all.length, start + size)), StandardCharsets.UTF_8);
+            assertTrue(cut.contains(layers.get(layers.size() - 1 - index)), "block " + index);
+        }
+    }
+
+    @Test
     void layersThatDoNotFitTheirBlockAreRejected() {
         assertNull(LayerEncoding.encode(List.of("x", codes("@e020").repeat(300)), BLOCK, Integer.MAX_VALUE), "top block too long");
         assertEquals("abc", LayerEncoding.encode(List.of("abc"), BLOCK, Integer.MAX_VALUE), "a single (shifted) layer is sent as it is");
@@ -74,6 +99,34 @@ class LayerEncodingTest {
             }
         }
         return out.toString();
+    }
+
+    @Test
+    void styledBossBarMarkersSurviveGeyserAndSelectExactlyOneColourAndOverlay() {
+        String hidden = LayerEncoding.CLIENT_PREFIX + LayerEncoding.HIDDEN_BAR;
+        String name = codes("@6Gold @lBoss");
+        for (int colour = 0; colour < 7; colour++) {
+            for (int overlay = 0; overlay < 5; overlay++) {
+                String marker = LayerEncoding.styledBar(colour, overlay);
+                String sent = geyser(LayerEncoding.CLIENT_PREFIX + marker + name);
+                assertEquals(LayerEncoding.CLIENT_PREFIX + marker + name, sent, "Geyser leaves the marker in place");
+                assertTrue(sent.startsWith(hidden), "the vanilla bar is hidden");
+                for (int other = 0; other < 7; other++) {
+                    String prefix = LayerEncoding.CLIENT_PREFIX + LayerEncoding.styledBarColour(other);
+                    assertEquals(other == colour, block(sent, 0, bytes(prefix)).equals(prefix), colour + "/" + other);
+                }
+                for (int other = 0; other < 5; other++) {
+                    String prefix = LayerEncoding.CLIENT_PREFIX + LayerEncoding.styledBar(colour, other);
+                    assertEquals(other == overlay, block(sent, 0, bytes(prefix)).equals(prefix), overlay + "/" + other);
+                }
+            }
+        }
+        // A hidden bar whose name starts with a colour or a reset never selects a styled colour.
+        String hiddenName = geyser(hidden + codes("@6Gold"));
+        for (int colour = 0; colour < 7; colour++) {
+            String prefix = LayerEncoding.CLIENT_PREFIX + LayerEncoding.styledBarColour(colour);
+            assertNotEquals(prefix, block(hiddenName, 0, bytes(prefix)));
+        }
     }
 
     @Test
