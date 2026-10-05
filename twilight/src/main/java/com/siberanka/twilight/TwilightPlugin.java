@@ -67,6 +67,7 @@ public final class TwilightPlugin extends JavaPlugin {
     private com.siberanka.twilight.integration.text.GeyserTextLayoutBridge textBridge;
     private com.siberanka.twilight.integration.world.GeyserBiomeBridge biomeBridge;
     private com.siberanka.twilight.integration.display.GeyserRiderNames riderNames;
+    private com.siberanka.twilight.integration.proxy.ProxyPackChannel proxyChannel;
     private com.siberanka.twilight.integration.text.GeyserLanguageBridge languageBridge;
 
     @Override
@@ -121,6 +122,16 @@ public final class TwilightPlugin extends JavaPlugin {
             }
         }
 
+        if (getConfig().getBoolean("proxy.share-pack", true)) {
+            try {
+                proxyChannel = com.siberanka.twilight.integration.proxy.ProxyPackChannel.start(this, scheduler::delayed,
+                        getDataFolder().toPath().resolve(com.siberanka.twilight.deploy.PackExport.PACK),
+                        getConfig().getString("proxy.secret", ""));
+            } catch (RuntimeException | LinkageError failure) {
+                getLogger().log(Level.WARNING, "twilight-proxy pack sharing is unavailable.", failure);
+            }
+        }
+
         TwilightCommand command = new TwilightCommand(this);
         var registered = getCommand("twilight");
         if (registered == null) throw new IllegalStateException("Twilight command is missing from plugin.yml");
@@ -147,6 +158,7 @@ public final class TwilightPlugin extends JavaPlugin {
             try { languageBridge.close(); }
             catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close translations", failure); }
         }
+        if (proxyChannel != null) proxyChannel.close();
         if (riderNames != null) {
             try { riderNames.close(); }
             catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close the rider name rule", failure); }
@@ -248,6 +260,7 @@ public final class TwilightPlugin extends JavaPlugin {
                 if (build != null) {
                     com.siberanka.twilight.deploy.PackExport.write(build.outputDirectory(), getDataFolder().toPath());
                     operationLog.info("export", getDataFolder().toPath().resolve(com.siberanka.twilight.deploy.PackExport.PACK));
+                    if (proxyChannel != null) proxyChannel.announceToAnyPlayer();
                     if (config.deployAfterBuild()) {
                         if (localGeyser()) deployed = deployment.deploy(build.outputDirectory());
                         else operationLog.info("deploy-skip", "no Geyser on this server; use the exported pack and mappings");

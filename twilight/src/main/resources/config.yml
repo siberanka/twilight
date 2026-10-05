@@ -101,3 +101,13 @@ world:
   # changed. Requires Geyser and the vanilla client cache
   # (generation.download-vanilla-assets); changes need a rebuild.
   bedrock-biome-matching: true
+
+proxy:
+  # Offer this server's Bedrock pack to twilight-proxy on a Velocity or BungeeCord
+  # proxy over signed plugin messages. Only active with a secret shared with the
+  # proxy; nothing is announced or answered without one.
+  share-pack: true
+  # 16+ characters, the same as 'secret' in twilight-proxy. Empty = Paper's
+  # Velocity forwarding secret or BungeeGuard's tokens, which the proxy already
+  # shares with this server. Takes effect on restart.
+  secret: ""

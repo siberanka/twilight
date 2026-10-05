@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "twilight-parent"
 include(":twilight")
+include(":twilight-proxy")

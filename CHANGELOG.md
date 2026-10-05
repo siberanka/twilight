@@ -2,6 +2,21 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.9 - 2026-10-05
+
+- Add twilight-proxy (`TwilightProxy.jar`) for Velocity and BungeeCord: every backend server gets
+  its own Bedrock pack through Geyser on the proxy, from Twilight on that backend (`auto`), a file
+  in `packs/` or a download link. Bedrock players who move to a server with another pack are
+  reconnected to load it and sent on. Tested on Velocity 4.2.0 and BungeeCord 26.1.
+- Share the exported pack with twilight-proxy over the `twilight:proxy` plugin-message channel:
+  HMAC-SHA256 signed with the secret the proxy already shares with its servers (Velocity
+  forwarding, BungeeGuard) or `proxy.secret`, with timestamps, single-use request nonces, one
+  bounded transfer at a time, and nothing announced without a secret.
+- Refuse to lay out text longer than 16384 characters or moves wider than 2^20 units (sent
+  unchanged instead), so crafted text cannot grow the layout without bound.
+- Add the [wiki](WIKI.md): installation, commands, every configuration key, files, pack entries,
+  API, protocol, security model and troubleshooting. 191 tests pass (184 Twilight, 7 proxy).
+
 ## 1.0.0-pre.8 - 2026-10-04
 
 - Draw text and images that Java moves back over earlier ones (stacked menu art,

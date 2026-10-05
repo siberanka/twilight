@@ -84,6 +84,7 @@ public final class LayeredTextLayout {
                                 int linesPerUnit, boolean shadows) {
         if (mode == TextLayout.Mode.LEFT) return null;
         if (mode == TextLayout.Mode.CONTAINER && table.containerOrigin() == 0) return null;
+        TextLayout.checkInput(segments);
         LayeredTextLayout layout = new LayeredTextLayout(table, linesPerUnit, shadows);
         if (!layout.measure(segments)) return null;
         if (mode == TextLayout.Mode.CONTAINER) {
@@ -317,6 +318,7 @@ public final class LayeredTextLayout {
     }
 
     private String spacers(int advance) {
+        if (advance > TextLayout.MAX_ADVANCE) throw new IllegalArgumentException("move wider than " + TextLayout.MAX_ADVANCE + " units");
         StringBuilder out = new StringBuilder();
         int maximum = table.maximumSpacer();
         while (advance > maximum) {

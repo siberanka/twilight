@@ -1,0 +1,37 @@
+# twilight-proxy: every backend server's Bedrock pack, sent by Geyser on this proxy.
+#
+# Bedrock loads resource packs once, when it connects. A Bedrock player gets the pack of
+# the server it joins; moving to a server with another pack reconnects the client to
+# Geyser (a Bedrock transfer) so it can load that pack, then sends it to that server.
+
+packs:
+  # Pack of servers that are not listed below.
+  default: auto
+  # Per server (the names in the proxy's server list):
+  #   auto        - the pack Twilight on that backend builds, sent over plugin messages
+  #   none        - no per-server pack
+  #   file.zip    - a .zip or .mcpack in plugins/twilight-proxy/packs/
+  #   https://... - a direct download link to a .zip or .mcpack (cached, refreshed)
+  server:
+    lobby: auto
+#   smp: https://example.com/packs/smp.mcpack
+#   survival: survival.zip
+
+# Reconnect Bedrock players when the next server needs another pack.
+transfer-on-switch: true
+# Address and port Bedrock players reconnect to; empty/0 = the ones they joined with.
+transfer-address: ""
+transfer-port: 0
+# Server whose pack a new Bedrock player loads; empty = the proxy's first server.
+initial-server: ""
+
+# Secret shared with Twilight on the backends (16+ characters, the same as proxy.secret
+# there). Empty = Velocity's forwarding secret (modern or BungeeGuard forwarding) or
+# BungeeGuard's token, which the backends already know. Without one, 'auto' is off.
+secret: ""
+
+# Limits for every pack, download and transfer.
+max-pack-size-mb: 256
+download-timeout-seconds: 60
+# Re-check download links for a new version (ETag); 0 = only at start and reload.
+url-refresh-minutes: 60

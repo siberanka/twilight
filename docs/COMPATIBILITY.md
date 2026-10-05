@@ -17,6 +17,19 @@ surface. Planned scenarios do not change the support statuses below.
 
 Java 21 is the minimum bytecode level. Local builds use Java 25.
 
+## Proxies (twilight-proxy)
+
+| Platform | Status |
+|---|---|
+| Velocity 4.2.0 with Geyser 2.11.3 | Tested live: `auto`, file and switching packs, modern forwarding secret |
+| BungeeCord 26.1 with Geyser 2.11.3 | Tested live: `auto`, file and switching packs, explicit secret |
+| Velocity 3.x, Waterfall, older BungeeCord | Uses only long-standing API (`order` subscriptions, `ServerConnectEvent` with a fallback for proxies without `Reason`); not tested live |
+| Download links | Implemented and unit-checked; not tested against a live host |
+
+Per-server packs need a reconnect when the pack changes, because Bedrock loads packs only when it
+connects. Twilight's runtime text, biome and name bridges need Geyser on the same server as Twilight;
+a proxy-only Geyser gets the packs but not those layers. See the [proxy test](PROXY_2026-10-05.md).
+
 ## Source discovery
 
 Every provider is read automatically (`sources.providers.<name>: auto`); `generated` limits a provider

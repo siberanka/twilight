@@ -112,7 +112,22 @@ public final class TextLayout {
         return layout(table, segments, Mode.CONTAINER);
     }
 
+    /**
+     * Longest text laid out (Java's own limits are far lower for player input) and widest move a
+     * line may need. Anything beyond is refused, so crafted text cannot make the layout or its
+     * spacer output grow without bound; callers then send the text unchanged.
+     */
+    public static final int MAX_INPUT_CHARS = 16_384;
+    static final int MAX_ADVANCE = 1 << 20;
+
+    static void checkInput(List<Segment> segments) {
+        long length = 0;
+        for (Segment segment : segments) if (segment.text() != null) length += segment.text().length();
+        if (length > MAX_INPUT_CHARS) throw new IllegalArgumentException("text is longer than " + MAX_INPUT_CHARS + " characters");
+    }
+
     public static Result layout(TextLayoutTable table, List<Segment> segments, Mode mode) {
+        checkInput(segments);
         // Without Twilight's chest UI the title label is Bedrock's own: nothing to align it with.
         if (mode == Mode.CONTAINER && table.containerOrigin() == 0) mode = Mode.LEFT;
         TextLayout layout = new TextLayout(table, mode);
@@ -328,6 +343,7 @@ public final class TextLayout {
     private String spacers(int advance) {
         StringBuilder out = new StringBuilder();
         if (advance <= 0) return "";
+        if (advance > MAX_ADVANCE) throw new IllegalArgumentException("move wider than " + MAX_ADVANCE + " units");
         int maximum = table.maximumSpacer();
         while (advance > maximum) {
             int step = advance - maximum >= table.minimumSpacer() ? maximum : maximum - table.minimumSpacer();

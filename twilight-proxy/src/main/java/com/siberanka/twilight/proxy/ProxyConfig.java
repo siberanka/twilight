@@ -1,0 +1,126 @@
+/*
+ * Copyright (c) 2026 siberanka.
+ * Licensed under the GNU LGPL v3.0 or later.
+ */
+package com.siberanka.twilight.proxy;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+/** twilight-proxy's settings, validated once when loaded. */
+record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, boolean transferOnSwitch,
+                   String transferAddress, int transferPort, String initialServer, String secret,
+                   long maxPackBytes, int downloadTimeoutSeconds, int urlRefreshMinutes) {
+    private static final Pattern FILE_NAME = Pattern.compile("[A-Za-z0-9._-]{1,128}");
+    private static final Pattern SERVER_NAME = Pattern.compile("[A-Za-z0-9._-]{1,64}");
+
+    /** Where a server's Bedrock pack comes from. */
+    sealed interface PackSource {
+        /** The pack Twilight on that backend shares over plugin messages. */
+        record Auto() implements PackSource {}
+
+        /** No pack: Bedrock players there have none of the per-server packs. */
+        record None() implements PackSource {}
+
+        /** A file in twilight-proxy's {@code packs} folder. */
+        record File(String name) implements PackSource {}
+
+        /** A direct download link to a .mcpack or .zip. */
+        record Url(URI uri) implements PackSource {}
+    }
+
+    static ProxyConfig load(Path file) throws IOException {
+        if (!Files.isRegularFile(file)) {
+            Files.createDirectories(file.getParent());
+            try (InputStream defaults = ProxyConfig.class.getResourceAsStream("/proxy-config.yml")) {
+                if (defaults == null) throw new IOException("The default configuration is missing from the JAR");
+                Files.copy(defaults, file);
+            }
+        }
+        if (Files.size(file) > 1_048_576) throw new IOException("config.yml is larger than 1 MiB");
+        return parse(Files.readString(file, StandardCharsets.UTF_8));
+    }
+
+    static ProxyConfig parse(String text) {
+        Map<String, Object> root = SimpleYaml.parse(text);
+        Map<String, Object> packs = map(root.get("packs"), "packs");
+        PackSource fallback = source(string(packs.getOrDefault("default", "auto"), "packs.default"), "packs.default");
+        Map<String, PackSource> servers = new LinkedHashMap<>();
+        for (var entry : map(packs.getOrDefault("server", Map.of()), "packs.server").entrySet()) {
+            String server = entry.getKey();
+            if (!SERVER_NAME.matcher(server).matches()) throw new IllegalArgumentException("Invalid server name '" + server + "'");
+            String path = "packs.server." + server;
+            servers.put(server.toLowerCase(Locale.ROOT), source(string(entry.getValue(), path), path));
+        }
+        int port = integer(root.getOrDefault("transfer-port", "0"), "transfer-port", 0, 65_535);
+        long maxMb = integer(root.getOrDefault("max-pack-size-mb", "256"), "max-pack-size-mb", 1, 2048);
+        return new ProxyConfig(fallback, Map.copyOf(servers),
+                bool(root.getOrDefault("transfer-on-switch", "true"), "transfer-on-switch"),
+                string(root.getOrDefault("transfer-address", ""), "transfer-address").strip(), port,
+                string(root.getOrDefault("initial-server", ""), "initial-server").strip().toLowerCase(Locale.ROOT),
+                string(root.getOrDefault("secret", ""), "secret").strip(),
+                maxMb * 1024 * 1024,
+                integer(root.getOrDefault("download-timeout-seconds", "60"), "download-timeout-seconds", 5, 600),
+                integer(root.getOrDefault("url-refresh-minutes", "60"), "url-refresh-minutes", 0, 10_080));
+    }
+
+    PackSource source(String server) {
+        return servers.getOrDefault(server.toLowerCase(Locale.ROOT), defaultSource);
+    }
+
+    static PackSource source(String value, String path) {
+        String trimmed = value.strip();
+        String lower = trimmed.toLowerCase(Locale.ROOT);
+        if (lower.equals("auto") || lower.equals("true")) return new PackSource.Auto();
+        if (lower.equals("none") || lower.equals("false") || lower.isEmpty()) return new PackSource.None();
+        if (lower.startsWith("https://") || lower.startsWith("http://")) {
+            try {
+                URI uri = new URI(trimmed);
+                if (uri.getHost() == null || uri.getUserInfo() != null) throw new IllegalArgumentException("host");
+                return new PackSource.Url(uri);
+            } catch (Exception invalid) {
+                throw new IllegalArgumentException(path + ": invalid download link");
+            }
+        }
+        if (!FILE_NAME.matcher(trimmed).matches() || trimmed.startsWith(".")) {
+            throw new IllegalArgumentException(path + ": expected auto, none, a file name in packs/ or an http(s) link");
+        }
+        return new PackSource.File(trimmed);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> map(Object value, String path) {
+        if (value instanceof Map<?, ?> map) return (Map<String, Object>) map;
+        throw new IllegalArgumentException(path + " must be a section");
+    }
+
+    private static String string(Object value, String path) {
+        if (value instanceof String text) return text;
+        throw new IllegalArgumentException(path + " must be a value, not a section");
+    }
+
+    private static boolean bool(Object value, String path) {
+        String text = string(value, path).strip().toLowerCase(Locale.ROOT);
+        if (text.equals("true")) return true;
+        if (text.equals("false")) return false;
+        throw new IllegalArgumentException(path + " must be true or false");
+    }
+
+    private static int integer(Object value, String path, int min, int max) {
+        try {
+            int number = Integer.parseInt(string(value, path).strip());
+            if (number < min || number > max) throw new NumberFormatException();
+            return number;
+        } catch (NumberFormatException invalid) {
+            throw new IllegalArgumentException(path + " must be a whole number from " + min + " to " + max);
+        }
+    }
+}

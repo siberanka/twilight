@@ -35,6 +35,11 @@ java {
     withSourcesJar()
 }
 
+// The plugin-message protocol shared with twilight-proxy.
+sourceSets.main {
+    java.srcDir(rootProject.file("protocol/src/main/java"))
+}
+
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
     options.release = 21
