@@ -4,6 +4,28 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.11 - 2026-10-07
+
+- Add the pack host (`pack-host`, off by default) to Twilight and twilight-proxy: Bedrock players
+  download the packs over HTTP from the server that runs Geyser instead of Geyser's in-game transfer,
+  like ItemsAdder's or CraftEngine's self-host on a port of your choice. Every pack of the session is
+  announced with a link minted for that Bedrock session: a random 256-bit token, valid for
+  `link-minutes` and `downloads-per-link`, and by default only from the IP address the player
+  connects to Geyser from. Any other request gets the same empty 404.
+- Harden the host against abuse: strict request parsing (GET/HEAD, 8 KiB heads, five-second
+  timeout), connection limits in total and per address (IPv6 per /64), 60 requests a minute per
+  address, a 15-minute block after 20 refused requests, a minimum transfer rate, immutable pack
+  copies checked against Geyser's SHA-256, and `X-Forwarded-For` only from `trusted-proxies`.
+- Keep joining independent of the host: a failed download falls back to Geyser's transfer (tested
+  with links to a closed port). The host subscribes after every other listener and hosts all file
+  packs together (Twilight's, Geyser's integrated pack, other plugins'), keeping pack options and
+  content keys, because Bedrock does not mix links with in-game packs.
+- Support `public-address` (`auto`, a host, or `http(s)://` behind a reverse proxy), `public-port`
+  for NAT and `bind-address`; twilight-proxy's configuration accepts one-line lists such as
+  `trusted-proxies: [127.0.0.1]`.
+- Document every key, network layouts and the security model in the [wiki](WIKI.md#pack-hosting).
+  209 tests pass (202 Twilight, 7 proxy).
+
 ## 1.0.0-pre.10 - 2026-10-05
 
 - Draw boss bars whose sprites a pack redraws (`boss_bar/<colour>_background`, `_progress` and the
@@ -288,6 +310,29 @@ All notable changes in Twilight are documented here.
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-pre.11 - 2026-10-07
+
+- Twilight ve twilight-proxy'ye paket sunucusu (`pack-host`, varsayılan olarak kapalı) eklendi: Bedrock
+  oyuncuları paketleri Geyser'ın oyun içi aktarımı yerine Geyser'ı çalıştıran sunucudan HTTP ile indirir;
+  ItemsAdder'ın veya CraftEngine'in self-host özelliği gibi seçtiğiniz bir portta. Oturumun her paketi o
+  Bedrock oturumu için üretilmiş bir bağlantıyla duyurulur: 256 bitlik rastgele bir belirteç,
+  `link-minutes` ve `downloads-per-link` boyunca geçerli ve varsayılan olarak yalnızca oyuncunun Geyser'a
+  bağlandığı IP adresinden. Diğer her istek aynı boş 404 yanıtını alır.
+- Sunucu kötüye kullanıma karşı sağlamlaştırıldı: katı istek ayrıştırma (GET/HEAD, 8 KiB başlık, beş
+  saniyelik zaman aşımı), toplamda ve adres başına bağlantı sınırları (IPv6 için /64 başına), adres başına
+  dakikada 60 istek, reddedilen 20 istekten sonra 15 dakikalık engel, en düşük aktarım hızı, Geyser'ın
+  SHA-256 değeriyle denetlenen değişmez paket kopyaları ve yalnızca `trusted-proxies` adreslerinden
+  `X-Forwarded-For`.
+- Katılmak sunucudan bağımsız kalır: başarısız bir indirme Geyser'ın aktarımına döner (kapalı bir porta
+  giden bağlantılarla test edildi). Sunucu diğer bütün dinleyicilerden sonra abone olur ve bütün dosya
+  paketlerini (Twilight'ınki, Geyser'ın tümleşik paketi, diğer eklentilerinkiler) paket seçeneklerini ve
+  içerik anahtarlarını koruyarak birlikte sunar, çünkü Bedrock bağlantıları oyun içi paketlerle karıştırmaz.
+- `public-address` (`auto`, bir sunucu adı veya ters proxy arkasında `http(s)://`), NAT için `public-port` ve
+  `bind-address` desteklenir; twilight-proxy yapılandırması `trusted-proxies: [127.0.0.1]` gibi tek satırlık
+  listeleri kabul eder.
+- Her anahtar, ağ düzenleri ve güvenlik modeli [wiki'de](WIKI.md#paket-sunucusu) belgelendi. 209 test geçti
+  (202 Twilight, 7 proxy).
 
 #### 1.0.0-pre.10 - 2026-10-05
 

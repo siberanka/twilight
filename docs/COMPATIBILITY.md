@@ -32,6 +32,16 @@ Per-server packs need a reconnect when the pack changes, because Bedrock loads p
 connects. Twilight's runtime text, biome and name bridges need Geyser on the same server as Twilight;
 a proxy-only Geyser gets the packs but not those layers. See the [proxy test](PROXY_2026-10-05.md).
 
+## Pack hosting
+
+| Case | Status |
+|---|---|
+| Bedrock for Windows (1.26.5203), Geyser-Spigot on Paper 26.2 | Tested live: Twilight's and Geyser's packs downloaded over `http://` links |
+| Bedrock for Windows through Velocity 4.2.0 with Geyser on the proxy | Tested live: the server's `auto` pack (2.2 MiB) downloaded from twilight-proxy's host |
+| Failed download (links to a closed port) | Tested live: Bedrock falls back to Geyser's transfer and loads the new pack |
+| Other Bedrock platforms (mobile, consoles) | Not tested; if one refuses plain HTTP its players fall back to Geyser's transfer, and an HTTPS `public-address` avoids it |
+| Packs another plugin registers without a file | Not hosted; the session then falls back to Geyser's transfer for all packs (Geyser logs "Mixing pack codecs") |
+
 ## Source discovery
 
 Every provider is read automatically (`sources.providers.<name>: auto`); `generated` limits a provider
@@ -155,6 +165,16 @@ Sunucu başına paketler, paket değiştiğinde yeniden bağlanma gerektirir, ç
 bağlanırken yükler. Twilight'ın çalışma zamanı yazı, biyom ve ad köprüleri Geyser'ın Twilight ile aynı
 sunucuda olmasını gerektirir; yalnızca proxy'deki bir Geyser paketleri alır ama bu katmanları almaz.
 [Proxy testine](PROXY_2026-10-05.md) bakın.
+
+#### Paket sunucusu
+
+| Durum | Sonuç |
+|---|---|
+| Windows için Bedrock (1.26.5203), Paper 26.2 üzerinde Geyser-Spigot | Canlı test edildi: Twilight'ın ve Geyser'ın paketleri `http://` bağlantılarından indirildi |
+| Proxy'de Geyser bulunan Velocity 4.2.0 üzerinden Windows için Bedrock | Canlı test edildi: sunucunun `auto` paketi (2,2 MiB) twilight-proxy'nin sunucusundan indirildi |
+| Başarısız indirme (kapalı bir porta giden bağlantılar) | Canlı test edildi: Bedrock Geyser'ın aktarımına döner ve yeni paketi yükler |
+| Diğer Bedrock platformları (mobil, konsollar) | Test edilmedi; biri düz HTTP'yi reddederse oyuncuları Geyser'ın aktarımına döner, HTTPS bir `public-address` bunu önler |
+| Başka bir eklentinin dosyasız kaydettiği paketler | Sunulmaz; oturum o zaman bütün paketler için Geyser'ın aktarımına döner (Geyser "Mixing pack codecs" yazar) |
 
 #### Kaynak keşfi
 

@@ -18,7 +18,8 @@ import java.util.regex.Pattern;
 /** twilight-proxy's settings, validated once when loaded. */
 record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, boolean transferOnSwitch,
                    String transferAddress, int transferPort, String initialServer, String secret,
-                   long maxPackBytes, int downloadTimeoutSeconds, int urlRefreshMinutes) {
+                   long maxPackBytes, int downloadTimeoutSeconds, int urlRefreshMinutes,
+                   com.siberanka.twilight.host.HostSettings host) {
     private static final Pattern FILE_NAME = Pattern.compile("[A-Za-z0-9._-]{1,128}");
     private static final Pattern SERVER_NAME = Pattern.compile("[A-Za-z0-9._-]{1,64}");
 
@@ -69,7 +70,15 @@ record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, bo
                 string(root.getOrDefault("secret", ""), "secret").strip(),
                 maxMb * 1024 * 1024,
                 integer(root.getOrDefault("download-timeout-seconds", "60"), "download-timeout-seconds", 5, 600),
-                integer(root.getOrDefault("url-refresh-minutes", "60"), "url-refresh-minutes", 0, 10_080));
+                integer(root.getOrDefault("url-refresh-minutes", "60"), "url-refresh-minutes", 0, 10_080),
+                hostSettings(root.get("pack-host")));
+    }
+
+    /** The {@code pack-host} section; missing means disabled. */
+    private static com.siberanka.twilight.host.HostSettings hostSettings(Object section) {
+        if (section == null) return com.siberanka.twilight.host.HostSettings.DISABLED;
+        Map<String, Object> values = map(section, "pack-host");
+        return com.siberanka.twilight.host.HostSettings.parse(values::get);
     }
 
     PackSource source(String server) {

@@ -38,6 +38,11 @@ class ProxyTest {
         assertInstanceOf(ProxyConfig.PackSource.Auto.class, config.source("unlisted"));
         assertTrue(config.transferOnSwitch());
         assertEquals(256L * 1024 * 1024, config.maxPackBytes());
+        assertEquals(com.siberanka.twilight.host.HostSettings.DISABLED, config.host());
+        var hosted = ProxyConfig.parse(defaults.replace("  enabled: false", "  enabled: true").replace("trusted-proxies: []", "trusted-proxies: [127.0.0.1]"));
+        assertTrue(hosted.host().enabled());
+        assertEquals(1, hosted.host().trustedProxies().size());
+        assertEquals(com.siberanka.twilight.host.HostSettings.DISABLED, ProxyConfig.parse("packs:\n  default: auto\n").host());
     }
 
     @Test
@@ -49,6 +54,7 @@ class ProxyTest {
         assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n  - list\n"));
         assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n\tserver: x\n"));
         assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n  default: auto\nmax-pack-size-mb: 99999\n"));
+        assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n  default: auto\npack-host:\n  port: 70000\n"));
     }
 
     @Test

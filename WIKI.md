@@ -23,12 +23,13 @@ are in the [reports](docs/); limits per feature are in [docs/COMPATIBILITY.md](d
 4. [Commands and permissions](#commands-and-permissions)
 5. [Configuration reference: Twilight](#configuration-reference-twilight)
 6. [twilight-proxy](#twilight-proxy-1)
-7. [Files and folders](#files-and-folders)
-8. [Developer API](#developer-api)
-9. [Plugin-message protocol](#plugin-message-protocol)
-10. [Security model](#security-model)
-11. [Troubleshooting](#troubleshooting)
-12. [Building from source](#building-from-source)
+7. [Pack hosting](#pack-hosting)
+8. [Files and folders](#files-and-folders)
+9. [Developer API](#developer-api)
+10. [Plugin-message protocol](#plugin-message-protocol)
+11. [Security model](#security-model)
+12. [Troubleshooting](#troubleshooting)
+13. [Building from source](#building-from-source)
 
 ## Requirements
 
@@ -59,6 +60,9 @@ are in the [reports](docs/); limits per feature are in [docs/COMPATIBILITY.md](d
    plugins then share that secret automatically. Without it, set the same `secret` in
    twilight-proxy's `config.yml` and `proxy.secret` in each backend's Twilight `config.yml`.
 4. Each Bedrock player now loads the pack of the server they join; see [twilight-proxy](#twilight-proxy-1).
+
+Optional on both layouts: let Bedrock players download the packs over HTTP from the server that runs
+Geyser instead of Geyser's slower in-game transfer, with the [pack host](#pack-hosting).
 
 ## How a build works
 
@@ -176,8 +180,14 @@ change behaviour.
 | `share-pack` | `true` | Offer the exported pack to twilight-proxy over signed plugin messages |
 | `secret` | `""` | Secret shared with twilight-proxy (16+ characters); empty uses Paper's Velocity secret or BungeeGuard tokens |
 
-Changes to `ui` and `world` keys need a new build (`/twilight convert`); `proxy` keys and
-`geyser.send-pack-to-bedrock` take effect on restart.
+### `pack-host`
+
+The [pack host](#pack-hosting): Bedrock players download Geyser's packs from this server over HTTP. It
+runs only when Geyser is installed on this server. The keys are listed in the [pack host](#pack-hosting)
+section; the proxy uses the same section.
+
+Changes to `ui` and `world` keys need a new build (`/twilight convert`); `proxy` and `pack-host` keys
+and `geyser.send-pack-to-bedrock` take effect on restart.
 
 ## twilight-proxy
 
@@ -208,6 +218,9 @@ secret: ""               # empty = Velocity forwarding secret or BungeeGuard tok
 max-pack-size-mb: 256
 download-timeout-seconds: 60
 url-refresh-minutes: 60  # 0 = only at start and reload
+pack-host:               # see "Pack hosting"
+  enabled: false
+  port: 8163
 ```
 
 | Key | Meaning |
@@ -221,6 +234,7 @@ url-refresh-minutes: 60  # 0 = only at start and reload
 | `max-pack-size-mb` | Largest accepted pack (1-2048) |
 | `download-timeout-seconds` | Timeout of a download (5-600) |
 | `url-refresh-minutes` | How often links are checked for a new version with their ETag (0-10080) |
+| `pack-host.*` | Serve the packs from the proxy over HTTP; see [pack host](#pack-hosting) |
 
 Every pack is checked before use: it must be a ZIP below the size limit with `manifest.json` at its
 root and no entry that could escape a folder. A pack that fails the check, a failed download or an
@@ -234,6 +248,87 @@ incomplete transfer keeps the previous pack.
 - **file**: read from `plugins/twilight-proxy/packs/` at start and reload.
 - **link**: downloaded in the background over HTTP(S) to `cache/link-<hash>.mcpack`; redirects to
   plain HTTP are not followed.
+
+## Pack hosting
+
+Geyser normally sends a pack inside the game connection, in small chunks, which takes a while for
+large packs. Like ItemsAdder's or CraftEngine's self-host, the pack host serves the packs over HTTP
+from a TCP port of the server that runs Geyser: Bedrock downloads them directly, much faster. Unlike
+those, it is not a public download: a pack can only be fetched with a link minted for one Bedrock
+player who is connecting through Geyser at that moment.
+
+Enable it where Geyser runs: in Twilight's `config.yml` on a single server (Geyser-Spigot on the
+backend) or in twilight-proxy's `config.yml` when Geyser is on the proxy.
+
+```yaml
+pack-host:
+  enabled: true
+  port: 8163
+```
+
+1. Set `enabled: true`, choose a free TCP `port` and open it in the firewall (TCP, not UDP).
+2. Restart. The console shows `Bedrock pack host listening on 0.0.0.0/0.0.0.0:8163`.
+3. When a Bedrock player downloads a pack that is new to them, the console shows
+   `Bedrock pack host: first download of pack <id> (<size> KiB) served to <address>` once per pack
+   version, and every ten minutes a count of downloads.
+
+### How it works
+
+1. A Bedrock player connects to Geyser. After every other plugin has added its packs, the host
+   takes each pack Geyser would send from a file (Twilight's, Geyser's own integrated pack and
+   any other pack in Geyser's `packs/` folder or registered for the session) and announces it with
+   a link instead: `http://<address>:<port>/twilight/<token>/<pack id>.zip`.
+2. The token is 256 random bits made for this session only. The link works for `link-minutes`, for
+   `downloads-per-link` downloads, and (by default) only from the IP address the player connected
+   to Geyser from.
+3. Bedrock downloads the pack from the link. It keeps packs it already has (same UUID and version),
+   so a returning player downloads nothing.
+4. If the download fails (port closed, wrong address, link refused), Bedrock asks Geyser for the
+   pack and Geyser sends it in the game connection as before. Joining never depends on the host.
+
+The host serves a copy of each pack named by its SHA-256 (`pack-host/<sha256>.zip`), checked
+against the hash Geyser announces, so a pack rebuilt during a download never changes under it.
+Pack options (priority, subpacks) and content keys are kept. Packs are hosted all together or
+the client falls back to Geyser for all of them: Bedrock does not mix links and in-game packs.
+
+### Settings
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `false` | Run the pack host |
+| `port` | `8163` | TCP port to listen on (1-65535) |
+| `bind-address` | `""` | Empty = all interfaces; otherwise an IP address of this machine |
+| `public-address` | `auto` | Host in the links. `auto` = the address the player typed to join (`play.example.com`), with `port`. Or a fixed host name / IP, or `http(s)://host[:port]` when a reverse proxy or TLS terminator forwards to the port |
+| `public-port` | `0` | Port in the links when the outside port differs (port forwarding, NAT); 0 = `port` |
+| `require-player-address` | `true` | A link works only from the IP address the player connects to Geyser from |
+| `link-minutes` | `10` | How long a link works (1-120) |
+| `downloads-per-link` | `3` | Downloads a link allows (1-20); a refused range or a `HEAD` request does not count |
+| `max-connections` | `64` | Open connections in total (1-4096) |
+| `max-connections-per-address` | `4` | Open connections per IP address (IPv6: per /64 network) (1-64) |
+| `trusted-proxies` | `[]` | IP addresses of reverse proxies whose `X-Forwarded-For` header is believed, e.g. `[127.0.0.1]` |
+
+### Network layouts
+
+| Layout | Settings |
+|---|---|
+| Players join with a domain or IP that reaches this machine | Defaults (`public-address: auto`) |
+| The TCP port is forwarded to another outside port | `public-port: <outside port>` |
+| Players join through an address that does not reach this machine (load balancer, SRV-less DNS split) | `public-address: packs.example.com` (and `public-port` if needed) |
+| HTTPS through a reverse proxy (nginx, Caddy) on the same machine | `public-address: https://packs.example.com`, `trusted-proxies: [127.0.0.1]`, `bind-address: 127.0.0.1`; the proxy forwards `/twilight/` to the port and sets `X-Forwarded-For` |
+| UDP front without PROXY protocol (TCPShield, playit.gg, a DDoS filter) | Geyser sees the front's address, not the player's: enable Geyser's `use-proxy-protocol` if the front supports it, otherwise `require-player-address: false` (links stay secret, single-session and short-lived) |
+
+Bedrock for Windows was tested with plain `http://` links on the proxy and on a backend. If a
+platform refuses plain HTTP, its players fall back to Geyser's transfer; serving the port through
+HTTPS (`public-address: https://...`) avoids that.
+
+### What is refused
+
+Every request outside a valid link gets the same empty `404`: unknown or expired tokens, a token
+used up or used from another address, a wrong pack id, paths and query strings. Only `GET` and
+`HEAD` with a request head of at most 8 KiB are read; a connection that does not send it within
+five seconds is closed. Each address may make 60 requests a minute; 20 refused requests in ten
+minutes block it for 15 minutes. A download must keep at least 64 KiB/s after a 30-second grace
+period. Connections are limited in total and per address, and nothing is logged per request.
 
 ## Files and folders
 
@@ -252,6 +347,7 @@ incomplete transfer keeps the previous pack.
 | `logs/<operation>-log-<time>.txt` | One log per operation (sources, fingerprint, results) |
 | `reports/content-report.json` | The last scan's discovery report |
 | `deployment.properties` | Files Twilight owns in Geyser's folder, with hashes |
+| `pack-host/<sha256>.zip` | Copies the [pack host](#pack-hosting) serves; cleared at start, removed when unused |
 
 In Geyser's folder Twilight owns `packs/twilight.zip`, `custom_mappings/twilight_*.json` and
 `locales/overrides/`; nothing else is touched.
@@ -279,6 +375,7 @@ In Geyser's folder Twilight owns `packs/twilight.zip`, `custom_mappings/twilight
 | `packs/` | Pack files named in `config.yml` |
 | `cache/<server>.mcpack` | Packs received from Twilight on the backends |
 | `cache/link-<hash>.mcpack` (+ `.etag`) | Downloaded packs |
+| `pack-host/<sha256>.zip` | Copies the [pack host](#pack-hosting) serves; cleared at start, removed when unused |
 
 ## Developer API
 
@@ -368,6 +465,11 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
   bound.
 - **Builds.** Source sizes and archive entry counts are limited, symbolic links are refused, vanilla
   downloads are hash-verified, and deployment only replaces files Twilight owns.
+- **Pack host.** Packs are only reachable through links made for a Bedrock session that is
+  connecting through Geyser: 256-bit random tokens, short-lived, limited downloads, bound to the
+  player's IP address by default, the same empty 404 for every refusal, strict request parsing with
+  time limits, rate limits and temporary blocks for guessing, and immutable copies checked against
+  Geyser's SHA-256. A refused download falls back to Geyser's in-game transfer.
 
 ## Troubleshooting
 
@@ -380,6 +482,9 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 | Bedrock players reconnect on every server switch | Expected when servers use different packs; same packs never reconnect |
 | Transferred players end up on the wrong server | `transfer-address`/`transfer-port` must reach the same proxy |
 | Custom biomes look like vanilla ones | More than 25 distinct looks, or `world.bedrock-biome-matching: false` |
+| Packs still download slowly with `pack-host` on | No "first download" line: the port is closed or unreachable; `http://<address>:<port>/` must answer an empty 404 from outside |
+| "... is sent by Geyser: no host for links" | The join address cannot be used in a link: set `pack-host.public-address` |
+| "... is sent by Geyser: it is not a pack file" or "Mixing pack codecs" | Another plugin registers packs that are not files; all packs then use Geyser's transfer |
 
 ## Building from source
 
@@ -418,12 +523,13 @@ Bu sayfa yöneticiler ve eklenti geliştiricileri için başvuru kaynağıdır. 
 4. [Komutlar ve izinler](#komutlar-ve-izinler)
 5. [Yapılandırma başvurusu: Twilight](#yapılandırma-başvurusu-twilight)
 6. [twilight-proxy](#twilight-proxy-4)
-7. [Dosyalar ve klasörler](#dosyalar-ve-klasörler)
-8. [Geliştirici API'si](#geliştirici-apisi)
-9. [Eklenti mesajı protokolü](#eklenti-mesajı-protokolü)
-10. [Güvenlik modeli](#güvenlik-modeli)
-11. [Sorun giderme](#sorun-giderme)
-12. [Kaynaktan derleme](#kaynaktan-derleme)
+7. [Paket sunucusu](#paket-sunucusu)
+8. [Dosyalar ve klasörler](#dosyalar-ve-klasörler)
+9. [Geliştirici API'si](#geliştirici-apisi)
+10. [Eklenti mesajı protokolü](#eklenti-mesajı-protokolü)
+11. [Güvenlik modeli](#güvenlik-modeli)
+12. [Sorun giderme](#sorun-giderme)
+13. [Kaynaktan derleme](#kaynaktan-derleme)
 
 #### Gereksinimler
 
@@ -455,6 +561,9 @@ Bu sayfa yöneticiler ve eklenti geliştiricileri için başvuru kaynağıdır. 
    ayarlayın.
 4. Artık her Bedrock oyuncusu katıldığı sunucunun paketini yükler; [twilight-proxy](#twilight-proxy-4)
    bölümüne bakın.
+
+İki düzende de isteğe bağlı: [paket sunucusu](#paket-sunucusu) ile Bedrock oyuncuları paketleri Geyser'ın
+yavaş oyun içi aktarımı yerine Geyser'ı çalıştıran sunucudan HTTP ile indirir.
 
 #### Bir derleme nasıl çalışır
 
@@ -572,8 +681,14 @@ değiştirmek için düzenlenmesi gerekir.
 | `share-pack` | `true` | Dışa aktarılan paketi imzalı eklenti mesajlarıyla twilight-proxy'ye sunar |
 | `secret` | `""` | twilight-proxy ile paylaşılan gizli anahtar (16+ karakter); boşsa Paper'ın Velocity gizli anahtarını veya BungeeGuard belirteçlerini kullanır |
 
-`ui` ve `world` anahtarlarındaki değişiklikler yeni bir derleme gerektirir (`/twilight convert`); `proxy`
-anahtarları ve `geyser.send-pack-to-bedrock` yeniden başlatmada etkinleşir.
+##### `pack-host`
+
+[Paket sunucusu](#paket-sunucusu): Bedrock oyuncuları Geyser'ın paketlerini bu sunucudan HTTP ile indirir.
+Yalnızca Geyser bu sunucuda kuruluysa çalışır. Anahtarlar [paket sunucusu](#paket-sunucusu) bölümünde
+listelenir; proxy aynı bölümü kullanır.
+
+`ui` ve `world` anahtarlarındaki değişiklikler yeni bir derleme gerektirir (`/twilight convert`); `proxy` ve
+`pack-host` anahtarları ile `geyser.send-pack-to-bedrock` yeniden başlatmada etkinleşir.
 
 #### twilight-proxy
 
@@ -604,6 +719,9 @@ secret: ""               # boş = Velocity yönlendirme gizli anahtarı veya Bun
 max-pack-size-mb: 256
 download-timeout-seconds: 60
 url-refresh-minutes: 60  # 0 = yalnızca açılışta ve yeniden yüklemede
+pack-host:               # "Paket sunucusu" bölümüne bakın
+  enabled: false
+  port: 8163
 ```
 
 | Anahtar | Anlamı |
@@ -617,6 +735,7 @@ url-refresh-minutes: 60  # 0 = yalnızca açılışta ve yeniden yüklemede
 | `max-pack-size-mb` | Kabul edilen en büyük paket (1-2048) |
 | `download-timeout-seconds` | Bir indirmenin zaman aşımı (5-600) |
 | `url-refresh-minutes` | Bağlantıların ETag ile yeni sürüm için ne sıklıkla denetlendiği (0-10080) |
+| `pack-host.*` | Paketleri proxy'den HTTP ile sunar; [paket sunucusu](#paket-sunucusu) bölümüne bakın |
 
 Her paket kullanılmadan önce denetlenir: boyut sınırının altında, kökünde `manifest.json` bulunan ve hiçbir
 girdisi klasör dışına çıkamayan bir ZIP olmalıdır. Denetimi geçemeyen bir paket, başarısız bir indirme veya
@@ -630,6 +749,87 @@ eksik bir aktarım önceki paketi korur.
 - **dosya**: açılışta ve yeniden yüklemede `plugins/twilight-proxy/packs/` dizininden okunur.
 - **bağlantı**: arka planda HTTP(S) üzerinden `cache/link-<karma>.mcpack` dosyasına indirilir; düz HTTP'ye
   yönlendirmeler izlenmez.
+
+#### Paket sunucusu
+
+Geyser bir paketi normalde oyun bağlantısının içinde, küçük parçalar hâlinde gönderir; bu büyük paketlerde
+zaman alır. ItemsAdder'ın veya CraftEngine'in self-host özelliği gibi paket sunucusu da paketleri Geyser'ı
+çalıştıran sunucunun bir TCP portundan HTTP ile sunar: Bedrock onları doğrudan, çok daha hızlı indirir.
+Onlardan farklı olarak herkese açık bir indirme değildir: bir paket yalnızca o anda Geyser üzerinden bağlanan
+bir Bedrock oyuncusu için üretilmiş bir bağlantıyla alınabilir.
+
+Geyser nerede çalışıyorsa orada açın: tek sunucuda Twilight'ın `config.yml` dosyasında (arka uçta
+Geyser-Spigot) veya Geyser proxy'deyse twilight-proxy'nin `config.yml` dosyasında.
+
+```yaml
+pack-host:
+  enabled: true
+  port: 8163
+```
+
+1. `enabled: true` yapın, boş bir TCP `port` seçin ve güvenlik duvarında açın (UDP değil, TCP).
+2. Yeniden başlatın. Konsol `Bedrock pack host listening on 0.0.0.0/0.0.0.0:8163` gösterir.
+3. Bir Bedrock oyuncusu kendisi için yeni olan bir paketi indirdiğinde konsol, her paket sürümü için bir kez
+   `Bedrock pack host: first download of pack <kimlik> (<boyut> KiB) served to <adres>` ve her on dakikada
+   indirme sayısını gösterir.
+
+##### Nasıl çalışır
+
+1. Bir Bedrock oyuncusu Geyser'a bağlanır. Diğer bütün eklentiler paketlerini ekledikten sonra sunucu,
+   Geyser'ın bir dosyadan göndereceği her paketi (Twilight'ınki, Geyser'ın kendi tümleşik paketi ve Geyser'ın
+   `packs/` klasöründeki ya da oturum için kaydedilen diğer paketler) bunun yerine bir bağlantıyla duyurur:
+   `http://<adres>:<port>/twilight/<belirteç>/<paket kimliği>.zip`.
+2. Belirteç yalnızca bu oturum için üretilmiş 256 rastgele bittir. Bağlantı `link-minutes` boyunca,
+   `downloads-per-link` indirme için ve (varsayılan olarak) yalnızca oyuncunun Geyser'a bağlandığı IP
+   adresinden çalışır.
+3. Bedrock paketi bağlantıdan indirir. Zaten sahip olduğu paketleri (aynı UUID ve sürüm) korur; bu yüzden geri
+   gelen bir oyuncu hiçbir şey indirmez.
+4. İndirme başarısız olursa (port kapalı, yanlış adres, reddedilen bağlantı) Bedrock paketi Geyser'dan ister ve
+   Geyser onu eskisi gibi oyun bağlantısında gönderir. Katılmak asla bu sunucuya bağlı değildir.
+
+Sunucu her paketin SHA-256 ile adlandırılmış bir kopyasını (`pack-host/<sha256>.zip`) Geyser'ın duyurduğu
+karmayla denetleyerek sunar; böylece bir indirme sırasında yeniden derlenen bir paket indirmenin altında
+değişmez. Paket seçenekleri (öncelik, alt paketler) ve içerik anahtarları korunur. Paketler ya hep birlikte
+sunulur ya da istemci hepsi için Geyser'a döner: Bedrock bağlantıları ve oyun içi paketleri karıştırmaz.
+
+##### Ayarlar
+
+| Anahtar | Varsayılan | Anlamı |
+|---|---|---|
+| `enabled` | `false` | Paket sunucusunu çalıştırır |
+| `port` | `8163` | Dinlenecek TCP portu (1-65535) |
+| `bind-address` | `""` | Boş = bütün arayüzler; aksi hâlde bu makinenin bir IP adresi |
+| `public-address` | `auto` | Bağlantılardaki sunucu. `auto` = oyuncunun katılmak için yazdığı adres (`play.example.com`), `port` ile. Ya da sabit bir alan adı / IP veya bir ters proxy ya da TLS sonlandırıcı porta yönlendiriyorsa `http(s)://sunucu[:port]` |
+| `public-port` | `0` | Dış port farklıysa (port yönlendirme, NAT) bağlantılardaki port; 0 = `port` |
+| `require-player-address` | `true` | Bir bağlantı yalnızca oyuncunun Geyser'a bağlandığı IP adresinden çalışır |
+| `link-minutes` | `10` | Bir bağlantının ne kadar süre çalıştığı (1-120) |
+| `downloads-per-link` | `3` | Bir bağlantının izin verdiği indirme sayısı (1-20); reddedilen bir aralık veya `HEAD` isteği sayılmaz |
+| `max-connections` | `64` | Toplam açık bağlantı (1-4096) |
+| `max-connections-per-address` | `4` | IP adresi başına açık bağlantı (IPv6: /64 ağı başına) (1-64) |
+| `trusted-proxies` | `[]` | `X-Forwarded-For` başlığına güvenilen ters proxy'lerin IP adresleri, ör. `[127.0.0.1]` |
+
+##### Ağ düzenleri
+
+| Düzen | Ayarlar |
+|---|---|
+| Oyuncular bu makineye ulaşan bir alan adı veya IP ile katılıyor | Varsayılanlar (`public-address: auto`) |
+| TCP portu başka bir dış porta yönlendiriliyor | `public-port: <dış port>` |
+| Oyuncular bu makineye ulaşmayan bir adresle katılıyor (yük dengeleyici, ayrık DNS) | `public-address: packs.example.com` (gerekirse `public-port`) |
+| Aynı makinede bir ters proxy (nginx, Caddy) üzerinden HTTPS | `public-address: https://packs.example.com`, `trusted-proxies: [127.0.0.1]`, `bind-address: 127.0.0.1`; proxy `/twilight/` yolunu porta yönlendirir ve `X-Forwarded-For` ayarlar |
+| PROXY protokolü olmayan UDP önyüzü (TCPShield, playit.gg, bir DDoS filtresi) | Geyser oyuncunun değil önyüzün adresini görür: önyüz destekliyorsa Geyser'ın `use-proxy-protocol` ayarını açın, aksi hâlde `require-player-address: false` (bağlantılar gizli, tek oturumluk ve kısa ömürlü kalır) |
+
+Windows için Bedrock düz `http://` bağlantılarla proxy'de ve bir arka uçta test edildi. Bir platform düz HTTP'yi
+reddederse oyuncuları Geyser'ın aktarımına döner; portu HTTPS üzerinden sunmak (`public-address: https://...`)
+bunu önler.
+
+##### Neler reddedilir
+
+Geçerli bir bağlantı dışındaki her istek aynı boş `404` yanıtını alır: bilinmeyen veya süresi dolmuş
+belirteçler, tükenmiş ya da başka bir adresten kullanılan bir belirteç, yanlış bir paket kimliği, yollar ve
+sorgu dizgeleri. Yalnızca en fazla 8 KiB'lik istek başlığına sahip `GET` ve `HEAD` okunur; bunu beş saniye
+içinde göndermeyen bir bağlantı kapatılır. Her adres dakikada 60 istek yapabilir; on dakikada reddedilen 20
+istek adresi 15 dakika engeller. Bir indirme 30 saniyelik bir süreden sonra en az 64 KiB/s hızı korumalıdır.
+Bağlantılar toplamda ve adres başına sınırlıdır ve istek başına hiçbir şey günlüğe yazılmaz.
 
 #### Dosyalar ve klasörler
 
@@ -648,6 +848,7 @@ eksik bir aktarım önceki paketi korur.
 | `logs/<işlem>-log-<zaman>.txt` | İşlem başına bir günlük (kaynaklar, parmak izi, sonuçlar) |
 | `reports/content-report.json` | Son taramanın keşif raporu |
 | `deployment.properties` | Twilight'ın Geyser klasöründe sahip olduğu dosyalar, karmalarıyla |
+| `pack-host/<sha256>.zip` | [Paket sunucusunun](#paket-sunucusu) sunduğu kopyalar; açılışta temizlenir, kullanılmayınca silinir |
 
 Geyser klasöründe Twilight yalnızca `packs/twilight.zip`, `custom_mappings/twilight_*.json` ve
 `locales/overrides/` öğelerinin sahibidir; başka hiçbir şeye dokunulmaz.
@@ -675,6 +876,7 @@ Geyser klasöründe Twilight yalnızca `packs/twilight.zip`, `custom_mappings/tw
 | `packs/` | `config.yml` içinde adı geçen paket dosyaları |
 | `cache/<sunucu>.mcpack` | Arka uçlardaki Twilight'tan alınan paketler |
 | `cache/link-<karma>.mcpack` (+ `.etag`) | İndirilen paketler |
+| `pack-host/<sha256>.zip` | [Paket sunucusunun](#paket-sunucusu) sunduğu kopyalar; açılışta temizlenir, kullanılmayınca silinir |
 
 #### Geliştirici API'si
 
@@ -764,6 +966,11 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
   büyütemez.
 - **Derlemeler.** Kaynak boyutları ve arşiv girdi sayıları sınırlıdır, sembolik bağlantılar reddedilir,
   vanilla indirmeleri karma ile doğrulanır ve dağıtım yalnızca Twilight'ın sahip olduğu dosyaları değiştirir.
+- **Paket sunucusu.** Paketlere yalnızca Geyser üzerinden bağlanan bir Bedrock oturumu için üretilmiş
+  bağlantılarla ulaşılır: 256 bitlik rastgele belirteçler, kısa ömür, sınırlı indirme, varsayılan olarak
+  oyuncunun IP adresine bağlılık, her ret durumunda aynı boş 404, zaman sınırlı katı istek ayrıştırma, hız sınırları ve
+  tahmin denemelerine geçici engeller ve Geyser'ın SHA-256 değeriyle denetlenen değişmez kopyalar. Reddedilen
+  bir indirme Geyser'ın oyun içi aktarımına döner.
 
 #### Sorun giderme
 
@@ -776,6 +983,9 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
 | Bedrock oyuncuları her sunucu geçişinde yeniden bağlanıyor | Sunucular farklı paketler kullandığında beklenir; aynı paketler asla yeniden bağlanmaz |
 | Aktarılan oyuncular yanlış sunucuya düşüyor | `transfer-address`/`transfer-port` aynı proxy'ye ulaşmalı |
 | Özel biyomlar vanilla gibi görünüyor | 25'ten fazla farklı görünüm veya `world.bedrock-biome-matching: false` |
+| `pack-host` açıkken paketler hâlâ yavaş iniyor | "first download" satırı yok: port kapalı veya erişilemiyor; `http://<adres>:<port>/` dışarıdan boş bir 404 döndürmeli |
+| "... is sent by Geyser: no host for links" | Katılma adresi bir bağlantıda kullanılamıyor: `pack-host.public-address` ayarlayın |
+| "... is sent by Geyser: it is not a pack file" veya "Mixing pack codecs" | Başka bir eklenti dosya olmayan paketler kaydediyor; o zaman bütün paketler Geyser'ın aktarımını kullanır |
 
 #### Kaynaktan derleme
 

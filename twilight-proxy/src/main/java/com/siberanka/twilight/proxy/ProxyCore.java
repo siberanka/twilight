@@ -52,6 +52,7 @@ public final class ProxyCore implements TwilightProxyApi {
     private final Map<String, Deque<Long>> recentTransfers = new ConcurrentHashMap<>();
     private volatile ProxyConfig config;
     private volatile GeyserBridge geyser;
+    private volatile com.siberanka.twilight.host.PackHost host;
 
     public ProxyCore(Platform platform, Object owner) {
         this.platform = platform;
@@ -73,12 +74,33 @@ public final class ProxyCore implements TwilightProxyApi {
             geyser = null; // Geyser's API classes are not on this proxy
         }
         if (geyser == null) platform.info("Geyser is not installed on this proxy: packs are prepared but not sent.");
+        else startHost();
         platform.repeat(this::sweep, 5);
         TwilightProxyApi.Holder.set(this);
     }
 
+    /** The pack host Bedrock players download from ({@code pack-host.enabled}); changes take effect on restart. */
+    private void startHost() {
+        var settings = config.host();
+        if (!settings.enabled()) return;
+        try {
+            host = com.siberanka.twilight.host.PackHost.start(settings, platform.dataDirectory().resolve("pack-host"), platform::info);
+        } catch (IOException | RuntimeException failure) {
+            platform.warn("pack-host could not start; Geyser sends the packs itself: " + failure.getMessage(), null);
+        }
+    }
+
+    com.siberanka.twilight.host.PackHost host() {
+        return host;
+    }
+
+    void warn(String message) {
+        platform.warn(message, null);
+    }
+
     public void disable() {
         TwilightProxyApi.Holder.set(null);
+        if (host != null) host.close();
         if (geyser != null) geyser.close();
         transfers.close();
     }

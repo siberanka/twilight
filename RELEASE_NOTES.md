@@ -1,6 +1,35 @@
-# Twilight 1.0.0-pre.10 - prerelease
+# Twilight 1.0.0-pre.11 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+This prerelease adds the pack host: Bedrock players download the packs over HTTP from the server
+that runs Geyser, and only they can.
+
+- New `pack-host` section in Twilight's and twilight-proxy's `config.yml` (off by default). Like
+  ItemsAdder's or CraftEngine's self-host it serves the packs from a TCP port, but a pack can only
+  be fetched with a link minted for one Bedrock player connecting through Geyser: a random 256-bit
+  token, valid for a few minutes and downloads, and by default only from that player's IP address.
+  Every other request gets the same empty 404.
+- Abuse limits: strict GET/HEAD parsing with time limits, connection and request limits per
+  address, temporary blocks for guessing, a minimum transfer rate and immutable pack copies checked
+  against Geyser's SHA-256.
+- Bedrock-compatible: all file packs of a session are hosted together (Twilight's, Geyser's and
+  other plugins'), pack options and content keys are kept, cached packs are not downloaded again, and
+  a failed download falls back to Geyser's own transfer. Tested live with Bedrock for Windows on a
+  backend and through Velocity; the fallback was tested with links to a closed port.
+- Reverse proxies (HTTPS, `trusted-proxies`), NAT (`public-port`) and DDoS fronts are covered in the
+  [wiki](WIKI.md#pack-hosting).
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 209 tests
+across 38 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.10 - prerelease
 
 This prerelease draws custom boss bars and CustomNameplates' boss bar like Java and adds captures of
 an animated mob model.
@@ -21,8 +50,6 @@ across 37 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.9 - prerelease
 
@@ -281,7 +308,36 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.10 - ön sürüm
+### Twilight 1.0.0-pre.11 - ön sürüm
+
+Bu ön sürüm paket sunucusunu ekler: Bedrock oyuncuları paketleri Geyser'ı çalıştıran sunucudan HTTP ile
+indirir ve bunu yalnızca onlar yapabilir.
+
+- Twilight'ın ve twilight-proxy'nin `config.yml` dosyasında yeni `pack-host` bölümü (varsayılan olarak
+  kapalı). ItemsAdder'ın veya CraftEngine'in self-host özelliği gibi paketleri bir TCP portundan sunar; ama bir
+  paket yalnızca Geyser üzerinden bağlanan bir Bedrock oyuncusu için üretilmiş bir bağlantıyla alınabilir:
+  256 bitlik rastgele bir belirteç, birkaç dakika ve birkaç indirme için geçerli ve varsayılan olarak
+  yalnızca o oyuncunun IP adresinden. Diğer her istek aynı boş 404 yanıtını alır.
+- Kötüye kullanım sınırları: zaman sınırlı katı GET/HEAD ayrıştırma, adres başına bağlantı ve istek
+  sınırları, tahmin denemelerine geçici engeller, en düşük aktarım hızı ve Geyser'ın SHA-256 değeriyle
+  denetlenen değişmez paket kopyaları.
+- Bedrock uyumlu: bir oturumun bütün dosya paketleri birlikte sunulur (Twilight'ınki, Geyser'ınki ve diğer
+  eklentilerinkiler), paket seçenekleri ve içerik anahtarları korunur, önbellekteki paketler yeniden
+  indirilmez ve başarısız bir indirme Geyser'ın kendi aktarımına döner. Windows için Bedrock ile bir arka uçta
+  ve Velocity üzerinden canlı test edildi; geri dönüş kapalı bir porta giden bağlantılarla test edildi.
+- Ters proxy'ler (HTTPS, `trusted-proxies`), NAT (`public-port`) ve DDoS önyüzleri
+  [wiki'de](WIKI.md#paket-sunucusu) anlatılır.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 38 paketteki 209
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.10 - ön sürüm
 
 Bu ön sürüm özel boss çubuklarını ve CustomNameplates boss çubuğunu Java gibi çizer ve animasyonlu bir mob
 modelinin görüntülerini ekler.
@@ -302,8 +358,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.9 - ön sürüm
 

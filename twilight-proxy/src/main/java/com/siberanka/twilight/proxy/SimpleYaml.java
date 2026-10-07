@@ -5,15 +5,17 @@
 package com.siberanka.twilight.proxy;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
  * The YAML subset twilight-proxy's configuration uses: nested maps of scalars, two-space or any
- * consistent indentation, comments, and single or double quotes. It is the same on Velocity and
- * BungeeCord and has no dependency; anything outside the subset (lists, anchors, multi-line values)
- * is rejected with the line number instead of being guessed.
+ * consistent indentation, comments, single or double quotes and one-line lists ({@code [a, b]}). It is
+ * the same on Velocity and BungeeCord and has no dependency; anything outside the subset (block lists,
+ * anchors, multi-line values) is rejected with the line number instead of being guessed.
  */
 final class SimpleYaml {
     private static final int MAX_LINES = 10_000;
@@ -51,6 +53,8 @@ final class SimpleYaml {
                 parent.put(key, child);
                 maps.push(child);
                 indents.push(indent);
+            } else if (value.startsWith("[") && value.endsWith("]") && value.indexOf('[', 1) < 0 && value.indexOf('{') < 0) {
+                parent.put(key, flowList(value.substring(1, value.length() - 1), number));
             } else {
                 if (value.startsWith("[") || value.startsWith("{") || value.startsWith("&") || value.startsWith("*")
                         || value.startsWith("|") || value.startsWith(">")) {
@@ -60,6 +64,18 @@ final class SimpleYaml {
             }
         }
         return root;
+    }
+
+    /** The values of a one-line list ({@code [a, "b"]}); entries are plain or quoted values. */
+    private static List<String> flowList(String body, int number) {
+        if (body.isBlank()) return List.of();
+        List<String> values = new ArrayList<>();
+        for (String entry : body.split(",", -1)) {
+            String value = entry.strip();
+            if (value.isEmpty()) throw error(number, "empty list entry");
+            values.add(unquote(value, number));
+        }
+        return List.copyOf(values);
     }
 
     private static int keyEnd(String content) {

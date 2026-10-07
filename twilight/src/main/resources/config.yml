@@ -111,3 +111,30 @@ proxy:
   # Velocity forwarding secret or BungeeGuard's tokens, which the proxy already
   # shares with this server. Takes effect on restart.
   secret: ""
+
+pack-host:
+  # Serve Geyser's packs to Bedrock players from this server over HTTP, like
+  # ItemsAdder's self-host: Bedrock downloads them much faster than Geyser's
+  # chunked transfer. Open the TCP port in the firewall. Every link is made for
+  # one connecting Bedrock player: random, valid for a few minutes and a few
+  # downloads, and (by default) only from that player's own IP address. Other
+  # requests get an empty 404 and repeated guessing blocks the address. If a
+  # download fails, Geyser sends the pack itself. Takes effect on restart.
+  enabled: false
+  port: 8163
+  # Empty = all interfaces; otherwise an IP address of this machine.
+  bind-address: ""
+  # auto = the address each player typed to join (play.example.com), with the
+  # port below. Or a host name / IP, or http(s)://host[:port] when a reverse
+  # proxy or TLS terminator forwards to this port.
+  public-address: auto
+  # Port written into links when the outside port differs (NAT); 0 = port.
+  public-port: 0
+  # Links work only from the IP address the player connects to Geyser from.
+  require-player-address: true
+  link-minutes: 10
+  downloads-per-link: 3
+  max-connections: 64
+  max-connections-per-address: 4
+  # Reverse proxies whose X-Forwarded-For header is trusted (IP addresses).
+  trusted-proxies: []

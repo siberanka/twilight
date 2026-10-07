@@ -35,3 +35,27 @@ max-pack-size-mb: 256
 download-timeout-seconds: 60
 # Re-check download links for a new version (ETag); 0 = only at start and reload.
 url-refresh-minutes: 60
+
+# Serve the packs to Bedrock players from this proxy over HTTP (like ItemsAdder's
+# self-host). Bedrock downloads them much faster than Geyser's chunked transfer.
+# Open the TCP port in the firewall. Each link is made for one connecting Bedrock
+# player: random, valid for a few minutes and a few downloads, and (by default) only
+# from that player's IP address; anything else gets an empty 404 and repeated guessing
+# blocks the address. If a download fails, Geyser sends the pack itself. Restart to apply.
+pack-host:
+  enabled: false
+  port: 8163
+  # Empty = all interfaces; otherwise an IP address of this machine.
+  bind-address: ""
+  # auto = the address each player typed to join, with the port below; or a host
+  # name / IP, or http(s)://host[:port] when a reverse proxy forwards to this port.
+  public-address: auto
+  # Port written into links when the outside port differs (NAT); 0 = port.
+  public-port: 0
+  require-player-address: true
+  link-minutes: 10
+  downloads-per-link: 3
+  max-connections: 64
+  max-connections-per-address: 4
+  # Reverse proxies whose X-Forwarded-For header is trusted, e.g. [127.0.0.1]
+  trusted-proxies: []

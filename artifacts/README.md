@@ -1,4 +1,4 @@
-# Twilight 1.0.0-pre.10 prerelease build
+# Twilight 1.0.0-pre.11 prerelease build
 
 > Türkçe: [aşağıda](#türkçe)
 
@@ -8,7 +8,7 @@
 
 Built locally by siberanka using Java 25.0.2 and Gradle 9.6.0, with
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`.
-200 tests across 37 suites passed. No hosted CI was used.
+209 tests across 38 suites passed. No hosted CI was used.
 
 The corresponding source is in this commit under `twilight/`, `twilight-proxy/` and `protocol/`, with build files
 at the repository root. Licensed under [LGPL-3.0-or-later](../LICENSE.LESSER);
@@ -16,7 +16,9 @@ the accompanying [GPL text](../LICENSE) is also provided.
 
 Read the [release notes](../RELEASE_NOTES.md), the [wiki](../WIKI.md) and the
 [stacked images, nameplates and exact biomes](../docs/LAYERS_BIOMES_2026-10-04.md)
-report before deployment. This prerelease draws boss bars whose sprites a pack redraws with those
+report before deployment. This prerelease adds the pack host: Bedrock players download the packs
+over HTTP from the server that runs Geyser, through links that only work for their own session
+([wiki](../WIKI.md#pack-hosting)). 1.0.0-pre.10 draws boss bars whose sprites a pack redraws with those
 sprites, shows long boss bar names whole and fits CustomNameplates' default boss bar into Bedrock's
 name limit ([boss bar and model review](../docs/BOSSBARS_MODELS_2026-10-05.md)). Since 1.0.0-pre.9,
 releases include twilight-proxy, per-server Bedrock packs for
@@ -51,7 +53,7 @@ item, glyph and menu results.
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.10 ön sürüm derlemesi
+### Twilight 1.0.0-pre.11 ön sürüm derlemesi
 
 [Twilight.jar indir](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256) (arka uç sunucuları)
 
@@ -59,7 +61,7 @@ item, glyph and menu results.
 
 siberanka tarafından Java 25.0.2 ve Gradle 9.6.0 ile yerel olarak
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`
-komutuyla derlendi. 37 paketteki 200 test geçti. Barındırılan CI kullanılmadı.
+komutuyla derlendi. 38 paketteki 209 test geçti. Barındırılan CI kullanılmadı.
 
 İlgili kaynak kod bu commit içinde `twilight/`, `twilight-proxy/` ve `protocol/` altında, derleme
 dosyaları depo kökündedir. [LGPL-3.0-or-later](../LICENSE.LESSER) ile lisanslanmıştır;
@@ -67,8 +69,10 @@ eşlik eden [GPL metni](../LICENSE) de sağlanır.
 
 Dağıtımdan önce [sürüm notlarını](../RELEASE_NOTES.md), [wiki'yi](../WIKI.md) ve
 [üst üste görseller, isim plakaları ve birebir biyomlar](../docs/LAYERS_BIOMES_2026-10-04.md)
-raporunu okuyun. Bu ön sürüm, sprite'larını bir paketin yeniden çizdiği boss çubuklarını bu sprite'larla
-çizer, uzun boss çubuğu adlarını tamamen gösterir ve CustomNameplates'in varsayılan boss çubuğunu Bedrock'un ad
+raporunu okuyun. Bu ön sürüm paket sunucusunu ekler: Bedrock oyuncuları paketleri Geyser'ı çalıştıran
+sunucudan, yalnızca kendi oturumları için çalışan bağlantılarla HTTP üzerinden indirir
+([wiki](../WIKI.md#paket-sunucusu)). 1.0.0-pre.10, sprite'larını bir paketin yeniden çizdiği boss çubuklarını
+bu sprite'larla çizer, uzun boss çubuğu adlarını tamamen gösterir ve CustomNameplates'in varsayılan boss çubuğunu Bedrock'un ad
 sınırına sığdırır ([boss çubuğu ve model incelemesi](../docs/BOSSBARS_MODELS_2026-10-05.md)). 1.0.0-pre.9'dan
 beri sürümler, Geyser'ı Velocity veya BungeeCord proxy'si üzerinde çalıştıran ağlar için sunucuya özel Bedrock
 paketleri sunan twilight-proxy'yi içerir

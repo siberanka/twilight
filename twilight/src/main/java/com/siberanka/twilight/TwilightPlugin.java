@@ -69,6 +69,7 @@ public final class TwilightPlugin extends JavaPlugin {
     private com.siberanka.twilight.integration.display.GeyserRiderNames riderNames;
     private com.siberanka.twilight.integration.proxy.ProxyPackChannel proxyChannel;
     private com.siberanka.twilight.integration.text.GeyserLanguageBridge languageBridge;
+    private com.siberanka.twilight.integration.pack.GeyserPackHosting packHosting;
 
     @Override
     public void onEnable() {
@@ -110,6 +111,7 @@ public final class TwilightPlugin extends JavaPlugin {
                     getLogger().log(Level.WARNING, "Custom biome matching is unavailable for this Geyser build.", failure);
                 }
             }
+            startPackHost();
             if (config.javaTextLayout()) {
                 try {
                     textBridge = com.siberanka.twilight.integration.text.GeyserTextLayoutBridge.create(this,
@@ -159,6 +161,7 @@ public final class TwilightPlugin extends JavaPlugin {
             catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close translations", failure); }
         }
         if (proxyChannel != null) proxyChannel.close();
+        if (packHosting != null) packHosting.close();
         if (riderNames != null) {
             try { riderNames.close(); }
             catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close the rider name rule", failure); }
@@ -313,6 +316,27 @@ public final class TwilightPlugin extends JavaPlugin {
             }
             try { operationLog.close(); } catch (Exception closeFailure) { getLogger().log(Level.WARNING, "Could not close operation log", closeFailure); }
         });
+    }
+
+    /** Bedrock players download Geyser's packs from Twilight's own host when {@code pack-host.enabled} is set. */
+    private void startPackHost() {
+        com.siberanka.twilight.host.HostSettings settings;
+        try {
+            settings = com.siberanka.twilight.host.HostSettings.parse(key -> getConfig().get("pack-host." + key));
+        } catch (IllegalArgumentException invalid) {
+            getLogger().severe("pack-host is disabled: " + invalid.getMessage());
+            return;
+        }
+        if (!settings.enabled()) return;
+        if (!config.sendPackToBedrock()) {
+            getLogger().warning("pack-host is enabled but geyser.send-pack-to-bedrock is false; Geyser's own packs are still hosted.");
+        }
+        try {
+            packHosting = com.siberanka.twilight.integration.pack.GeyserPackHosting.start(this, settings,
+                    getDataFolder().toPath().resolve("pack-host"), getLogger());
+        } catch (java.io.IOException | RuntimeException | LinkageError failure) {
+            getLogger().log(Level.SEVERE, "pack-host could not start; Geyser sends the packs itself: " + failure.getMessage());
+        }
     }
 
     /** The pack Bedrock players receive: Geyser's copy, or the exported one that another plugin sends. */

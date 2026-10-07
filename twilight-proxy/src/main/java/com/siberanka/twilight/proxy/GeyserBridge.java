@@ -4,6 +4,7 @@
  */
 package com.siberanka.twilight.proxy;
 
+import org.geysermc.event.PostOrder;
 import org.geysermc.geyser.api.GeyserApi;
 import org.geysermc.geyser.api.connection.GeyserConnection;
 import org.geysermc.geyser.api.event.EventRegistrar;
@@ -35,11 +36,39 @@ final class GeyserBridge {
             GeyserBridge bridge = new GeyserBridge(owner);
             api.eventBus().subscribe(bridge.registrar, SessionLoadResourcePacksEvent.class, event -> {
                 GeyserConnection connection = event.connection();
-                core.packFor(connection.xuid()).ifPresent(pack -> event.register(ResourcePack.create(PackCodec.path(pack))));
+                core.packFor(connection.xuid()).ifPresent(pack -> event.register(bridge.loaded(pack)));
             });
+            // After every listener has added its packs, the pack host (when it runs) turns them all into links.
+            api.eventBus().subscribe(bridge.registrar, SessionLoadResourcePacksEvent.class, event -> {
+                var host = core.host();
+                if (host == null) return;
+                com.siberanka.twilight.host.SessionHosting.hostAll(host, event, (pack, reason) -> {
+                    if (bridge.warned.add(pack + reason)) core.warn("pack-host: " + pack + " is sent by Geyser: " + reason);
+                });
+            }, PostOrder.LAST);
             return bridge;
         } catch (ClassNotFoundException | LinkageError | RuntimeException absent) {
             return null;
+        }
+    }
+
+    /** Geyser's pack record of each pack file, reused while the file is unchanged (hashed once, not per session). */
+    private final java.util.Map<java.nio.file.Path, Loaded> packs = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Set<String> warned = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    private record Loaded(long size, long modified, ResourcePack pack) {}
+
+    private ResourcePack loaded(java.nio.file.Path file) {
+        try {
+            long size = java.nio.file.Files.size(file), modified = java.nio.file.Files.getLastModifiedTime(file).toMillis();
+            Loaded known = packs.get(file);
+            if (known != null && known.size() == size && known.modified() == modified) return known.pack();
+            ResourcePack pack = ResourcePack.create(PackCodec.path(file));
+            if (packs.size() > 256) packs.clear();
+            packs.put(file, new Loaded(size, modified, pack));
+            return pack;
+        } catch (java.io.IOException unreadable) {
+            return ResourcePack.create(PackCodec.path(file));
         }
     }
 

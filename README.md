@@ -158,6 +158,24 @@ before Geyser sees them, transfers are bounded per player, and failed downloads 
 pack. Both proxies were tested live with two backends; see the
 [proxy test](docs/PROXY_2026-10-05.md) and the [wiki](WIKI.md#twilight-proxy-1).
 
+## Pack hosting
+
+Bedrock players can download the packs over HTTP from the server that runs Geyser (a backend or the
+proxy) instead of Geyser's slower in-game transfer, like ItemsAdder's or CraftEngine's self-host:
+
+```yaml
+pack-host:        # plugins/Twilight/config.yml or plugins/twilight-proxy/config.yml
+  enabled: true
+  port: 8163      # open this TCP port
+```
+
+Unlike a public pack link, a pack can only be fetched with a link minted for one Bedrock player who
+is connecting through Geyser: a random 256-bit token, valid for a few minutes and downloads, and by
+default only from that player's IP address. Everything else gets an empty 404, guessing is rate
+limited and blocked, and a failed download falls back to Geyser's own transfer, so joining never
+depends on it. Every pack of the session is hosted (Twilight's, Geyser's and other plugins' files).
+Reverse proxies, HTTPS, NAT and DDoS fronts are covered in the [wiki](WIKI.md#pack-hosting).
+
 ## Commands
 
 | Command | Purpose |
@@ -351,6 +369,25 @@ paylaştığı gizli anahtarla HMAC-SHA256: Velocity yönlendirmesi veya BungeeG
 denetlenir, aktarımlar oyuncu başına sınırlıdır ve başarısız indirmeler önceki paketi korur. İki proxy de
 iki arka uçla canlı test edildi; [proxy testine](docs/PROXY_2026-10-05.md) ve
 [wiki'ye](WIKI.md#twilight-proxy-4) bakın.
+
+#### Paket sunucusu
+
+Bedrock oyuncuları paketleri, ItemsAdder'ın veya CraftEngine'in self-host özelliği gibi, Geyser'ın yavaş oyun
+içi aktarımı yerine Geyser'ı çalıştıran sunucudan (bir arka uç veya proxy) HTTP ile indirebilir:
+
+```yaml
+pack-host:        # plugins/Twilight/config.yml veya plugins/twilight-proxy/config.yml
+  enabled: true
+  port: 8163      # bu TCP portunu açın
+```
+
+Herkese açık bir paket bağlantısından farklı olarak bir paket yalnızca Geyser üzerinden bağlanan bir Bedrock
+oyuncusu için üretilmiş bir bağlantıyla alınabilir: 256 bitlik rastgele bir belirteç, birkaç dakika ve birkaç
+indirme için geçerli ve varsayılan olarak yalnızca o oyuncunun IP adresinden. Geri kalan her şey boş bir 404
+alır, tahmin denemeleri hız sınırına takılır ve engellenir; başarısız bir indirme Geyser'ın kendi aktarımına
+döner, yani katılmak asla buna bağlı değildir. Oturumun bütün paketleri sunulur (Twilight'ın, Geyser'ın ve
+diğer eklentilerin dosyaları). Ters proxy'ler, HTTPS, NAT ve DDoS önyüzleri [wiki'de](WIKI.md#paket-sunucusu)
+anlatılır.
 
 #### Komutlar
 
