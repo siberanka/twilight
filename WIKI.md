@@ -296,6 +296,57 @@ quick reconnect per server change:
 - Large packs: Geyser sends at most about 1.2 MiB/s (a 150 MiB pack took 172 seconds in tests).
   The [pack host](#pack-hosting) lets Bedrock download them over HTTP instead.
 
+### Recommended network settings
+
+A pack reconnect is a new login on the proxy. Everything that treats new logins specially (login
+plugins, anti-bot checks, connection limits) sees it, so these settings keep it short and safe.
+
+**Geyser (on the proxy, `plugins/Geyser-*/config.yml`)**
+
+| Setting | Value | Why |
+|---|---|---|
+| `auth-type` | `floodgate` with Floodgate installed, otherwise `online` | Bedrock players are verified by Xbox Live; with Floodgate they need no Java account |
+| `validate-bedrock-login` | `true` | Never turn it off: it is what makes the Xbox identity (XUID) trustworthy |
+| `use-haproxy-protocol` + `haproxy-protocol-whitelisted-ips` | only behind a UDP front that sends PROXY protocol | Otherwise every player appears to come from the front's address (sessions, IP limits and pack-host links break) |
+
+**Floodgate (proxy and backends)**
+
+| Setting | Value | Why |
+|---|---|---|
+| Installed on | the proxy, and on every backend when the proxy forwards Floodgate data | Backends then know a player is Bedrock (forms, skins, plugins that ask Floodgate) |
+| `key.pem` | the same file on the proxy and every backend, never published | It signs the Floodgate data the proxy forwards |
+| `send-floodgate-data` (proxy) | `true` when backends run Floodgate | |
+| `username-prefix` | keep the default `.` | Bedrock names cannot collide with Java names |
+
+**Proxy**
+
+| Setting | Value |
+|---|---|
+| Velocity `player-info-forwarding-mode` | `modern` (or `bungeeguard`); BungeeCord: `ip_forward: true` with BungeeGuard |
+| Velocity `login-ratelimit` | 3000 (default) or less; a reconnect logs in about four seconds after leaving |
+| Velocity `accepts-transfers`, BungeeCord `reject_transfers` | leave as they are; Bedrock reconnects do not use Java transfers |
+| Backends | reachable only from the proxy (firewall or bind address); `bukkit.yml` `connection-throttle: -1` |
+
+**twilight-proxy**
+
+| Setting | Value |
+|---|---|
+| `transfer-address`, `transfer-port` | the public Bedrock address when players join through another one (DNS split, load balancer) |
+| `login-servers` | the login server(s), e.g. `[auth_lobby]` |
+| `transfer-timeout-seconds` | `auto` |
+| `pack-host` | enabled for packs above a few MiB |
+
+**Login plugins**
+
+- Enable IP sessions, long enough for a reconnect plus a large pack download (a few minutes). A
+  reconnected player then logs in automatically instead of typing the password again.
+- Prefer a plugin that returns the player to the server it asked for after the login, instead of a
+  fixed "send after login" server; twilight-proxy also sends it on when the plugin moves it once.
+- Logging Bedrock players in automatically because they are Floodgate players is safe only when the
+  account is bound to that player's XUID (checked through the Floodgate API, never by name).
+- If the plugin refuses a login while the same name is still online, a reconnect can be refused for a
+  moment; the player then lands on the proxy's fallback server.
+
 ## Pack hosting
 
 Geyser normally sends a pack inside the game connection, in small chunks, which takes a while for
@@ -864,6 +915,57 @@ yeniden bağlanmaya izin vermelidir:
   ulaşamadığında "Sunucu bulunamadı" gösterir.
 - Büyük paketler: Geyser en fazla yaklaşık 1,2 MiB/s gönderir (150 MiB'lik bir paket testlerde 172 saniye
   sürdü). [Paket sunucusu](#paket-sunucusu) Bedrock'un bunları HTTP ile indirmesini sağlar.
+
+##### Önerilen ağ ayarları
+
+Bir paket yeniden bağlanması proxy'de yeni bir giriştir. Yeni girişlere özel davranan her şey (giriş
+eklentileri, anti-bot denetimleri, bağlantı sınırları) onu görür; bu ayarlar onu kısa ve güvenli tutar.
+
+**Geyser (proxy'de, `plugins/Geyser-*/config.yml`)**
+
+| Ayar | Değer | Neden |
+|---|---|---|
+| `auth-type` | Floodgate kuruluysa `floodgate`, değilse `online` | Bedrock oyuncuları Xbox Live ile doğrulanır; Floodgate ile Java hesabı gerekmez |
+| `validate-bedrock-login` | `true` | Asla kapatmayın: Xbox kimliğini (XUID) güvenilir kılan budur |
+| `use-haproxy-protocol` + `haproxy-protocol-whitelisted-ips` | yalnızca PROXY protokolü gönderen bir UDP önyüzünün arkasında | Aksi hâlde her oyuncu önyüzün adresinden geliyor görünür (oturumlar, IP sınırları ve paket sunucusu bağlantıları bozulur) |
+
+**Floodgate (proxy ve arka uçlar)**
+
+| Ayar | Değer | Neden |
+|---|---|---|
+| Kurulduğu yer | proxy ve proxy Floodgate verisini iletiyorsa her arka uç | Arka uçlar bir oyuncunun Bedrock olduğunu bilir (formlar, kostümler, Floodgate'e soran eklentiler) |
+| `key.pem` | proxy'de ve her arka uçta aynı dosya, asla yayımlanmaz | Proxy'nin ilettiği Floodgate verisini imzalar |
+| `send-floodgate-data` (proxy) | arka uçlarda Floodgate varsa `true` | |
+| `username-prefix` | varsayılan `.` kalsın | Bedrock adları Java adlarıyla çakışmaz |
+
+**Proxy**
+
+| Ayar | Değer |
+|---|---|
+| Velocity `player-info-forwarding-mode` | `modern` (veya `bungeeguard`); BungeeCord: BungeeGuard ile `ip_forward: true` |
+| Velocity `login-ratelimit` | 3000 (varsayılan) veya daha az; bir yeniden bağlanma ayrıldıktan yaklaşık dört saniye sonra giriş yapar |
+| Velocity `accepts-transfers`, BungeeCord `reject_transfers` | olduğu gibi bırakın; Bedrock yeniden bağlanmaları Java aktarımlarını kullanmaz |
+| Arka uçlar | yalnızca proxy'den erişilebilir (güvenlik duvarı veya bağlanma adresi); `bukkit.yml` `connection-throttle: -1` |
+
+**twilight-proxy**
+
+| Ayar | Değer |
+|---|---|
+| `transfer-address`, `transfer-port` | oyuncular başka bir adresle katılıyorsa (ayrık DNS, yük dengeleyici) herkese açık Bedrock adresi |
+| `login-servers` | giriş sunucu(lar)ı, ör. `[auth_lobby]` |
+| `transfer-timeout-seconds` | `auto` |
+| `pack-host` | birkaç MiB'den büyük paketler için açık |
+
+**Giriş eklentileri**
+
+- IP oturumlarını, bir yeniden bağlanma ile büyük bir paket indirmesine yetecek kadar uzun (birkaç dakika)
+  açın. Yeniden bağlanan oyuncu o zaman şifreyi yeniden yazmak yerine otomatik giriş yapar.
+- Girişten sonra sabit bir "giriş sonrası gönder" sunucusu yerine oyuncuyu istediği sunucuya geri gönderen bir
+  eklenti tercih edin; eklenti oyuncuyu bir kez taşıdığında twilight-proxy de onu ileri gönderir.
+- Bedrock oyuncularını Floodgate oyuncusu oldukları için otomatik giriş yaptırmak, yalnızca hesap o oyuncunun
+  XUID'sine bağlıysa güvenlidir (Floodgate API'siyle denetlenir, asla adla değil).
+- Eklenti aynı ad hâlâ çevrimiçiyken bir girişi reddediyorsa, bir yeniden bağlanma bir anlığına reddedilebilir;
+  oyuncu o zaman proxy'nin yedek sunucusuna düşer.
 
 #### Paket sunucusu
 
