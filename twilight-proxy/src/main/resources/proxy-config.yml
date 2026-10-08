@@ -24,6 +24,15 @@ transfer-address: ""
 transfer-port: 0
 # Server whose pack a new Bedrock player loads; empty = the proxy's first server.
 initial-server: ""
+# How long a reconnect may take, from the transfer until the player reaches the server
+# (pack download and login included): auto = three minutes plus the pack at 128 KiB/s
+# (a 150 MiB pack: 23 minutes), at most an hour; or a number of seconds (60-7200).
+transfer-timeout-seconds: auto
+# Servers players pass through before playing (login, captcha, limbo), e.g. [auth, limbo].
+# Bedrock players are never reconnected for these, and a reconnect in progress continues
+# when the player moves on. Login plugins that pick such a server are also detected
+# without this list.
+login-servers: []
 
 # Secret shared with Twilight on the backends (16+ characters, the same as proxy.secret
 # there). Empty = Velocity's forwarding secret (modern or BungeeGuard forwarding) or

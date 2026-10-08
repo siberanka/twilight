@@ -214,6 +214,8 @@ transfer-on-switch: true
 transfer-address: ""     # empty = the address the player joined with
 transfer-port: 0         # 0 = the port the player joined with
 initial-server: ""       # empty = the proxy's first server
+transfer-timeout-seconds: auto  # or 60-7200
+login-servers: []        # e.g. [auth, limbo]
 secret: ""               # empty = Velocity forwarding secret or BungeeGuard token
 max-pack-size-mb: 256
 download-timeout-seconds: 60
@@ -230,9 +232,11 @@ pack-host:               # see "Pack hosting"
 | `transfer-on-switch` | Reconnect Bedrock players whose next server needs another pack |
 | `transfer-address`, `transfer-port` | Where transferred players reconnect (useful behind a load balancer) |
 | `initial-server` | Server whose pack a new session loads |
+| `transfer-timeout-seconds` | How long a reconnect may take, from the transfer until the player reaches its server (download and login included). `auto`: three minutes plus the pack at 128 KiB/s, at most an hour (a 150 MiB pack: 23 minutes) |
+| `login-servers` | Servers players pass through before playing (login, captcha, limbo): Bedrock players are never reconnected for them, and a reconnect in progress continues when the player moves on. Login plugins that choose such a server are detected without this list |
 | `secret` | Shared secret for `auto` packs |
 | `max-pack-size-mb` | Largest accepted pack (1-2048) |
-| `download-timeout-seconds` | Timeout of a download (5-600) |
+| `download-timeout-seconds` | A link download stops after this long without data, or when it is slower than 64 KiB/s overall (5-600) |
 | `url-refresh-minutes` | How often links are checked for a new version with their ETag (0-10080) |
 | `pack-host.*` | Serve the packs from the proxy over HTTP; see [pack host](#pack-hosting) |
 
@@ -248,6 +252,49 @@ incomplete transfer keeps the previous pack.
 - **file**: read from `plugins/twilight-proxy/packs/` at start and reload.
 - **link**: downloaded in the background over HTTP(S) to `cache/link-<hash>.mcpack`; redirects to
   plain HTTP are not followed.
+
+Geyser reads a pack file again for every piece it sends, so each pack version is copied to
+`cache/versions/<sha256>.mcpack` and Geyser reads only that copy: a pack rebuilt or replaced during a
+long download never changes under it. A new pack is also hashed for Geyser (and copied for the pack
+host) as soon as it arrives, so the first player who needs it does not wait for that during login.
+
+### Reconnects, login plugins and protections
+
+A reconnect goes through these steps, each written to the proxy log:
+
+1. `Reconnecting <player> to load the Bedrock pack of <server> (<size>); waiting up to <n> min` - the
+   client is transferred to `transfer-address`/`transfer-port` or the address it joined with. Packs of
+   32 MiB or more also print how long Geyser needs for them and suggest the pack host.
+2. `<player> reconnected after <n> s` - Geyser saw the client again and offers it the server's pack.
+3. `<player> is back ... sending it to <server>` / `reached <server> <n> s after the transfer
+   (reconnect, pack and login)` - the player is on the server it asked for.
+
+Login plugins (AuthMe with AuthMeVelocity or AuthMeBungee, LibreLogin, nLogin, JPremium and similar)
+keep the last word, because a reconnect is a new connection that may have to log in again:
+
+| What the login plugin does | What twilight-proxy does |
+|---|---|
+| Sends the reconnected player to its login server first | Lets it; after the login, when the login plugin sends the player on (for example to the lobby), the player is sent to the server it reconnected for instead, through a new connection request that every plugin checks again |
+| Refuses every other server before the login | Notices the refusal of the first server, lets the player join the proxy's first server and continues the same way after the login |
+| Keeps a session (no new login after a reconnect) | Nothing to do: the player goes straight to its server |
+
+A session's first server never causes a reconnect: the pack was chosen for the server the proxy
+expected, and reconnecting again because a plugin sent the player somewhere else would only loop.
+Each player is reconnected at most four times in five minutes; after that it joins with the pack it
+has (logged as a warning). A reconnect that is not finished by its deadline is abandoned (logged).
+
+Forwarding stays as it is: Velocity modern forwarding, BungeeGuard and legacy forwarding see a
+reconnected player like any other login. Protections in front of the network have to allow one
+quick reconnect per server change:
+
+- The client comes back about four seconds after the transfer. Velocity's `login-ratelimit` must not
+  be longer than that (the default 3000 ms is fine; twilight-proxy warns when it is longer).
+- UDP DDoS protection and anti-bot plugins (for example SafeNET, Sonar or EpicGuard) must not block or
+  challenge a Bedrock client that reconnects right after leaving. If a player has not come back 60
+  seconds after the transfer, the log says so and names the address it was sent to; Bedrock shows
+  "Server not found" when it cannot reach that address.
+- Large packs: Geyser sends at most about 1.2 MiB/s (a 150 MiB pack took 172 seconds in tests).
+  The [pack host](#pack-hosting) lets Bedrock download them over HTTP instead.
 
 ## Pack hosting
 
@@ -321,6 +368,22 @@ Bedrock for Windows was tested with plain `http://` links on the proxy and on a 
 platform refuses plain HTTP, its players fall back to Geyser's transfer; serving the port through
 HTTPS (`public-address: https://...`) avoids that.
 
+### When a link does not work
+
+When a client asks Geyser for a pack it had a link for, the host remembers that player's address and
+gives it no links for 30 minutes, so its next joins do not wait for a download that cannot work. The
+log says why, once per address:
+
+| Log | Meaning |
+|---|---|
+| `its link never reached the host` | The client could not open the link: port closed or filtered, wrong `public-address`, or a client that refuses plain HTTP. When this happens to five players in a row and nobody downloaded for 30 minutes, a warning asks to check the port |
+| `its link was used from <address>` | The request came from another address than the game connection (NAT or a proxy in between): set `trusted-proxies`, or `require-player-address: false` |
+| `its download did not finish` | The client started the download but used Geyser in the end |
+
+After a download the host keeps the connection open until the client closes it (at least 15
+seconds plus the pack at 128 KiB/s, at most ten minutes). Antivirus web shields scan downloads and
+pass them on afterwards; closing earlier made them abort large packs in tests.
+
 ### What is refused
 
 Every request outside a valid link gets the same empty `404`: unknown or expired tokens, a token
@@ -375,6 +438,7 @@ In Geyser's folder Twilight owns `packs/twilight.zip`, `custom_mappings/twilight
 | `packs/` | Pack files named in `config.yml` |
 | `cache/<server>.mcpack` | Packs received from Twilight on the backends |
 | `cache/link-<hash>.mcpack` (+ `.etag`) | Downloaded packs |
+| `cache/versions/<sha256>.mcpack` | The copy of each pack version Geyser reads; replaced versions are removed after the longest reconnect |
 | `pack-host/<sha256>.zip` | Copies the [pack host](#pack-hosting) serves; cleared at start, removed when unused |
 
 ## Developer API
@@ -481,6 +545,9 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 | `auto` packs never arrive on the proxy | `/twilightproxy` shows "auto packs off": set the same `secret` on both sides or use modern forwarding |
 | Bedrock players reconnect on every server switch | Expected when servers use different packs; same packs never reconnect |
 | Transferred players end up on the wrong server | `transfer-address`/`transfer-port` must reach the same proxy |
+| "Server not found" after a server change | The client could not reach the transfer address: check the log line "has not come back ... after the transfer to <address>", `transfer-address`/`transfer-port`, and that UDP protection and anti-bot plugins allow a quick reconnect |
+| After the pack download the player is on the login server again | Expected without login sessions; after logging in it is sent on to the server it chose. Enable sessions in the login plugin to skip the second login |
+| Large packs take minutes | Geyser sends about 1.2 MiB/s; enable `pack-host` |
 | Custom biomes look like vanilla ones | More than 25 distinct looks, or `world.bedrock-biome-matching: false` |
 | Packs still download slowly with `pack-host` on | No "first download" line: the port is closed or unreachable; `http://<address>:<port>/` must answer an empty 404 from outside |
 | "... is sent by Geyser: no host for links" | The join address cannot be used in a link: set `pack-host.public-address` |
@@ -715,6 +782,8 @@ transfer-on-switch: true
 transfer-address: ""     # boş = oyuncunun katıldığı adres
 transfer-port: 0         # 0 = oyuncunun katıldığı port
 initial-server: ""       # boş = proxy'nin ilk sunucusu
+transfer-timeout-seconds: auto  # veya 60-7200
+login-servers: []        # ör. [auth, limbo]
 secret: ""               # boş = Velocity yönlendirme gizli anahtarı veya BungeeGuard belirteci
 max-pack-size-mb: 256
 download-timeout-seconds: 60
@@ -731,9 +800,11 @@ pack-host:               # "Paket sunucusu" bölümüne bakın
 | `transfer-on-switch` | Sonraki sunucusu başka bir paket gerektiren Bedrock oyuncularını yeniden bağlar |
 | `transfer-address`, `transfer-port` | Aktarılan oyuncuların yeniden bağlandığı yer (yük dengeleyici arkasında yararlı) |
 | `initial-server` | Yeni bir oturumun paketini yüklediği sunucu |
+| `transfer-timeout-seconds` | Bir yeniden bağlanmanın aktarımdan oyuncu sunucusuna ulaşana kadar (indirme ve giriş dahil) ne kadar sürebileceği. `auto`: üç dakika artı paketin 128 KiB/s ile süresi, en fazla bir saat (150 MiB'lik paket: 23 dakika) |
+| `login-servers` | Oyuncuların oynamadan önce geçtiği sunucular (giriş, captcha, limbo): Bedrock oyuncuları bunlar için asla yeniden bağlanmaz ve süren bir yeniden bağlanma oyuncu oradan ayrılınca devam eder. Böyle bir sunucuyu seçen giriş eklentileri bu liste olmadan da algılanır |
 | `secret` | `auto` paketler için paylaşılan gizli anahtar |
 | `max-pack-size-mb` | Kabul edilen en büyük paket (1-2048) |
-| `download-timeout-seconds` | Bir indirmenin zaman aşımı (5-600) |
+| `download-timeout-seconds` | Bir bağlantı indirmesi bu süre boyunca veri gelmezse veya toplamda 64 KiB/s'den yavaşsa durur (5-600) |
 | `url-refresh-minutes` | Bağlantıların ETag ile yeni sürüm için ne sıklıkla denetlendiği (0-10080) |
 | `pack-host.*` | Paketleri proxy'den HTTP ile sunar; [paket sunucusu](#paket-sunucusu) bölümüne bakın |
 
@@ -749,6 +820,50 @@ eksik bir aktarım önceki paketi korur.
 - **dosya**: açılışta ve yeniden yüklemede `plugins/twilight-proxy/packs/` dizininden okunur.
 - **bağlantı**: arka planda HTTP(S) üzerinden `cache/link-<karma>.mcpack` dosyasına indirilir; düz HTTP'ye
   yönlendirmeler izlenmez.
+
+Geyser bir paket dosyasını gönderdiği her parça için yeniden okur; bu yüzden her paket sürümü
+`cache/versions/<sha256>.mcpack` olarak kopyalanır ve Geyser yalnızca bu kopyayı okur: uzun bir indirme
+sırasında yeniden derlenen veya değiştirilen bir paket indirmenin altında değişmez. Yeni bir paket geldiği anda
+Geyser için karması da hesaplanır (ve paket sunucusu için kopyalanır); böylece ona ihtiyaç duyan ilk oyuncu
+girişte bunu beklemez.
+
+##### Yeniden bağlanmalar, giriş eklentileri ve korumalar
+
+Bir yeniden bağlanma şu adımlardan geçer; her biri proxy günlüğüne yazılır:
+
+1. `Reconnecting <oyuncu> to load the Bedrock pack of <sunucu> (<boyut>); waiting up to <n> min` - istemci
+   `transfer-address`/`transfer-port` adresine veya katıldığı adrese aktarılır. 32 MiB veya daha büyük
+   paketlerde Geyser'ın bunlar için ne kadar süreye ihtiyaç duyduğu da yazılır ve paket sunucusu önerilir.
+2. `<oyuncu> reconnected after <n> s` - Geyser istemciyi yeniden gördü ve ona sunucunun paketini sunar.
+3. `<oyuncu> is back ... sending it to <sunucu>` / `reached <sunucu> <n> s after the transfer (reconnect, pack
+   and login)` - oyuncu istediği sunucudadır.
+
+Giriş eklentileri (AuthMeVelocity veya AuthMeBungee ile AuthMe, LibreLogin, nLogin, JPremium ve benzerleri) son
+sözü söyler, çünkü bir yeniden bağlanma yeniden giriş yapması gerekebilecek yeni bir bağlantıdır:
+
+| Giriş eklentisinin yaptığı | twilight-proxy'nin yaptığı |
+|---|---|
+| Yeniden bağlanan oyuncuyu önce giriş sunucusuna gönderir | Buna izin verir; girişten sonra giriş eklentisi oyuncuyu ileri gönderdiğinde (ör. lobiye), oyuncu bunun yerine yeniden bağlandığı sunucuya gönderilir; bu, her eklentinin yeniden denetlediği yeni bir bağlantı isteğiyle yapılır |
+| Girişten önce diğer her sunucuyu reddeder | İlk sunucunun reddedildiğini fark eder, oyuncuyu proxy'nin ilk sunucusuna alır ve girişten sonra aynı şekilde devam eder |
+| Oturum tutar (yeniden bağlanmadan sonra yeni giriş yok) | Yapacak bir şey yok: oyuncu doğrudan sunucusuna gider |
+
+Bir oturumun ilk sunucusu asla yeniden bağlanmaya yol açmaz: paket proxy'nin beklediği sunucu için seçildi ve
+bir eklenti oyuncuyu başka bir yere gönderdiği için yeniden bağlanmak yalnızca döngü yaratırdı. Her oyuncu beş
+dakikada en fazla dört kez yeniden bağlanır; sonrasında elindeki paketle katılır (uyarı olarak günlüğe yazılır).
+Süresi içinde bitmeyen bir yeniden bağlanma bırakılır (günlüğe yazılır).
+
+Yönlendirme olduğu gibi kalır: Velocity modern yönlendirmesi, BungeeGuard ve eski (legacy) yönlendirme yeniden
+bağlanan oyuncuyu diğer her giriş gibi görür. Ağın önündeki korumalar sunucu değişikliği başına bir hızlı
+yeniden bağlanmaya izin vermelidir:
+
+- İstemci aktarımdan yaklaşık dört saniye sonra geri gelir. Velocity'nin `login-ratelimit` değeri bundan uzun
+  olmamalıdır (varsayılan 3000 ms uygundur; twilight-proxy daha uzunsa uyarır).
+- UDP DDoS koruması ve anti-bot eklentileri (ör. SafeNET, Sonar veya EpicGuard) ayrıldıktan hemen sonra
+  yeniden bağlanan bir Bedrock istemcisini engellememeli veya doğrulamaya sokmamalıdır. Bir oyuncu aktarımdan
+  60 saniye sonra geri gelmemişse günlük bunu söyler ve gönderildiği adresi yazar; Bedrock bu adrese
+  ulaşamadığında "Sunucu bulunamadı" gösterir.
+- Büyük paketler: Geyser en fazla yaklaşık 1,2 MiB/s gönderir (150 MiB'lik bir paket testlerde 172 saniye
+  sürdü). [Paket sunucusu](#paket-sunucusu) Bedrock'un bunları HTTP ile indirmesini sağlar.
 
 #### Paket sunucusu
 
@@ -822,6 +937,22 @@ Windows için Bedrock düz `http://` bağlantılarla proxy'de ve bir arka uçta 
 reddederse oyuncuları Geyser'ın aktarımına döner; portu HTTPS üzerinden sunmak (`public-address: https://...`)
 bunu önler.
 
+##### Bir bağlantı çalışmadığında
+
+Bir istemci bağlantısı olan bir paketi Geyser'dan istediğinde sunucu o oyuncunun adresini hatırlar ve ona 30
+dakika boyunca bağlantı vermez; böylece sonraki katılışları çalışamayacak bir indirmeyi beklemez. Günlük
+nedenini adres başına bir kez yazar:
+
+| Günlük | Anlamı |
+|---|---|
+| `its link never reached the host` | İstemci bağlantıyı açamadı: port kapalı veya filtreli, yanlış `public-address` veya düz HTTP'yi reddeden bir istemci. Bu art arda beş oyuncuda olur ve 30 dakikadır kimse indirmediyse bir uyarı portu denetlemenizi ister |
+| `its link was used from <adres>` | İstek oyun bağlantısından farklı bir adresten geldi (arada NAT veya bir proxy): `trusted-proxies` ayarlayın veya `require-player-address: false` |
+| `its download did not finish` | İstemci indirmeye başladı ama sonunda Geyser'ı kullandı |
+
+Bir indirmeden sonra sunucu bağlantıyı istemci kapatana kadar açık tutar (en az 15 saniye artı paketin 128
+KiB/s ile süresi, en fazla on dakika). Antivirüs web kalkanları indirmeleri tarar ve sonra iletir; daha erken
+kapatmak testlerde büyük paketleri yarıda kestirdi.
+
 ##### Neler reddedilir
 
 Geçerli bir bağlantı dışındaki her istek aynı boş `404` yanıtını alır: bilinmeyen veya süresi dolmuş
@@ -876,6 +1007,7 @@ Geyser klasöründe Twilight yalnızca `packs/twilight.zip`, `custom_mappings/tw
 | `packs/` | `config.yml` içinde adı geçen paket dosyaları |
 | `cache/<sunucu>.mcpack` | Arka uçlardaki Twilight'tan alınan paketler |
 | `cache/link-<karma>.mcpack` (+ `.etag`) | İndirilen paketler |
+| `cache/versions/<sha256>.mcpack` | Geyser'ın okuduğu her paket sürümünün kopyası; değiştirilen sürümler en uzun yeniden bağlanmadan sonra silinir |
 | `pack-host/<sha256>.zip` | [Paket sunucusunun](#paket-sunucusu) sunduğu kopyalar; açılışta temizlenir, kullanılmayınca silinir |
 
 #### Geliştirici API'si
@@ -982,6 +1114,9 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
 | `auto` paketler proxy'ye hiç ulaşmıyor | `/twilightproxy` "auto packs off" gösteriyor: iki tarafta aynı `secret` değerini ayarlayın veya modern yönlendirme kullanın |
 | Bedrock oyuncuları her sunucu geçişinde yeniden bağlanıyor | Sunucular farklı paketler kullandığında beklenir; aynı paketler asla yeniden bağlanmaz |
 | Aktarılan oyuncular yanlış sunucuya düşüyor | `transfer-address`/`transfer-port` aynı proxy'ye ulaşmalı |
+| Sunucu değişikliğinden sonra "Sunucu bulunamadı" | İstemci aktarım adresine ulaşamadı: günlükteki "has not come back ... after the transfer to <adres>" satırını, `transfer-address`/`transfer-port` değerlerini ve UDP korumasıyla anti-bot eklentilerinin hızlı yeniden bağlanmaya izin verdiğini denetleyin |
+| Paket indirildikten sonra oyuncu yine giriş sunucusunda | Giriş oturumları olmadan beklenir; giriş yaptıktan sonra seçtiği sunucuya gönderilir. İkinci girişi atlamak için giriş eklentisinde oturumları açın |
+| Büyük paketler dakikalar sürüyor | Geyser yaklaşık 1,2 MiB/s gönderir; `pack-host`u açın |
 | Özel biyomlar vanilla gibi görünüyor | 25'ten fazla farklı görünüm veya `world.bedrock-biome-matching: false` |
 | `pack-host` açıkken paketler hâlâ yavaş iniyor | "first download" satırı yok: port kapalı veya erişilemiyor; `http://<adres>:<port>/` dışarıdan boş bir 404 döndürmeli |
 | "... is sent by Geyser: no host for links" | Katılma adresi bir bağlantıda kullanılamıyor: `pack-host.public-address` ayarlayın |

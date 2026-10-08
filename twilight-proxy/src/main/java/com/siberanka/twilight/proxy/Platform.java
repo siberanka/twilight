@@ -29,4 +29,7 @@ public interface Platform {
     void async(Runnable task);
 
     void repeat(Runnable task, long periodSeconds);
+
+    /** The backend server a player is connected to, if any. */
+    java.util.Optional<String> currentServer(java.util.UUID player);
 }

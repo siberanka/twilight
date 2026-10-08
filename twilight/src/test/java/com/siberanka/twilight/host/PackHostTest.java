@@ -139,6 +139,30 @@ class PackHostTest {
     }
 
     @Test
+    void clientsThatCannotUseTheirLinkGetGeyserForAWhile() throws Exception {
+        Path pack = pack(2000);
+        List<String> log = new java.util.ArrayList<>();
+        host = PackHost.start(settings(true, 3, List.of()), root.resolve("cache"), log::add);
+        String url = link(pack, LOCAL);
+        assertTrue(host.usable(LOCAL));
+        host.fallback(url); // Geyser had to send the pack: the link was never requested
+        assertFalse(host.usable(LOCAL));
+        assertTrue(host.usable(addr("198.51.100.1")), "other players keep their links");
+        assertTrue(log.getLast().contains("never reached the host"), log.toString());
+        int lines = log.size();
+        host.fallback(url);
+        assertEquals(lines, log.size(), "reported once");
+
+        // A link used from another address: the player's address changes on the way (NAT, proxy).
+        InetAddress player = addr("198.51.100.7");
+        String other = host.link(snapshot(pack), player, "localhost").orElseThrow();
+        assertEquals(404, get(path(other), "").status);
+        host.fallback(other);
+        assertTrue(log.getLast().contains("used from 127.0.0.1"), log.toString());
+        assertFalse(host.usable(player));
+    }
+
+    @Test
     void parsesAndValidatesSettings() {
         HostSettings parsed = HostSettings.parse(Map.<String, Object>of("enabled", "true", "port", 9000,
                 "trusted-proxies", "[127.0.0.1, '::ffff:10.0.0.2']", "public-address", "https://packs.example.com")::get);
@@ -165,6 +189,14 @@ class PackHostTest {
                 Map.of("trusted-proxies", "127.0.0.1"), Map.of("max-connections-per-address", 100))) {
             assertThrows(IllegalArgumentException.class, () -> HostSettings.parse(bad::get), bad.toString());
         }
+    }
+
+    @Test
+    void keepsConnectionsOpenLongEnoughForScannersToHandOnLargePacks() {
+        assertEquals(5_000, PackHost.drainMillis(0));
+        assertEquals(15_000 + 1_000, PackHost.drainMillis(128 * 1024));
+        assertEquals(15_000 + 320_000, PackHost.drainMillis(40L * 1_048_576));
+        assertEquals(600_000, PackHost.drainMillis(500L * 1_048_576), "capped at ten minutes");
     }
 
     @Test

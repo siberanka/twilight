@@ -25,6 +25,10 @@ import net.md_5.bungee.event.EventPriority;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
@@ -70,18 +74,42 @@ public final class BungeePlugin extends Plugin implements Listener {
         if (reply != null) server.sendData(PackChannel.CHANNEL, reply);
     }
 
+    /** The first server BungeeCord picked for each joining player, before other plugins changed it. */
+    private final Map<UUID, String> originals = new ConcurrentHashMap<>();
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onConnectFirst(ServerConnectEvent event) {
+        if (core == null || !joining(event) || originals.size() > 100_000) return;
+        originals.put(event.getPlayer().getUniqueId(), event.getTarget().getName());
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onConnect(ServerConnectEvent event) {
-        if (core == null || event.isCancelled()) return;
         ProxiedPlayer player = event.getPlayer();
-        if (joining(event)) {
-            var target = core.pending(player.getUniqueId(), player.getName()).map(name -> getProxy().getServerInfo(name));
-            if (target.isPresent() && target.get() != null) {
-                event.setTarget(target.get());
-                return;
-            }
+        boolean first = joining(event);
+        String original = first ? originals.remove(player.getUniqueId()) : null;
+        if (core == null || event.isCancelled()) return;
+        if (first) {
+            core.initial(player.getUniqueId(), player.getName(), event.getTarget().getName(), original)
+                    .map(name -> getProxy().getServerInfo(name))
+                    .ifPresent(event::setTarget);
         }
-        if (core.beforeConnect(player.getUniqueId(), player.getName(), event.getTarget().getName())) event.setCancelled(true);
+        ServerInfo target = event.getTarget();
+        ProxyCore.Route route = core.beforeConnect(player.getUniqueId(), player.getName(), target.getName(), first);
+        if (route instanceof ProxyCore.Route.Transferred) {
+            event.setCancelled(true);
+        } else if (route instanceof ProxyCore.Route.Redirect redirect && !first) {
+            ServerInfo destination = getProxy().getServerInfo(redirect.server());
+            if (destination == null) return;
+            // A new request, so every plugin checks the destination as well.
+            event.setCancelled(true);
+            getProxy().getScheduler().schedule(this, () -> player.connect(destination, (connected, error) -> {
+                if (!Boolean.TRUE.equals(connected)) {
+                    core.redirectFailed(player.getName(), redirect.server(), target.getName());
+                    player.connect(target);
+                }
+            }), 100, TimeUnit.MILLISECONDS);
+        }
     }
 
     /** First connection after joining the proxy (Reason exists on BungeeCord 1.13 and later). */
@@ -95,6 +123,7 @@ public final class BungeePlugin extends Plugin implements Listener {
 
     @EventHandler
     public void onDisconnect(PlayerDisconnectEvent event) {
+        originals.remove(event.getPlayer().getUniqueId());
         if (core != null) core.disconnect(event.getPlayer().getUniqueId(), event.getPlayer().getName());
     }
 
@@ -123,6 +152,11 @@ public final class BungeePlugin extends Plugin implements Listener {
 
         @Override public void repeat(Runnable task, long periodSeconds) {
             getProxy().getScheduler().schedule(BungeePlugin.this, task, periodSeconds, periodSeconds, TimeUnit.SECONDS);
+        }
+
+        @Override public Optional<String> currentServer(UUID player) {
+            ProxiedPlayer online = getProxy().getPlayer(player);
+            return online == null || online.getServer() == null ? Optional.empty() : Optional.of(online.getServer().getInfo().getName());
         }
     }
 }

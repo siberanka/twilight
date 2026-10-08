@@ -58,6 +58,94 @@ class ProxyTest {
     }
 
     @Test
+    void aReconnectWaitsOnLoginServersAndGoesOnAfterwards() {
+        long now = 1_000_000;
+        Switches switches = new Switches();
+        // A login plugin chose "auth" for the reconnected session: it keeps the last word.
+        switches.start(new Switches.Switch("x1", "Steve", "lobby", "survival", 1 << 20, now, now + 600_000, "play.example.com:19132"));
+        assertTrue(switches.xuidByName("steve", now).isEmpty(), "a name counts only once the client is back");
+        assertTrue(switches.reconnected("x1", now + 4_000).isPresent());
+        assertTrue(switches.reconnected("x1", now + 5_000).isEmpty(), "reported once");
+        assertEquals(java.util.Optional.of("x1"), switches.xuidByName("STEVE", now + 5_000));
+        assertInstanceOf(Switches.Initial.Defer.class, switches.initial("x1", "auth", "lobby", now + 6_000));
+        assertInstanceOf(Switches.Connect.Hold.class, switches.connect("x1", "auth", true, now + 6_000));
+        // After the login, the plugin sends the player to the lobby: it goes to survival instead, once.
+        var redirect = assertInstanceOf(Switches.Connect.Redirect.class, switches.connect("x1", "lobby", false, now + 40_000));
+        assertEquals("survival", redirect.entry().to);
+        assertInstanceOf(Switches.Connect.None.class, switches.connect("x1", "lobby", false, now + 41_000));
+
+        // Nobody else changed the first server: straight to the destination.
+        switches.start(new Switches.Switch("x2", "Alex", "lobby", "survival", 0, now, now + 600_000, "a:1"));
+        switches.reconnected("x2", now + 1_000);
+        var route = assertInstanceOf(Switches.Initial.Route.class, switches.initial("x2", "lobby", "lobby", now + 2_000));
+        assertEquals("survival", route.entry().to);
+        assertInstanceOf(Switches.Connect.Arrived.class, switches.connect("x2", "survival", true, now + 2_000));
+        assertTrue(switches.get("x2", now + 2_000).isEmpty());
+
+        // A login plugin refused the destination as the first server: join the lobby, go on later.
+        switches.start(new Switches.Switch("x3", "Kai", "lobby", "survival", 0, now, now + 600_000, "a:1"));
+        switches.reconnected("x3", now + 1_000);
+        switches.initial("x3", "lobby", "lobby", now + 2_000);
+        assertTrue(switches.refused("x3", "survival", now + 2_000).isPresent());
+        assertInstanceOf(Switches.Connect.Hold.class, switches.connect("x3", "lobby", true, now + 2_100));
+        assertInstanceOf(Switches.Connect.Redirect.class, switches.connect("x3", "hub", false, now + 30_000));
+        assertTrue(switches.refused("x3", "survival", now + 30_000).isEmpty());
+
+        // A client that never comes back: one warning, then the switch expires.
+        switches.start(new Switches.Switch("x4", "Lee", "lobby", "survival", 0, now, now + 300_000, "play.example.com:19132"));
+        assertInstanceOf(Switches.Connect.None.class, switches.connect("x4", "lobby", false, now + 1_000));
+        assertTrue(switches.sweep(now + 30_000).isEmpty());
+        var warning = switches.sweep(now + 61_000);
+        assertEquals(1, warning.size());
+        assertTrue(warning.getFirst().warning() && warning.getFirst().text().contains("play.example.com:19132"), warning.toString());
+        assertTrue(switches.sweep(now + 62_000).isEmpty(), "warned once");
+        assertEquals(1, switches.sweep(now + 300_000).size());
+        assertEquals(0, switches.size());
+    }
+
+    @Test
+    void reconnectDeadlinesGrowWithThePack() {
+        ProxyConfig auto = ProxyConfig.parse("packs:\n  default: auto\n");
+        assertEquals(180_000, auto.transferDeadlineMillis(0));
+        assertEquals(180_000 + 1_200_000, auto.transferDeadlineMillis(150L * 1_048_576));
+        assertEquals(3_600_000, auto.transferDeadlineMillis(2048L * 1_048_576));
+        ProxyConfig fixed = ProxyConfig.parse("packs:\n  default: auto\ntransfer-timeout-seconds: 900\nlogin-servers: [Auth, limbo_1]\n");
+        assertEquals(900_000, fixed.transferDeadlineMillis(150L * 1_048_576));
+        assertTrue(fixed.loginServer("auth") && fixed.loginServer("LIMBO_1") && !fixed.loginServer("lobby"));
+        assertTrue(auto.loginServers().isEmpty());
+        for (String bad : List.of("transfer-timeout-seconds: 30", "transfer-timeout-seconds: soon", "login-servers: auth",
+                "login-servers: [../x]")) {
+            assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n  default: auto\n" + bad + "\n"), bad);
+        }
+    }
+
+    @Test
+    void geyserReadsAnImmutableCopyOfEveryPackVersion() throws Exception {
+        TestPlatform platform = new TestPlatform(root.resolve("proxy-versions"));
+        Path packs = platform.dataDirectory().resolve("packs");
+        Files.createDirectories(packs);
+        Files.writeString(platform.dataDirectory().resolve("config.yml"), "packs:\n  default: big.zip\n");
+        Path source = zip("big-source.zip", "manifest.json", "{}", "a.bin", randomText(50_000));
+        Files.copy(source, packs.resolve("big.zip"));
+        PackStore store = new PackStore(platform);
+        store.reload(ProxyConfig.load(platform.dataDirectory().resolve("config.yml")), List.of("lobby"));
+        PackFiles.Pack first = store.pack("lobby").orElseThrow();
+        assertTrue(first.path().startsWith(platform.dataDirectory().resolve("cache/versions")), first.path().toString());
+        // The admin overwrites the pack in place while a download may be running: the copy does not change.
+        Files.copy(zip("big-2.zip", "manifest.json", "{}", "b.bin", randomText(60_000)), packs.resolve("big.zip"),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        assertArrayEquals(Files.readAllBytes(source), Files.readAllBytes(first.path()));
+        store.reload(ProxyConfig.load(platform.dataDirectory().resolve("config.yml")), List.of("lobby"));
+        PackFiles.Pack second = store.pack("lobby").orElseThrow();
+        assertNotEquals(first.path(), second.path());
+        store.sweepVersions(60_000);
+        assertTrue(Files.isRegularFile(first.path()), "kept while a reconnect may still load it");
+        store.sweepVersions(0);
+        assertFalse(Files.exists(first.path()));
+        assertTrue(Files.isRegularFile(second.path()));
+    }
+
+    @Test
     void checksPackArchivesBeforeUse() throws Exception {
         Path good = zip("good.mcpack", "manifest.json", "{}");
         assertEquals(Files.size(good), PackFiles.inspect(good, 1 << 20).size());
@@ -142,7 +230,7 @@ class ProxyTest {
         PackChannel.Request decoded = (PackChannel.Request) PackChannel.read(request, List.of(KEY), System.currentTimeMillis());
         byte[] data = new byte[PackChannel.CHUNK_BYTES];
         transfers.onMessage("lobby", PackChannel.chunk(KEY, decoded.nonce(), 1, 3, data, data.length), config.maxPackBytes());
-        try (var files = Files.list(platform.dataDirectory().resolve("cache"))) {
+        try (var files = Files.list(platform.dataDirectory().resolve("cache")).filter(Files::isRegularFile)) {
             assertEquals(0, files.count(), "the partial file is deleted");
         }
         assertTrue(store.pack("lobby").isEmpty());
@@ -200,5 +288,6 @@ class ProxyTest {
         @Override public void warn(String message, Throwable failure) { }
         @Override public void async(Runnable task) { queued.add(task); }
         @Override public void repeat(Runnable task, long periodSeconds) { }
+        @Override public java.util.Optional<String> currentServer(java.util.UUID player) { return java.util.Optional.empty(); }
     }
 }

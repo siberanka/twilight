@@ -158,6 +158,11 @@ before Geyser sees them, transfers are bounded per player, and failed downloads 
 pack. Both proxies were tested live with two backends; see the
 [proxy test](docs/PROXY_2026-10-05.md) and the [wiki](WIKI.md#twilight-proxy-1).
 
+Login plugins (AuthMe, LibreLogin, nLogin, JPremium) keep the last word on a reconnect: a player sent
+to the login server first goes on to the server it chose after logging in. Reconnect deadlines grow
+with the pack and every step is logged; see the
+[reconnect test](docs/PROXY_RECONNECT_2026-10-08.md).
+
 ## Pack hosting
 
 Bedrock players can download the packs over HTTP from the server that runs Geyser (a backend or the
@@ -369,6 +374,10 @@ paylaştığı gizli anahtarla HMAC-SHA256: Velocity yönlendirmesi veya BungeeG
 denetlenir, aktarımlar oyuncu başına sınırlıdır ve başarısız indirmeler önceki paketi korur. İki proxy de
 iki arka uçla canlı test edildi; [proxy testine](docs/PROXY_2026-10-05.md) ve
 [wiki'ye](WIKI.md#twilight-proxy-4) bakın.
+
+Giriş eklentileri (AuthMe, LibreLogin, nLogin, JPremium) bir yeniden bağlanmada son sözü söyler: önce giriş
+sunucusuna gönderilen bir oyuncu, giriş yaptıktan sonra seçtiği sunucuya gider. Yeniden bağlanma süre sınırları
+paketle büyür ve her adım günlüğe yazılır; [yeniden bağlanma testine](docs/PROXY_RECONNECT_2026-10-08.md) bakın.
 
 #### Paket sunucusu
 

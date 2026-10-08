@@ -19,9 +19,14 @@ import java.util.regex.Pattern;
 record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, boolean transferOnSwitch,
                    String transferAddress, int transferPort, String initialServer, String secret,
                    long maxPackBytes, int downloadTimeoutSeconds, int urlRefreshMinutes,
+                   int transferTimeoutSeconds, java.util.Set<String> loginServers,
                    com.siberanka.twilight.host.HostSettings host) {
     private static final Pattern FILE_NAME = Pattern.compile("[A-Za-z0-9._-]{1,128}");
     private static final Pattern SERVER_NAME = Pattern.compile("[A-Za-z0-9._-]{1,64}");
+    /** With {@code transfer-timeout-seconds: auto}: time for the reconnect and login, plus the pack at this rate. */
+    private static final long AUTO_BASE_MILLIS = 180_000;
+    private static final long AUTO_BYTES_PER_SECOND = 128 * 1024;
+    private static final long AUTO_MAX_MILLIS = 3_600_000;
 
     /** Where a server's Bedrock pack comes from. */
     sealed interface PackSource {
@@ -71,7 +76,40 @@ record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, bo
                 maxMb * 1024 * 1024,
                 integer(root.getOrDefault("download-timeout-seconds", "60"), "download-timeout-seconds", 5, 600),
                 integer(root.getOrDefault("url-refresh-minutes", "60"), "url-refresh-minutes", 0, 10_080),
+                transferTimeout(root.getOrDefault("transfer-timeout-seconds", "auto")),
+                serverList(root.getOrDefault("login-servers", java.util.List.of()), "login-servers"),
                 hostSettings(root.get("pack-host")));
+    }
+
+    /**
+     * How long a reconnect may take, from the transfer until the player reaches the server: a fixed
+     * {@code transfer-timeout-seconds}, or (auto) three minutes plus the pack at 128 KiB/s, at most an hour.
+     */
+    long transferDeadlineMillis(long packBytes) {
+        if (transferTimeoutSeconds > 0) return transferTimeoutSeconds * 1000L;
+        return Math.min(AUTO_MAX_MILLIS, AUTO_BASE_MILLIS + Math.max(0, packBytes) * 1000 / AUTO_BYTES_PER_SECOND);
+    }
+
+    boolean loginServer(String server) {
+        return loginServers.contains(server.toLowerCase(Locale.ROOT));
+    }
+
+    /** 0 for auto. */
+    private static int transferTimeout(Object value) {
+        String text = string(value, "transfer-timeout-seconds").strip();
+        if (text.equalsIgnoreCase("auto") || text.isEmpty()) return 0;
+        return integer(text, "transfer-timeout-seconds", 60, 7200);
+    }
+
+    private static java.util.Set<String> serverList(Object value, String path) {
+        if (!(value instanceof java.util.List<?> names)) throw new IllegalArgumentException(path + " must be a list such as [auth, limbo]");
+        java.util.Set<String> servers = new java.util.LinkedHashSet<>();
+        for (Object name : names) {
+            String server = String.valueOf(name).strip();
+            if (!SERVER_NAME.matcher(server).matches()) throw new IllegalArgumentException(path + ": invalid server name '" + server + "'");
+            servers.add(server.toLowerCase(Locale.ROOT));
+        }
+        return java.util.Set.copyOf(servers);
     }
 
     /** The {@code pack-host} section; missing means disabled. */

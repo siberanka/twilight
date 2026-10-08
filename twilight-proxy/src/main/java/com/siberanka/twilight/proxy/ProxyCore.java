@@ -25,15 +25,20 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Bedrock loads resource packs once, when it connects. A Bedrock session therefore gets the pack
  * of the server it is about to join; when the player later moves to a server with another pack,
  * the client is transferred back to Geyser, loads that server's pack and is sent to the server it
- * asked for. Transfers are limited per player, so a server that keeps changing its pack or a
- * failing transfer never loops.
+ * asked for. Login plugins keep the last word: when one sends the reconnected player to a login or
+ * limbo server first, the player goes on to its server at its next server change. A session's first
+ * server never causes a reconnect, transfers are limited per player and every reconnect has a
+ * deadline that grows with the pack, so nothing loops or waits forever.
  */
 public final class ProxyCore implements TwilightProxyApi {
-    /** Long enough for a player to accept the pack download Bedrock asks for after the transfer. */
-    private static final long PENDING_MILLIS = 600_000;
     private static final long TRANSFER_WINDOW_MILLIS = 300_000;
     private static final int TRANSFERS_PER_WINDOW = 4;
     private static final int MAX_TRACKED = 100_000;
+    /** Packs at least this large get a pack-host hint when Geyser has to send them. */
+    private static final long LARGE_PACK_BYTES = 32L * 1_048_576;
+    private static final long GEYSER_BYTES_PER_SECOND = 1_250_000;
+    /** The shortest time between a transfer and the client's next login seen in tests (cached pack). */
+    private static final long RECONNECT_LOGIN_MILLIS = 4_000;
 
     private final Platform platform;
     private final Object owner;
@@ -41,14 +46,10 @@ public final class ProxyCore implements TwilightProxyApi {
     private final AutoTransfers transfers;
     /** Bedrock session (XUID) -> SHA-256 hex of the per-server pack it loaded ("" for none). */
     private final Map<String, String> loaded = new ConcurrentHashMap<>();
-    /** XUID -> the server a transferred player goes to when it comes back. */
-    private final Map<String, Pending> pending = new ConcurrentHashMap<>();
-    /**
-     * Java name -> XUID of a transferred player: when it rejoins, some proxies (BungeeCord) choose its
-     * server before Geyser knows its Java UUID; the name then finds the pending entry, accepted only
-     * while a Bedrock session with that XUID is connected.
-     */
-    private final Map<String, String> pendingNames = new ConcurrentHashMap<>();
+    /** Reconnects in progress, from the transfer until the player reaches its server. */
+    private final Switches switches = new Switches();
+    /** Servers whose large pack already got the pack-host hint. */
+    private final java.util.Set<String> hinted = ConcurrentHashMap.newKeySet();
     private final Map<String, Deque<Long>> recentTransfers = new ConcurrentHashMap<>();
     private volatile ProxyConfig config;
     private volatile GeyserBridge geyser;
@@ -59,12 +60,27 @@ public final class ProxyCore implements TwilightProxyApi {
         this.owner = owner;
         this.store = new PackStore(platform);
         this.transfers = new AutoTransfers(platform, store);
+        store.onChange(this::prewarm);
     }
 
-    private record Pending(String server, long created, long expires) {}
-
-    /** XUID -> when its last Bedrock session loaded packs (Geyser sees it before the Java login). */
-    private final Map<String, Long> sessions = new ConcurrentHashMap<>();
+    /**
+     * Hashes a new pack for Geyser and copies it for the pack host now, so the first Bedrock session that
+     * needs it does not wait for a large pack to be read during its login.
+     */
+    private void prewarm(PackFiles.Pack pack) {
+        long started = System.nanoTime();
+        try {
+            GeyserBridge bridge = geyser;
+            if (bridge != null) bridge.prepare(pack.path());
+            var running = host;
+            if (running != null) running.snapshot(pack.path(), pack.sha256());
+        } catch (IOException | RuntimeException | LinkageError failure) {
+            platform.warn("Could not prepare a Bedrock pack for Geyser: " + failure.getMessage(), null);
+            return;
+        }
+        long millis = (System.nanoTime() - started) / 1_000_000;
+        if (millis >= 1000) platform.info("Prepared a " + mib(pack.size()) + " pack for Bedrock sessions in " + millis / 1000 + " s.");
+    }
 
     public void enable() throws IOException {
         if (!reload()) throw new IOException("twilight-proxy configuration is invalid; see the log");
@@ -74,7 +90,10 @@ public final class ProxyCore implements TwilightProxyApi {
             geyser = null; // Geyser's API classes are not on this proxy
         }
         if (geyser == null) platform.info("Geyser is not installed on this proxy: packs are prepared but not sent.");
-        else startHost();
+        else {
+            startHost();
+            platform.async(() -> platform.serverNames().forEach(server -> store.pack(server).ifPresent(this::prewarm)));
+        }
         platform.repeat(this::sweep, 5);
         TwilightProxyApi.Holder.set(this);
     }
@@ -96,6 +115,18 @@ public final class ProxyCore implements TwilightProxyApi {
 
     void warn(String message) {
         platform.warn(message, null);
+    }
+
+    /**
+     * A transferred Bedrock client logs in again a few seconds after it left (four or more, measured). A proxy
+     * that refuses logins from the same address within a longer time turns the pack reconnect into a refusal.
+     */
+    public void checkLoginLimit(String setting, long millis) {
+        if (geyser != null && millis > RECONNECT_LOGIN_MILLIS && config != null && config.transferOnSwitch()) {
+            platform.warn(setting + " is " + millis + " ms: Bedrock players who reconnect for a server's pack log in again"
+                    + " about " + RECONNECT_LOGIN_MILLIS / 1000 + " s after leaving and may be refused. Keep it at "
+                    + RECONNECT_LOGIN_MILLIS + " ms or less.", null);
+        }
     }
 
     public void disable() {
@@ -138,73 +169,149 @@ public final class ProxyCore implements TwilightProxyApi {
 
     // --- Bedrock sessions --------------------------------------------------------------------
 
+    /** What the proxy does with a server connection of a Bedrock player. */
+    public sealed interface Route {
+        /** Let it happen. */
+        record Allow() implements Route {}
+
+        /** Cancel it: the client was transferred to load the server's pack. */
+        record Transferred() implements Route {}
+
+        /** Cancel it and connect the player to {@code server} instead (a reconnect waiting for its destination). */
+        record Redirect(String server) implements Route {}
+    }
+
+    private static final Route ALLOW = new Route.Allow();
+
     /** The pack a new Bedrock session loads: that of the server it is going to join. */
     Optional<Path> packFor(String xuid) {
         if (xuid == null || xuid.isEmpty()) return Optional.empty();
-        String server = Optional.ofNullable(pending.get(xuid)).filter(p -> p.expires > now()).map(Pending::server)
-                .orElseGet(this::initialServer);
+        long now = now();
+        Optional<Switches.Switch> reconnect = switches.get(xuid, now);
+        String server = reconnect.map(entry -> entry.to).orElseGet(this::initialServer);
         Optional<PackFiles.Pack> pack = server.isEmpty() ? Optional.empty() : store.pack(server);
         if (loaded.size() < MAX_TRACKED) loaded.put(xuid, pack.map(PackFiles.Pack::hex).orElse(""));
-        if (sessions.size() < MAX_TRACKED) sessions.put(xuid, now());
+        switches.reconnected(xuid, now).ifPresent(entry -> platform.info(entry.name + " reconnected after "
+                + entry.seconds(now) + " s; loading the pack of " + entry.to
+                + pack.map(found -> " (" + mib(found.size()) + ")").orElse("") + "."));
         return pack.map(PackFiles.Pack::path);
     }
 
-    /** Where a transferred player rejoins, once; empty for everyone else. */
-    public Optional<String> pending(UUID player, String name) {
+    /**
+     * The first server of a session. {@code chosen} is the server picked after every other plugin ran,
+     * {@code original} the one the proxy picked; returns the server to use instead, if any.
+     */
+    public Optional<String> initial(UUID player, String name, String chosen, String original) {
         GeyserBridge bridge = geyser;
         if (bridge == null) return Optional.empty();
-        Optional<String> xuid = bridge.xuid(player, name);
-        if (xuid.isEmpty() && name != null) {
-            String remembered = pendingNames.get(name.toLowerCase(Locale.ROOT));
-            Pending waiting = remembered == null ? null : pending.get(remembered);
-            // Accepted only when that Bedrock account reconnected after the transfer.
-            if (waiting != null && sessions.getOrDefault(remembered, 0L) >= waiting.created) xuid = Optional.of(remembered);
-        }
+        long now = now();
+        Optional<String> xuid = bridge.xuid(player, name).or(() -> switches.xuidByName(name, now));
         if (xuid.isEmpty()) return Optional.empty();
-        if (name != null) pendingNames.remove(name.toLowerCase(Locale.ROOT));
-        Pending entry = pending.remove(xuid.get());
-        if (entry == null || entry.expires <= now()) return Optional.empty();
-        platform.info("Sending " + name + " to " + entry.server + " with its Bedrock pack.");
-        return Optional.of(entry.server);
+        Switches.Initial decision = switches.initial(xuid.get(), chosen, original, now);
+        if (decision instanceof Switches.Initial.Route route) {
+            Switches.Switch entry = route.entry();
+            platform.info(name + " is back " + entry.seconds(now) + " s after the transfer"
+                    + (entry.reconnected > 0 ? " (pack and login " + Math.max(0, (now - entry.reconnected + 500) / 1000) + " s)" : "")
+                    + "; sending it to " + entry.to + ".");
+            return Optional.of(entry.to);
+        }
+        if (decision instanceof Switches.Initial.Defer defer) {
+            platform.info(name + " was sent to " + defer.heldOn() + " by another plugin (login or limbo server); it goes on to "
+                    + defer.entry().to + " when it next changes servers.");
+        }
+        return Optional.empty();
     }
 
     /**
-     * Called before {@code player} connects to {@code server}. True when the Bedrock client was
-     * transferred to load that server's pack: the caller cancels the connection.
+     * Called before {@code player} connects to {@code server} with every other plugin's checks passed.
+     * {@code first} is true for the first server of a session.
      */
-    public boolean beforeConnect(UUID player, String name, String server) {
+    public Route beforeConnect(UUID player, String name, String server, boolean first) {
         GeyserBridge bridge = geyser;
         ProxyConfig current = config;
-        if (bridge == null || current == null || !current.transferOnSwitch() || !bridge.bedrock(player, name)) return false;
-        Optional<String> xuid = bridge.xuid(player, name);
-        if (xuid.isEmpty()) return false;
+        if (bridge == null || current == null) return ALLOW;
+        long now = now();
+        Optional<String> xuid = bridge.xuid(player, name).or(() -> switches.xuidByName(name, now));
+        if (xuid.isEmpty()) return ALLOW;
+        Switches.Connect step = switches.connect(xuid.get(), server, first || current.loginServer(server), now);
+        if (step instanceof Switches.Connect.Arrived arrived) {
+            Switches.Switch entry = arrived.entry();
+            platform.info(name + " reached " + entry.to + " " + entry.seconds(now) + " s after the transfer"
+                    + (entry.reconnected > 0 ? " (reconnect " + Math.max(0, (entry.reconnected - entry.started + 500) / 1000)
+                    + " s, pack and login " + Math.max(0, (now - entry.reconnected + 500) / 1000) + " s)" : "") + ".");
+        } else if (step instanceof Switches.Connect.Hold hold && hold.first()) {
+            platform.info(name + " joins " + server + " first (a login or limbo server chosen by another plugin); it goes on to "
+                    + hold.entry().to + " when it next changes servers.");
+        } else if (step instanceof Switches.Connect.Redirect redirect) {
+            platform.info("Sending " + name + " on to " + redirect.entry().to + " instead of " + server
+                    + " (the server it reconnected for, " + redirect.entry().seconds(now) + " s ago).");
+            return new Route.Redirect(redirect.entry().to);
+        }
+        // The pack of a session was chosen for the server the proxy expected; when a plugin sends the player
+        // somewhere else first (a login or limbo server), reconnecting there would only loop.
+        if (first || !current.transferOnSwitch() || current.loginServer(server)) return ALLOW;
         String have = loaded.get(xuid.get());
         String want = wanted(server);
-        if (have == null || want == null || want.equals(have)) return false;
+        if (have == null || want == null || want.equals(have)) return ALLOW;
         Deque<Long> recent = recentTransfers.computeIfAbsent(xuid.get(), ignored -> new ArrayDeque<>());
         synchronized (recent) {
-            long now = now();
             while (!recent.isEmpty() && now - recent.peekFirst() > TRANSFER_WINDOW_MILLIS) recent.pollFirst();
-            if (recent.size() >= TRANSFERS_PER_WINDOW) return false;
+            if (recent.size() >= TRANSFERS_PER_WINDOW) {
+                platform.warn(name + " was reconnected " + TRANSFERS_PER_WINDOW + " times in "
+                        + TRANSFER_WINDOW_MILLIS / 60_000 + " minutes; it joins " + server + " with the pack it has.", null);
+                return ALLOW;
+            }
             recent.addLast(now);
         }
-        pending.put(xuid.get(), new Pending(server.toLowerCase(Locale.ROOT), now(), now() + PENDING_MILLIS));
-        if (name != null && pendingNames.size() < MAX_TRACKED) pendingNames.put(name.toLowerCase(Locale.ROOT), xuid.get());
-        if (bridge.transfer(player, name, current.transferAddress(), current.transferPort())) {
-            platform.info("Reconnecting " + name + " to load the Bedrock pack of " + server + ".");
-            return true;
+        long bytes = store.pack(server).map(PackFiles.Pack::size).orElse(0L);
+        long deadline = current.transferDeadlineMillis(bytes);
+        String from = platform.currentServer(player).orElse("");
+        Optional<String> address = bridge.transfer(player, name, current.transferAddress(), current.transferPort());
+        if (address.isEmpty()) return ALLOW;
+        switches.start(new Switches.Switch(xuid.get(), name, from, server.toLowerCase(Locale.ROOT), bytes, now,
+                now + deadline, address.get()));
+        platform.info("Reconnecting " + name + " to load the Bedrock pack of " + server + " (" + mib(bytes)
+                + "); waiting up to " + Math.max(1, deadline / 60_000) + " min for it to come back.");
+        if (bytes >= LARGE_PACK_BYTES && host == null && hinted.add(server.toLowerCase(Locale.ROOT))) {
+            platform.info("The pack of " + server + " is " + mib(bytes) + ": Geyser sends at most about 1.2 MiB/s, so it takes "
+                    + Math.max(1, bytes / GEYSER_BYTES_PER_SECOND) + " s or longer. Enable pack-host to let Bedrock download it over HTTP.");
         }
-        pending.remove(xuid.get());
-        return false;
+        return new Route.Transferred();
+    }
+
+    /** The connection of a {@link Route.Redirect} failed; the player goes where it asked to instead. */
+    public void redirectFailed(String name, String server, String asked) {
+        platform.info(name + " could not be sent on to " + server + "; it goes to " + asked + " as it asked.");
+    }
+
+    /**
+     * Another plugin refused the first connection of a reconnected player to the server it reconnected for
+     * (a login plugin that blocks every other server). Returns true when the caller should connect the player
+     * to the server the proxy picked first; the reconnect then waits for the player's next server change.
+     */
+    public boolean refusedFirst(UUID player, String name, String server) {
+        GeyserBridge bridge = geyser;
+        if (bridge == null) return false;
+        long now = now();
+        Optional<String> xuid = bridge.xuid(player, name).or(() -> switches.xuidByName(name, now));
+        Optional<Switches.Switch> entry = xuid.flatMap(found -> switches.refused(found, server, now));
+        entry.ifPresent(found -> platform.info("Another plugin refused " + server + " as " + name
+                + "'s first server (login required?); it joins the proxy's first server and goes on to " + server
+                + " when it next changes servers."));
+        return entry.isPresent();
     }
 
     public void disconnect(UUID player, String name) {
         GeyserBridge bridge = geyser;
         if (bridge == null) return;
-        // A transferred player keeps its pending entry; its new session records its pack again.
+        // A transferred player keeps its switch; its new session records its pack again.
         bridge.xuid(player, name).ifPresent(xuid -> {
-            if (!pending.containsKey(xuid)) loaded.remove(xuid);
+            if (switches.get(xuid, now()).isEmpty()) loaded.remove(xuid);
         });
+    }
+
+    private static String mib(long bytes) {
+        return bytes >= 10 * 1_048_576 ? bytes / 1_048_576 + " MiB" : String.format(Locale.ROOT, "%.1f MiB", bytes / 1_048_576.0);
     }
 
     /** SHA-256 hex of the pack Bedrock players need on {@code server}; null when unknown (keep theirs). */
@@ -223,9 +330,12 @@ public final class ProxyCore implements TwilightProxyApi {
     private void sweep() {
         transfers.sweep();
         long now = now();
-        pending.values().removeIf(entry -> entry.expires <= now);
-        pendingNames.values().removeIf(xuid -> !pending.containsKey(xuid));
-        sessions.values().removeIf(time -> now - time > PENDING_MILLIS);
+        ProxyConfig settings = config;
+        if (settings != null) store.sweepVersions(settings.transferDeadlineMillis(settings.maxPackBytes()) + 600_000);
+        for (Switches.Note note : switches.sweep(now)) {
+            if (note.warning()) platform.warn(note.text(), null);
+            else platform.info(note.text());
+        }
         recentTransfers.entrySet().removeIf(entry -> {
             synchronized (entry.getValue()) {
                 return entry.getValue().isEmpty() || now - entry.getValue().peekLast() > TRANSFER_WINDOW_MILLIS;

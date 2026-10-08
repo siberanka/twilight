@@ -30,6 +30,8 @@ import java.util.Map;
 final class AutoTransfers {
     private static final int MAX_ACTIVE = 4;
     private static final long IDLE_MILLIS = 30_000;
+    /** Transfers at least this large are logged when they start. */
+    private static final long LARGE_BYTES = 8L * 1_048_576;
 
     private final Platform platform;
     private final PackStore store;
@@ -82,6 +84,9 @@ final class AutoTransfers {
             Path file = store.temporaryFile(server);
             active.put(server, new Active(nonce, announce.sha256(), announce.size(), total, file,
                     FileChannel.open(file, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)));
+            if (announce.size() >= LARGE_BYTES) {
+                platform.info("Receiving the Bedrock pack of " + server + " from Twilight (" + announce.size() / 1_048_576 + " MiB).");
+            }
             return PackChannel.request(current.getFirst(), System.currentTimeMillis(), nonce, announce.sha256());
         } catch (IOException failure) {
             platform.warn("Could not prepare the Bedrock pack transfer of " + server, failure);
@@ -112,9 +117,10 @@ final class AutoTransfers {
             transfer.channel.close();
             if (!MessageDigest.isEqual(transfer.digest.digest(), transfer.sha256)) throw new IOException("checksum mismatch");
             Path file = transfer.file;
+            long seconds = (System.currentTimeMillis() - transfer.started + 500) / 1000;
             platform.async(() -> {
                 try {
-                    store.acceptAuto(server, file);
+                    store.acceptAuto(server, file, seconds);
                 } catch (IOException failure) {
                     platform.warn("Refused the Bedrock pack of " + server + ": " + failure.getMessage(), null);
                     delete(file);
@@ -131,8 +137,13 @@ final class AutoTransfers {
         for (Iterator<Map.Entry<String, Active>> iterator = active.entrySet().iterator(); iterator.hasNext();) {
             Map.Entry<String, Active> entry = iterator.next();
             if (entry.getValue().idle()) {
+                Active transfer = entry.getValue();
                 iterator.remove();
-                close(entry.getValue());
+                close(transfer);
+                platform.warn("The Bedrock pack transfer of " + entry.getKey() + " stopped after "
+                        + (long) transfer.next * PackChannel.CHUNK_BYTES / 1_048_576 + " of " + transfer.size / 1_048_576
+                        + " MiB (no data for " + IDLE_MILLIS / 1000 + " s: the player left or the backend restarted); it starts"
+                        + " again when Twilight there next announces the pack.", null);
             }
         }
     }
@@ -165,7 +176,8 @@ final class AutoTransfers {
         final FileChannel channel;
         final MessageDigest digest;
         int next;
-        long touched = System.currentTimeMillis();
+        final long started = System.currentTimeMillis();
+        long touched = started;
 
         Active(byte[] nonce, byte[] sha256, long size, int total, Path file, FileChannel channel) {
             this.nonce = nonce;

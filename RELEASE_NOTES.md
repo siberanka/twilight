@@ -1,6 +1,38 @@
-# Twilight 1.0.0-pre.11 - prerelease
+# Twilight 1.0.0-pre.12 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+This prerelease makes twilight-proxy's pack reconnects reliable on networks with login plugins,
+protections and large packs.
+
+- Login plugins (AuthMe with AuthMeVelocity or AuthMeBungee, LibreLogin, nLogin, JPremium) keep the
+  last word: a reconnected player may log in on the login server first and is then sent on to the
+  server it chose. Before, a plugin that refused that server left the player without a server until it
+  was dropped. A session's first server never causes a second reconnect; `login-servers` lists servers
+  that never do.
+- Reconnect deadlines grow with the pack (`transfer-timeout-seconds: auto`, up to an hour for very large
+  packs) and every step is logged, including clients that do not come back within 60 seconds and the
+  address they were sent to ("Server not found" on Bedrock), and a warning for a Velocity
+  `login-ratelimit` longer than a reconnect.
+- Geyser reads an immutable copy of each pack version, so packs rebuilt during a long download no longer
+  break it; new packs are hashed before the first player needs them.
+- Pack host: large downloads are no longer aborted by antivirus web shields (152 MiB: 123 s over HTTP
+  instead of 188 s), and an address whose link did not work gets Geyser's transfer for 30 minutes with
+  the reason in the log.
+- Tested on Velocity and BungeeCord with a login plugin and packs up to 152 MiB: see the
+  [reconnect test](docs/PROXY_RECONNECT_2026-10-08.md) and the
+  [wiki](WIKI.md#reconnects-login-plugins-and-protections).
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 214 tests
+across 38 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.11 - prerelease
 
 This prerelease adds the pack host: Bedrock players download the packs over HTTP from the server
 that runs Geyser, and only they can.
@@ -26,8 +58,6 @@ across 38 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.10 - prerelease
 
@@ -308,7 +338,39 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.11 - ön sürüm
+### Twilight 1.0.0-pre.12 - ön sürüm
+
+Bu ön sürüm, twilight-proxy'nin paket yeniden bağlanmalarını giriş eklentileri, korumalar ve büyük paketler
+bulunan ağlarda güvenilir hâle getirir.
+
+- Giriş eklentileri (AuthMeVelocity veya AuthMeBungee ile AuthMe, LibreLogin, nLogin, JPremium) son sözü
+  söyler: yeniden bağlanan bir oyuncu önce giriş sunucusunda giriş yapabilir ve sonra seçtiği sunucuya
+  gönderilir. Önceden o sunucuyu reddeden bir eklenti oyuncuyu düşürülene kadar sunucusuz bırakıyordu. Bir
+  oturumun ilk sunucusu asla ikinci bir yeniden bağlanmaya yol açmaz; `login-servers` hiç yol açmayan
+  sunucuları listeler.
+- Yeniden bağlanma süre sınırları paketle büyür (`transfer-timeout-seconds: auto`, çok büyük paketlerde bir
+  saate kadar) ve her adım günlüğe yazılır; 60 saniye içinde geri gelmeyen istemciler ve gönderildikleri adres
+  (Bedrock'ta "Sunucu bulunamadı") ile bir yeniden bağlanmadan uzun bir Velocity `login-ratelimit` için uyarı
+  da buna dahildir.
+- Geyser her paket sürümünün değişmez bir kopyasını okur; böylece uzun bir indirme sırasında yeniden derlenen
+  paketler artık onu bozmaz; yeni paketlerin karması ilk oyuncu onlara ihtiyaç duymadan önce hesaplanır.
+- Paket sunucusu: büyük indirmeler artık antivirüs web kalkanları tarafından yarıda kesilmez (152 MiB: 188 sn
+  yerine HTTP ile 123 sn) ve bağlantısı çalışmayan bir adres, nedeni günlüğe yazılarak 30 dakika boyunca
+  Geyser'ın aktarımını alır.
+- Velocity ve BungeeCord üzerinde bir giriş eklentisi ve 152 MiB'e kadar paketlerle test edildi:
+  [yeniden bağlanma testine](docs/PROXY_RECONNECT_2026-10-08.md) ve
+  [wiki'ye](WIKI.md#yeniden-bağlanmalar-giriş-eklentileri-ve-korumalar) bakın.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 38 paketteki 214
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.11 - ön sürüm
 
 Bu ön sürüm paket sunucusunu ekler: Bedrock oyuncuları paketleri Geyser'ı çalıştıran sunucudan HTTP ile
 indirir ve bunu yalnızca onlar yapabilir.
@@ -334,8 +396,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.10 - ön sürüm
 

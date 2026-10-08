@@ -4,6 +4,32 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.12 - 2026-10-08
+
+- Make twilight-proxy's pack reconnects work with login plugins (AuthMe with AuthMeVelocity or
+  AuthMeBungee, LibreLogin, nLogin, JPremium): a login server chosen for the reconnected session is
+  kept, a refused first server sends the player to the proxy's first server instead of leaving it
+  without a server until Velocity's read timeout, and after the login the player goes on to the
+  server it reconnected for through a new connection request that every plugin checks.
+- Never reconnect a session for its first server, so a plugin that sends players elsewhere first no
+  longer causes a second reconnect; add `login-servers` for servers that never cause one.
+- Scale reconnect deadlines with the pack (`transfer-timeout-seconds: auto`: three minutes plus the
+  pack at 128 KiB/s, at most an hour) and log every step: transfer with size and deadline, reconnect,
+  arrival with timings, refused or redirected first servers, clients that do not come back within 60
+  seconds (with the address they were sent to), abandoned reconnects, transfer limits and a pack-host
+  hint for packs of 32 MiB or more. Warn when Velocity's `login-ratelimit` is longer than a reconnect.
+- Give Geyser an immutable copy of each pack version (`cache/versions/`), so a pack rebuilt during a
+  long download cannot corrupt it, and hash new packs before the first session needs them.
+- Pack host: keep the connection open until the client closes it after a download (antivirus web
+  shields aborted 40 and 152 MiB downloads when the host closed after 5 s idle), and remember addresses
+  whose link did not work for 30 minutes with the reason in the log (unreachable port, changed address,
+  unfinished download) plus a warning when the host looks unreachable from outside.
+- Stop link downloads on the proxy after `download-timeout-seconds` without data or below 64 KiB/s,
+  instead of a fixed timeout that large packs could not meet; log large and stalled `auto` transfers.
+- Add the [reconnect and large pack test](docs/PROXY_RECONNECT_2026-10-08.md) and document login
+  plugins, forwarding and protections in the [wiki](WIKI.md#reconnects-login-plugins-and-protections).
+  214 tests pass (204 Twilight, 10 proxy).
+
 ## 1.0.0-pre.11 - 2026-10-07
 
 - Add the pack host (`pack-host`, off by default) to Twilight and twilight-proxy: Bedrock players
@@ -310,6 +336,35 @@ All notable changes in Twilight are documented here.
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-pre.12 - 2026-10-08
+
+- twilight-proxy'nin paket yeniden bağlanmaları giriş eklentileriyle (AuthMeVelocity veya AuthMeBungee ile
+  AuthMe, LibreLogin, nLogin, JPremium) çalışır hâle getirildi: yeniden bağlanan oturum için seçilen bir giriş
+  sunucusu korunur, reddedilen bir ilk sunucu oyuncuyu Velocity'nin okuma zaman aşımına kadar sunucusuz
+  bırakmak yerine proxy'nin ilk sunucusuna gönderir ve girişten sonra oyuncu, her eklentinin denetlediği yeni
+  bir bağlantı isteğiyle yeniden bağlandığı sunucuya gider.
+- Bir oturum ilk sunucusu için asla yeniden bağlanmaz; böylece oyuncuları önce başka yere gönderen bir eklenti
+  artık ikinci bir yeniden bağlanmaya yol açmaz; hiç yol açmayan sunucular için `login-servers` eklendi.
+- Yeniden bağlanma süre sınırları paketle ölçeklenir (`transfer-timeout-seconds: auto`: üç dakika artı paketin
+  128 KiB/s ile süresi, en fazla bir saat) ve her adım günlüğe yazılır: boyut ve süre sınırıyla aktarım,
+  yeniden bağlanma, sürelerle varış, reddedilen veya yönlendirilen ilk sunucular, 60 saniye içinde geri
+  gelmeyen istemciler (gönderildikleri adresle), bırakılan yeniden bağlanmalar, aktarım sınırları ve 32 MiB veya
+  daha büyük paketler için paket sunucusu önerisi. Velocity'nin `login-ratelimit` değeri bir yeniden
+  bağlanmadan uzunsa uyarı verilir.
+- Geyser'a her paket sürümünün değişmez bir kopyası verilir (`cache/versions/`); böylece uzun bir indirme
+  sırasında yeniden derlenen bir paket onu bozamaz ve yeni paketlerin karması ilk oturum onlara ihtiyaç
+  duymadan önce hesaplanır.
+- Paket sunucusu: bir indirmeden sonra bağlantı istemci kapatana kadar açık tutulur (sunucu 5 sn boşta kalınca
+  kapattığında antivirüs web kalkanları 40 ve 152 MiB'lik indirmeleri yarıda kesti) ve bağlantısı çalışmayan
+  adresler nedeniyle birlikte (ulaşılamayan port, değişen adres, bitmeyen indirme) 30 dakika hatırlanır;
+  sunucu dışarıdan ulaşılamaz görünürse uyarı verilir.
+- Proxy'deki bağlantı indirmeleri büyük paketlerin karşılayamadığı sabit bir zaman aşımı yerine
+  `download-timeout-seconds` boyunca veri gelmezse veya 64 KiB/s altına düşünce durur; büyük ve duran `auto`
+  aktarımları günlüğe yazılır.
+- [Yeniden bağlanma ve büyük paket testi](docs/PROXY_RECONNECT_2026-10-08.md) eklendi; giriş eklentileri,
+  yönlendirme ve korumalar [wiki'de](WIKI.md#yeniden-bağlanmalar-giriş-eklentileri-ve-korumalar) belgelendi.
+  214 test geçti (204 Twilight, 10 proxy).
 
 #### 1.0.0-pre.11 - 2026-10-07
 

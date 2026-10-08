@@ -27,6 +27,8 @@ Java 21 is the minimum bytecode level. Local builds use Java 25.
 | BungeeCord 26.1 with Geyser 2.11.3 | Tested live: `auto`, file and switching packs, explicit secret |
 | Velocity 3.x, Waterfall, older BungeeCord | Uses only long-standing API (`order` subscriptions, `ServerConnectEvent` with a fallback for proxies without `Reason`); not tested live |
 | Download links | Implemented and unit-checked; not tested against a live host |
+| Login plugins (AuthMe with AuthMeVelocity/AuthMeBungee, LibreLogin, nLogin, JPremium) | Tested on Velocity with a stand-in that forces a login server and refuses other servers before the login: the reconnected player logs in once and reaches its server; the real plugins were not installed |
+| Packs up to 152 MiB and 6,000 entries | Tested live through Geyser (172 s) and through the pack host (123 s) |
 
 Per-server packs need a reconnect when the pack changes, because Bedrock loads packs only when it
 connects. Twilight's runtime text, biome and name bridges need Geyser on the same server as Twilight;
@@ -41,6 +43,7 @@ a proxy-only Geyser gets the packs but not those layers. See the [proxy test](PR
 | Failed download (links to a closed port) | Tested live: Bedrock falls back to Geyser's transfer and loads the new pack |
 | Other Bedrock platforms (mobile, consoles) | Not tested; if one refuses plain HTTP its players fall back to Geyser's transfer, and an HTTPS `public-address` avoids it |
 | Packs another plugin registers without a file | Not hosted; the session then falls back to Geyser's transfer for all packs (Geyser logs "Mixing pack codecs") |
+| Antivirus web shields between client and host (tested with one on Windows) | 40 and 152 MiB downloads complete over HTTP since the host keeps the connection open until the client closes it |
 
 ## Source discovery
 
@@ -160,6 +163,8 @@ En düşük bytecode düzeyi Java 21'dir. Yerel derlemeler Java 25 kullanır.
 | Geyser 2.11.3 ile BungeeCord 26.1 | Canlı test edildi: `auto`, dosya ve paket geçişi, açık gizli anahtar |
 | Velocity 3.x, Waterfall, eski BungeeCord | Yalnızca uzun süredir var olan API'yi kullanır (`order` abonelikleri, `Reason` olmayan proxy'ler için yedekli `ServerConnectEvent`); canlı test edilmedi |
 | İndirme bağlantıları | Uygulandı ve birim testlerle denetlendi; canlı bir sunucuya karşı test edilmedi |
+| Giriş eklentileri (AuthMeVelocity/AuthMeBungee ile AuthMe, LibreLogin, nLogin, JPremium) | Velocity'de bir giriş sunucusunu zorlayan ve girişten önce diğer sunucuları reddeden bir yerine geçen eklentiyle test edildi: yeniden bağlanan oyuncu bir kez giriş yapar ve sunucusuna ulaşır; gerçek eklentiler kurulmadı |
+| 152 MiB'e ve 6.000 girdiye kadar paketler | Geyser üzerinden (172 sn) ve paket sunucusu üzerinden (123 sn) canlı test edildi |
 
 Sunucu başına paketler, paket değiştiğinde yeniden bağlanma gerektirir, çünkü Bedrock paketleri yalnızca
 bağlanırken yükler. Twilight'ın çalışma zamanı yazı, biyom ve ad köprüleri Geyser'ın Twilight ile aynı
@@ -175,6 +180,7 @@ sunucuda olmasını gerektirir; yalnızca proxy'deki bir Geyser paketleri alır 
 | Başarısız indirme (kapalı bir porta giden bağlantılar) | Canlı test edildi: Bedrock Geyser'ın aktarımına döner ve yeni paketi yükler |
 | Diğer Bedrock platformları (mobil, konsollar) | Test edilmedi; biri düz HTTP'yi reddederse oyuncuları Geyser'ın aktarımına döner, HTTPS bir `public-address` bunu önler |
 | Başka bir eklentinin dosyasız kaydettiği paketler | Sunulmaz; oturum o zaman bütün paketler için Geyser'ın aktarımına döner (Geyser "Mixing pack codecs" yazar) |
+| İstemciyle sunucu arasındaki antivirüs web kalkanları (Windows'ta biriyle test edildi) | Sunucu bağlantıyı istemci kapatana kadar açık tuttuğundan 40 ve 152 MiB'lik indirmeler HTTP ile tamamlanır |
 
 #### Kaynak keşfi
 

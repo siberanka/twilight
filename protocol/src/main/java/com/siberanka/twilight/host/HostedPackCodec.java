@@ -21,10 +21,13 @@ import java.nio.channels.SeekableByteChannel;
 public final class HostedPackCodec extends UrlPackCodec {
     private final String url;
     private final ResourcePack pack;
+    private final Runnable fallback;
+    private final java.util.concurrent.atomic.AtomicBoolean reported = new java.util.concurrent.atomic.AtomicBoolean();
 
-    private HostedPackCodec(String url, ResourcePack pack) {
+    private HostedPackCodec(String url, ResourcePack pack, Runnable fallback) {
         this.url = url;
         this.pack = pack;
+        this.fallback = fallback;
     }
 
     /**
@@ -34,7 +37,12 @@ public final class HostedPackCodec extends UrlPackCodec {
      * @throws IllegalStateException when this Geyser cannot carry a different codec on its pack record
      */
     public static ResourcePack hosted(ResourcePack pack, String url) {
-        HostedPackCodec codec = new HostedPackCodec(url, pack);
+        return hosted(pack, url, () -> {});
+    }
+
+    /** As {@link #hosted(ResourcePack, String)}; {@code fallback} runs once if the client asks Geyser for the pack. */
+    public static ResourcePack hosted(ResourcePack pack, String url, Runnable fallback) {
+        HostedPackCodec codec = new HostedPackCodec(url, pack, fallback);
         return codec.create();
     }
 
@@ -55,6 +63,14 @@ public final class HostedPackCodec extends UrlPackCodec {
 
     @Override
     public SeekableByteChannel serialize() throws IOException {
+        // Geyser only reads the bytes to send them in chunks: the client did not use the link.
+        if (reported.compareAndSet(false, true)) {
+            try {
+                fallback.run();
+            } catch (RuntimeException ignored) {
+                // reporting never stops the transfer
+            }
+        }
         return pack.codec().serialize();
     }
 

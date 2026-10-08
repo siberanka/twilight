@@ -33,6 +33,8 @@ public final class SessionHosting {
      * @param warn receives the pack name and the reason when a pack cannot be hosted (the caller logs it once)
      */
     public static void hostAll(PackHost host, SessionLoadResourcePacksEvent event, BiConsumer<String, String> warn) {
+        // A client whose last link did not work gets Geyser's transfer for a while (the host logged why).
+        if (!host.usable(address(event.connection()))) return;
         for (ResourcePack pack : List.copyOf(event.resourcePacks())) {
             if (pack.codec() instanceof UrlPackCodec) continue;
             String name = name(pack);
@@ -72,7 +74,7 @@ public final class SessionHosting {
                         ? "the player's address is unknown (require-player-address)"
                         : "no host for links: the join address '" + connection.joinAddress() + "' is not usable (set public-address)");
             }
-            return url.map(link -> HostedPackCodec.hosted(pack, link));
+            return url.map(link -> HostedPackCodec.hosted(pack, link, () -> host.fallback(link)));
         } catch (Exception | LinkageError failure) {
             warn.accept(failure.getClass().getSimpleName() + ": " + failure.getMessage());
             return Optional.empty();

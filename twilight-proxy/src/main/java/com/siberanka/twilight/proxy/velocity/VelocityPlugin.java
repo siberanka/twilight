@@ -17,6 +17,7 @@ import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
+import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
@@ -27,6 +28,10 @@ import org.slf4j.Logger;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -60,6 +65,11 @@ public final class VelocityPlugin {
             return;
         }
         core = created;
+        try {
+            created.checkLoginLimit("login-ratelimit in velocity.toml", proxy.getConfiguration().getLoginRatelimit());
+        } catch (RuntimeException | LinkageError unavailable) {
+            // older Velocity
+        }
         proxy.getCommandManager().register(proxy.getCommandManager().metaBuilder("twilightproxy").aliases("twproxy").build(),
                 (SimpleCommand) invocation -> {
                     if (!invocation.source().hasPermission("twilight.proxy.admin")) return;
@@ -86,26 +96,67 @@ public final class VelocityPlugin {
         if (reply != null) server.sendPluginMessage(CHANNEL, reply);
     }
 
+    /** The first server Velocity picked for each joining player, before other plugins changed it. */
+    private final Map<UUID, String> originals = new ConcurrentHashMap<>();
+
+    @Subscribe(order = PostOrder.FIRST)
+    public void onChooseInitialServerFirst(PlayerChooseInitialServerEvent event) {
+        if (core == null || originals.size() > 100_000) return;
+        originals.put(event.getPlayer().getUniqueId(), event.getInitialServer().map(server -> server.getServerInfo().getName()).orElse(""));
+    }
+
     @Subscribe(order = PostOrder.LAST)
     public void onChooseInitialServer(PlayerChooseInitialServerEvent event) {
         if (core == null) return;
-        core.pending(event.getPlayer().getUniqueId(), event.getPlayer().getUsername())
+        Player player = event.getPlayer();
+        String chosen = event.getInitialServer().map(server -> server.getServerInfo().getName()).orElse(null);
+        core.initial(player.getUniqueId(), player.getUsername(), chosen, originals.get(player.getUniqueId()))
                 .flatMap(proxy::getServer)
                 .ifPresent(event::setInitialServer);
     }
 
     @Subscribe(order = PostOrder.LAST)
     public void onPreConnect(ServerPreConnectEvent event) {
-        if (core == null || !event.getResult().isAllowed()) return;
+        if (core == null) return;
+        Player player = event.getPlayer();
+        boolean first = player.getCurrentServer().isEmpty();
+        if (!event.getResult().isAllowed()) {
+            // A login plugin refused the server a reconnected player came back for: join where Velocity would have.
+            String original = originals.remove(player.getUniqueId());
+            if (first && original != null && !original.isEmpty()
+                    && core.refusedFirst(player.getUniqueId(), player.getUsername(), event.getOriginalServer().getServerInfo().getName())) {
+                proxy.getServer(original).ifPresent(server -> later(() -> player.createConnectionRequest(server).fireAndForget()));
+            }
+            return;
+        }
+        if (first) originals.remove(player.getUniqueId());
         RegisteredServer target = event.getResult().getServer().orElse(event.getOriginalServer());
-        if (core.beforeConnect(event.getPlayer().getUniqueId(), event.getPlayer().getUsername(), target.getServerInfo().getName())) {
+        ProxyCore.Route route = core.beforeConnect(player.getUniqueId(), player.getUsername(), target.getServerInfo().getName(), first);
+        if (route instanceof ProxyCore.Route.Transferred) {
             event.setResult(ServerPreConnectEvent.ServerResult.denied());
+        } else if (route instanceof ProxyCore.Route.Redirect redirect) {
+            Optional<RegisteredServer> destination = proxy.getServer(redirect.server());
+            if (destination.isEmpty()) return;
+            // A new request, so every plugin checks the destination as well.
+            event.setResult(ServerPreConnectEvent.ServerResult.denied());
+            later(() -> player.createConnectionRequest(destination.get()).connect().thenAccept(result -> {
+                if (!result.isSuccessful()) {
+                    core.redirectFailed(player.getUsername(), redirect.server(), target.getServerInfo().getName());
+                    player.createConnectionRequest(target).fireAndForget();
+                }
+            }));
         }
     }
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
+        originals.remove(event.getPlayer().getUniqueId());
         if (core != null) core.disconnect(event.getPlayer().getUniqueId(), event.getPlayer().getUsername());
+    }
+
+    /** Runs a connection request after the current event has finished. */
+    private void later(Runnable task) {
+        proxy.getScheduler().buildTask(this, task).delay(100, TimeUnit.MILLISECONDS).schedule();
     }
 
     ProxyServer proxy() { return proxy; }

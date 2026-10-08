@@ -72,6 +72,13 @@ final class GeyserBridge {
         }
     }
 
+    /** Reads and hashes a pack file the way Geyser will, ahead of the first session that needs it. */
+    void prepare(java.nio.file.Path file) {
+        ResourcePack pack = loaded(file);
+        pack.codec().sha256();
+        pack.codec().size();
+    }
+
     boolean bedrock(UUID player, String name) {
         return connection(player, name) != null;
     }
@@ -96,13 +103,17 @@ final class GeyserBridge {
         return null;
     }
 
-    /** Sends the Bedrock client back to Geyser (configured address or the one it joined with). */
-    boolean transfer(UUID player, String name, String address, int port) {
+    /**
+     * Sends the Bedrock client back to Geyser (configured address or the one it joined with); returns the
+     * {@code host:port} it was sent to, or empty when the transfer was not possible.
+     */
+    Optional<String> transfer(UUID player, String name, String address, int port) {
         GeyserConnection connection = connection(player, name);
-        if (connection == null) return false;
+        if (connection == null) return Optional.empty();
         String host = address.isEmpty() ? connection.joinAddress() : address;
         int target = port > 0 ? port : connection.joinPort();
-        return host != null && !host.isEmpty() && target > 0 && connection.transfer(host, target);
+        if (host == null || host.isEmpty() || target <= 0 || !connection.transfer(host, target)) return Optional.empty();
+        return Optional.of(host + ":" + target);
     }
 
     void close() {
