@@ -137,6 +137,10 @@ public final class ProxyCore implements TwilightProxyApi {
         try {
             Class.forName("org.geysermc.geyser.api.GeyserApi", false, ProxyCore.class.getClassLoader());
         } catch (ClassNotFoundException | LinkageError absent) {
+            // Installed but invisible: a proxy fork that isolates plugins, or Geyser loaded later than expected.
+            Optional<String> plugin = core.platform.geyserPlugin();
+            if (plugin.isPresent()) return Sessions.Attach.notReady(plugin.get() + " is installed, but its API is not visible"
+                    + " to twilight-proxy (" + Sessions.describe(absent) + ")");
             return Sessions.Attach.failed(NOT_INSTALLED);
         }
         return GeyserBridge.attach(owner, core);

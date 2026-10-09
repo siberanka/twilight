@@ -274,7 +274,8 @@ seconds for two minutes and then whenever a player joins. The log says which cas
 |---|---|
 | "Attached to Geyser: Bedrock players get each server's pack." | Working |
 | "Geyser is installed but not started yet; attaching when it is ready." | Followed by "Attached to Geyser after it started" |
-| "Geyser is not installed on this proxy" | Geyser's API is not visible to twilight-proxy |
+| "Geyser is not installed on this proxy" | No Geyser plugin on this proxy |
+| "Geyser-BungeeCord ... is installed, but its API is not visible to twilight-proxy" | The proxy (a fork that isolates plugins) hides Geyser's classes; retried like a Geyser that is still loading, and the reason is logged |
 | "Could not attach to Geyser: ..." | Geyser's API refused the listeners; the reason follows. Update Geyser and twilight-proxy |
 
 `/twilightproxy` shows the state ("Geyser attached" or "Geyser not attached (reason)"), whether the
@@ -708,6 +709,7 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 | "Restart the server to activate changed Geyser item mappings" | Geyser registers items at startup; restart once |
 | A build is not published | `build/current/build-report.json` → `problems`; strict builds keep the last good pack |
 | `auto` packs never arrive on the proxy | `/twilightproxy` shows "auto packs off": set the same `secret` on both sides or use modern forwarding |
+| Backend: "Geyser is not on this server (normal when it runs on the proxy)" | Expected on a proxy network; it says whether the pack is shared with twilight-proxy. "pack sharing ... is off" means no shared secret was found: set `proxy.secret` (and `secret` on the proxy) or use BungeeGuard / Velocity forwarding |
 | "Geyser not attached" although Geyser runs | Read the reason in `/twilightproxy` and the log ([attaching to Geyser](#attaching-to-geyser)); versions before 1.0.0-pre.15 gave up when Geyser was still loading |
 | Custom items show as their base item on a proxy network | Restart the proxy after the log line "Item mappings for Geyser changed"; check the locale warning and listed selector conflicts ([item mappings on a proxy](#item-mappings-on-a-proxy)) |
 | "Twilight content scan failed ... java.time.Instant#seconds" | Fixed in 1.0.0-pre.15 (servers whose Gson cannot reflect into Java 17+ classes) |
@@ -1014,7 +1016,8 @@ oyuncu katıldığında yeniden denenir. Günlük hangi durumun geçerli olduğu
 |---|---|
 | "Attached to Geyser: Bedrock players get each server's pack." | Çalışıyor |
 | "Geyser is installed but not started yet; attaching when it is ready." | Ardından "Attached to Geyser after it started" gelir |
-| "Geyser is not installed on this proxy" | Geyser'ın API'si twilight-proxy'ye görünmüyor |
+| "Geyser is not installed on this proxy" | Bu proxy'de Geyser eklentisi yok |
+| "Geyser-BungeeCord ... is installed, but its API is not visible to twilight-proxy" | Proxy (eklentileri birbirinden yalıtan bir türev) Geyser'ın sınıflarını gizliyor; hâlâ yüklenen bir Geyser gibi yeniden denenir ve nedeni günlüğe yazılır |
 | "Could not attach to Geyser: ..." | Geyser'ın API'si dinleyicileri reddetti; nedeni ardından yazılır. Geyser'ı ve twilight-proxy'yi güncelleyin |
 
 `/twilightproxy` durumu ("Geyser attached" veya "Geyser not attached (neden)"), paket sunucusunun çalışıp
@@ -1450,6 +1453,7 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
 | "Restart the server to activate changed Geyser item mappings" | Geyser eşyaları açılışta kaydeder; bir kez yeniden başlatın |
 | Bir derleme yayımlanmıyor | `build/current/build-report.json` → `problems`; katı derlemeler son iyi paketi korur |
 | `auto` paketler proxy'ye hiç ulaşmıyor | `/twilightproxy` "auto packs off" gösteriyor: iki tarafta aynı `secret` değerini ayarlayın veya modern yönlendirme kullanın |
+| Arka uç: "Geyser is not on this server (normal when it runs on the proxy)" | Proxy'li ağda beklenir; paketin twilight-proxy ile paylaşılıp paylaşılmadığını söyler. "pack sharing ... is off" paylaşılan bir gizli anahtar bulunmadığı anlamına gelir: `proxy.secret` (ve proxy'de `secret`) ayarlayın veya BungeeGuard / Velocity yönlendirmesi kullanın |
 | Geyser çalıştığı hâlde "Geyser not attached" | Nedeni `/twilightproxy` ve günlükte okuyun ([Geyser'a bağlanma](#geysera-bağlanma)); 1.0.0-pre.15'ten önceki sürümler Geyser hâlâ yüklenirken vazgeçiyordu |
 | Proxy'li ağda özel eşyalar temel eşya olarak görünüyor | "Item mappings for Geyser changed" satırından sonra proxy'yi yeniden başlatın; dil uyarısını ve listelenen seçici çakışmalarını denetleyin ([proxy'de eşya eşlemeleri](#proxyde-eşya-eşlemeleri)) |
 | "Twilight content scan failed ... java.time.Instant#seconds" | 1.0.0-pre.15'te düzeltildi (Gson'u Java 17+ sınıflarına yansıma ile erişemeyen sunucular) |

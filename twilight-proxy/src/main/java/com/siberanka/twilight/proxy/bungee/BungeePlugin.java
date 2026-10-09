@@ -200,6 +200,11 @@ public final class BungeePlugin extends Plugin implements Listener {
 
         @Override public String version() { return getDescription().getVersion(); }
 
+        @Override public Optional<String> geyserPlugin() {
+            Plugin geyser = getProxy().getPluginManager().getPlugin("Geyser-BungeeCord");
+            return Optional.ofNullable(geyser).map(plugin -> plugin.getDescription().getName() + " " + plugin.getDescription().getVersion());
+        }
+
         @Override public void tellAdmins(String text, String url) {
             getProxy().getPlayers().stream().filter(BungeePlugin::admin).forEach(player -> tell(player, text, url));
         }

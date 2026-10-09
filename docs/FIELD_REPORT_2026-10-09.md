@@ -47,6 +47,21 @@ With the same load order pre.15 attached at once. BungeeCord, where Geyser creat
 attached as before. Four tests cover a late Geyser, an incompatible one, an absent one, and the
 attempt when a player joins.
 
+**Follow-up (1.0.0-pre.16).** The message came from FlameCord, a closed Waterfall fork that could not
+be obtained. The tests used Waterfall 1.21 build 615 instead, the open project FlameCord is built on:
+
+- pre.13 and pre.16 both found Geyser there.
+- On BungeeCord and Waterfall, Geyser creates its API while plugins load, before twilight-proxy
+  starts.
+- On FlameCord the remaining explanation is that the proxy hides Geyser's classes from other plugins.
+
+Since pre.16 twilight-proxy asks the proxy whether a Geyser plugin is installed. It then reports
+"Geyser-BungeeCord ... is installed, but its API is not visible to twilight-proxy" with the exact
+error and keeps trying, instead of "not installed". The backend's "Geyser unavailable: No local Geyser
+plugin data directory was found" in `/twilight status` was misleading too. It now reads "Geyser is not
+on this server (normal when it runs on the proxy)", says whether the pack is shared with twilight-proxy,
+and is also logged at start.
+
 ## 3. Item registry across backends
 
 **Cause.** Geyser registers custom items once per Geyser. On a proxy network that is the proxy's
@@ -188,6 +203,20 @@ yazdı; oysa Geyser iki saniye sonra başladı.
 Aynı yükleme sırasıyla pre.15 hemen bağlandı. Geyser'ın API'sini daha erken oluşturduğu BungeeCord'da
 önceki gibi bağlandı. Dört test geç başlayan, uyumsuz ve hiç olmayan bir Geyser'ı ve oyuncu katıldığındaki
 denemeyi kapsar.
+
+**Ek (1.0.0-pre.16).** Mesaj, temin edilemeyen kapalı kaynaklı bir Waterfall türevi olan FlameCord'dan
+geliyordu. Testlerde bunun yerine FlameCord'un temel aldığı açık proje Waterfall 1.21 build 615 kullanıldı:
+
+- pre.13 de pre.16 da orada Geyser'ı buldu.
+- BungeeCord ve Waterfall'da Geyser, API'sini eklentiler yüklenirken, twilight-proxy başlamadan önce oluşturur.
+- FlameCord için geriye kalan açıklama, proxy'nin Geyser'ın sınıflarını diğer eklentilerden gizlemesidir.
+
+pre.16'dan beri twilight-proxy proxy'ye bir Geyser eklentisi kurulu olup olmadığını sorar. Kuruluysa "not
+installed" yerine "Geyser-BungeeCord ... is installed, but its API is not visible to twilight-proxy" ifadesini
+tam hatayla birlikte bildirir ve denemeye devam eder. Arka uçta `/twilight status` içindeki "Geyser unavailable:
+No local Geyser plugin data directory was found" ifadesi de yanıltıcıydı. Artık "Geyser is not on this server
+(normal when it runs on the proxy)" der, paketin twilight-proxy ile paylaşılıp paylaşılmadığını söyler ve bu
+satır açılışta da günlüğe yazılır.
 
 #### 3. Arka uçlar arasında eşya kaydı
 

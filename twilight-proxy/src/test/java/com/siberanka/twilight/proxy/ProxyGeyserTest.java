@@ -85,6 +85,28 @@ class ProxyGeyserTest {
     }
 
     @Test
+    void anInstalledGeyserWhoseClassesAreInvisibleIsNamedAndRetried() throws Exception {
+        // Geyser's API is not on this test's class path, as on a proxy that isolates plugins from each other.
+        RecordingPlatform platform = platform("isolated");
+        platform.geyser = "Geyser-BungeeCord 2.11.3-SNAPSHOT";
+        ProxyCore core = new ProxyCore(platform, this);
+        core.enable();
+        assertTrue(core.geyserProblem().startsWith("Geyser-BungeeCord 2.11.3-SNAPSHOT is installed, but its API is not visible"
+                + " to twilight-proxy (ClassNotFoundException"), core.geyserProblem());
+        assertTrue(platform.infos.contains("Geyser is installed but not started yet; attaching when it is ready."));
+        for (int round = 0; round < ProxyCore.ATTACH_ATTEMPTS + 1; round++) platform.runQueued();
+        assertTrue(platform.warns.stream().anyMatch(line -> line.startsWith("Geyser did not become ready")
+                && line.contains("is not visible to twilight-proxy")), platform.warns.toString());
+        core.disable();
+
+        RecordingPlatform none = platform("absent");
+        ProxyCore absent = new ProxyCore(none, this);
+        absent.enable();
+        assertEquals("Geyser is not installed on this proxy", absent.geyserProblem());
+        absent.disable();
+    }
+
+    @Test
     void givesUpWaitingAfterTwoMinutesAndTriesAgainWhenAPlayerJoins() throws Exception {
         RecordingPlatform platform = platform("slow");
         int[] calls = {0};
@@ -391,5 +413,8 @@ class ProxyGeyserTest {
         @Override public Optional<String> currentServer(UUID player) { return Optional.empty(); }
         @Override public String version() { return "test"; }
         @Override public void tellAdmins(String text, String url) { }
+        @Override public Optional<String> geyserPlugin() { return Optional.ofNullable(geyser); }
+
+        String geyser;
     }
 }

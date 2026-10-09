@@ -148,6 +148,7 @@ public final class TwilightPlugin extends JavaPlugin {
         configureUpdates();
 
         getLogger().info("Twilight server-side content compiler enabled. Vanilla overrides: " + config.vanillaOverride());
+        if (getServer().getPluginManager().getPlugin("Geyser-Spigot") == null) getLogger().info(geyserElsewhere());
         if (!"DEFINITION".toLowerCase(java.util.Locale.getDefault()).equals("definition")) {
             getLogger().warning("This JVM locale can break Geyser custom-item enum parsing. If Geyser rejects definition mappings, "
                     + "restart with -Duser.language=en -Duser.country=US; keep the generated mapping names unchanged.");
@@ -360,6 +361,17 @@ public final class TwilightPlugin extends JavaPlugin {
         }
     }
 
+    /**
+     * The usual network layout runs Geyser on the proxy only. Says where the pack goes instead of reporting a
+     * missing Geyser as a problem.
+     */
+    private String geyserElsewhere() {
+        String export = getDataFolder().toPath().resolve(com.siberanka.twilight.deploy.PackExport.PACK).toString();
+        return "Geyser is not on this server (normal when it runs on the proxy): builds are exported to " + export
+                + (proxyChannel != null ? " and shared with twilight-proxy." : "; pack sharing with twilight-proxy is off"
+                + " (no proxy.secret, Velocity forwarding secret or BungeeGuard token found).");
+    }
+
     private boolean localGeyser() {
         try {
             deployment.resolveGeyserDirectory();
@@ -502,7 +514,7 @@ public final class TwilightPlugin extends JavaPlugin {
         try {
             send(sender, "Geyser=" + deployment.resolveGeyserDirectory() + " | snapshots=" + deployment.snapshots().size() + "/" + config.backupsToKeep());
         } catch (Exception unavailable) {
-            send(sender, "Geyser unavailable: " + unavailable.getMessage());
+            send(sender, geyserElsewhere());
         }
     }
 

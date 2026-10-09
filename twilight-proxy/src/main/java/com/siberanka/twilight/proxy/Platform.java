@@ -39,6 +39,11 @@ public interface Platform {
     /** The backend server a player is connected to, if any. */
     java.util.Optional<String> currentServer(java.util.UUID player);
 
+    /** The installed Geyser plugin ("Geyser-BungeeCord 2.11.3"), if the proxy lists one. */
+    default java.util.Optional<String> geyserPlugin() {
+        return java.util.Optional.empty();
+    }
+
     /** twilight-proxy's version from its plugin description. */
     String version();
 

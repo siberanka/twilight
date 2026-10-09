@@ -50,6 +50,11 @@ final class VelocityPlatform implements Platform {
 
     @Override public String version() { return plugin.version(); }
 
+    @Override public java.util.Optional<String> geyserPlugin() {
+        return plugin.proxy().getPluginManager().getPlugin("geyser").map(container -> container.getDescription().getName().orElse("Geyser")
+                + " " + container.getDescription().getVersion().orElse(""));
+    }
+
     @Override public void tellAdmins(String text, String url) {
         plugin.proxy().getAllPlayers().stream().filter(VelocityPlugin::admin).forEach(player -> VelocityPlugin.tell(player, text, url));
     }

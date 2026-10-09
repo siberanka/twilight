@@ -4,6 +4,17 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.16 - 2026-10-09
+
+- twilight-proxy: when the proxy lists a Geyser plugin but its classes are not visible to
+  twilight-proxy (proxy forks that isolate plugins, such as FlameCord), report "... is installed,
+  but its API is not visible to twilight-proxy" with the error and keep trying, instead of "Geyser is
+  not installed". Tested on Waterfall 1.21 build 615.
+- Twilight on a backend without Geyser: `/twilight status` and the start-up log say that Geyser is
+  not on this server (normal on a proxy network) and whether the pack is shared with twilight-proxy,
+  instead of "Geyser unavailable: No local Geyser plugin data directory was found".
+- 235 tests pass (212 Twilight, 23 proxy).
+
 ## 1.0.0-pre.15 - 2026-10-09
 
 Fixes from a field report on a proxy network; each point was reproduced locally first
@@ -396,6 +407,17 @@ Fixes from a field report on a proxy network; each point was reproduced locally 
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-pre.16 - 2026-10-09
+
+- twilight-proxy: proxy bir Geyser eklentisi listelediği hâlde sınıfları twilight-proxy'ye görünmüyorsa
+  (FlameCord gibi eklentileri yalıtan proxy türevleri) "Geyser is not installed" yerine "... is installed, but
+  its API is not visible to twilight-proxy" ifadesini hatayla birlikte bildirir ve denemeye devam eder.
+  Waterfall 1.21 build 615 üzerinde test edildi.
+- Geyser'sız bir arka uçta Twilight: `/twilight status` ve açılış günlüğü, "Geyser unavailable: No local Geyser
+  plugin data directory was found" yerine Geyser'ın bu sunucuda olmadığını (proxy'li ağda normaldir) ve
+  paketin twilight-proxy ile paylaşılıp paylaşılmadığını söyler.
+- 235 test geçti (212 Twilight, 23 proxy).
 
 #### 1.0.0-pre.15 - 2026-10-09
 
