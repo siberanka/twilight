@@ -1,6 +1,30 @@
-# Twilight 1.0.0-pre.17 - prerelease
+# Twilight 1.0.0-pre.18 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+This prerelease removes the manual steps an update needed, on proxy networks and single servers.
+
+- **Stale files are moved out of Geyser automatically.** Old Twilight item mappings and packs left in
+  Geyser by older versions, hand copies or sync tools caused broken item icons after updating. They are
+  now moved to `retired/` before Geyser loads them, never deleted.
+- **Backends on the same machine are read directly.** twilight-proxy finds them by port and loads each
+  Twilight build from its folder. Geyser starts with every server's current items, without waiting for
+  a player, and new builds arrive within seconds.
+- **Restarts are announced and can be automatic.** Geyser registers custom items only when it starts.
+  Admins are told when a restart is needed, and `when-empty` restarts once nobody is online.
+
+Restart once after updating so Geyser registers the current items.
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 244 tests
+across 42 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.17 - prerelease
 
 This prerelease makes twilight-proxy work on proxies that also run Floodgate
 ([field report](docs/FIELD_REPORT_2026-10-09.md)).
@@ -24,8 +48,6 @@ across 41 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.16 - prerelease
 
@@ -462,7 +484,31 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.17 - ön sürüm
+### Twilight 1.0.0-pre.18 - ön sürüm
+
+Bu ön sürüm, proxy'li ağlarda ve tek sunucularda bir güncellemenin gerektirdiği elle yapılan adımları kaldırır.
+
+- **Eski dosyalar Geyser'dan kendiliğinden taşınır.** Eski sürümlerin, elle yapılmış kopyaların veya eşitleme
+  araçlarının Geyser'da bıraktığı eski Twilight eşya eşlemeleri ve paketleri, güncellemeden sonra bozuk eşya
+  simgelerine yol açıyordu. Artık Geyser bunları yüklemeden önce `retired/` klasörüne taşınır, asla silinmez.
+- **Aynı makinedeki arka uçlar doğrudan okunur.** twilight-proxy bunları porttan bulur ve her Twilight
+  derlemesini klasöründen yükler. Geyser her sunucunun güncel eşyalarıyla, bir oyuncu beklemeden başlar; yeni
+  derlemeler saniyeler içinde gelir.
+- **Yeniden başlatmalar duyurulur ve otomatik olabilir.** Geyser özel eşyaları yalnızca açılışta kaydeder.
+  Yeniden başlatma gerektiğinde yöneticilere bildirilir; `when-empty` kimse çevrimiçi değilken yeniden başlatır.
+
+Geyser'ın güncel eşyaları kaydetmesi için güncellemeden sonra bir kez yeniden başlatın.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 42 paketteki 244
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.17 - ön sürüm
 
 Bu ön sürüm twilight-proxy'yi Floodgate de çalıştıran proxy'lerde çalışır hâle getirir
 ([saha raporu](docs/FIELD_REPORT_2026-10-09.md)).
@@ -486,8 +532,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.16 - ön sürüm
 

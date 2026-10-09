@@ -20,7 +20,13 @@ record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, bo
                    String transferAddress, int transferPort, String initialServer, String secret,
                    long maxPackBytes, int downloadTimeoutSeconds, int urlRefreshMinutes,
                    int transferTimeoutSeconds, java.util.Set<String> loginServers,
-                   com.siberanka.twilight.host.HostSettings host, boolean updateCheck, boolean updateNotify) {
+                   com.siberanka.twilight.host.HostSettings host, boolean updateCheck, boolean updateNotify,
+                   LocalSettings local, boolean retireStaleFiles, boolean restartWhenEmpty) {
+    /** {@code local-backends}: read the exports of backends on this machine from their folders. */
+    record LocalSettings(boolean enabled, java.util.List<Path> search, Map<String, Path> servers) {
+        static final LocalSettings OFF = new LocalSettings(false, java.util.List.of(), Map.of());
+    }
+
     private static final Pattern FILE_NAME = Pattern.compile("[A-Za-z0-9._-]{1,128}");
     private static final Pattern SERVER_NAME = Pattern.compile("[A-Za-z0-9._-]{1,64}");
     /** With {@code transfer-timeout-seconds: auto}: time for the reconnect and login, plus the pack at this rate. */
@@ -80,7 +86,57 @@ record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, bo
                 serverList(root.getOrDefault("login-servers", java.util.List.of()), "login-servers"),
                 hostSettings(root.get("pack-host")),
                 updateSetting(root.get("update-check"), "enabled"),
-                updateSetting(root.get("update-check"), "notify-players"));
+                updateSetting(root.get("update-check"), "notify-players"),
+                localSettings(root.get("local-backends")),
+                itemSetting(root.get("item-mappings"), "retire-stale-files"),
+                restartSetting(root.get("item-mappings")));
+    }
+
+    /** The {@code local-backends} section; missing means {@code mode: auto} without extra folders. */
+    private static LocalSettings localSettings(Object section) {
+        if (section == null) return new LocalSettings(true, java.util.List.of(), Map.of());
+        Map<String, Object> values = map(section, "local-backends");
+        String mode = string(values.getOrDefault("mode", "auto"), "local-backends.mode").strip().toLowerCase(Locale.ROOT);
+        if (!mode.equals("auto") && !mode.equals("off")) throw new IllegalArgumentException("local-backends.mode must be auto or off");
+        java.util.List<Path> search = new java.util.ArrayList<>();
+        Object folders = values.getOrDefault("search", java.util.List.of());
+        if (!(folders instanceof java.util.List<?> list)) throw new IllegalArgumentException("local-backends.search must be a list");
+        for (Object folder : list) search.add(folderPath(String.valueOf(folder), "local-backends.search"));
+        Map<String, Path> servers = new LinkedHashMap<>();
+        Object explicit = values.get("server");
+        if (explicit != null && !(explicit instanceof String text && text.isBlank())) {
+            for (var entry : map(explicit, "local-backends.server").entrySet()) {
+                if (!SERVER_NAME.matcher(entry.getKey()).matches()) throw new IllegalArgumentException("local-backends.server: invalid server name '" + entry.getKey() + "'");
+                servers.put(entry.getKey().toLowerCase(Locale.ROOT), folderPath(string(entry.getValue(), "local-backends.server." + entry.getKey()), "local-backends.server"));
+            }
+        }
+        return new LocalSettings(mode.equals("auto"), java.util.List.copyOf(search), Map.copyOf(servers));
+    }
+
+    private static Path folderPath(String value, String path) {
+        String text = value.strip();
+        if (text.isEmpty() || text.indexOf('\0') >= 0) throw new IllegalArgumentException(path + ": empty folder");
+        try {
+            return Path.of(text).normalize();
+        } catch (RuntimeException invalid) {
+            throw new IllegalArgumentException(path + ": invalid folder '" + text + "'");
+        }
+    }
+
+    /** A switch in the {@code item-mappings} section; on when missing. */
+    private static boolean itemSetting(Object section, String key) {
+        if (section == null) return true;
+        return bool(map(section, "item-mappings").getOrDefault(key, "true"), "item-mappings." + key);
+    }
+
+    /** {@code item-mappings.restart}: notify (default) or when-empty. */
+    private static boolean restartSetting(Object section) {
+        if (section == null) return false;
+        String value = string(map(section, "item-mappings").getOrDefault("restart", "notify"), "item-mappings.restart")
+                .strip().toLowerCase(Locale.ROOT);
+        if (value.equals("notify")) return false;
+        if (value.equals("when-empty")) return true;
+        throw new IllegalArgumentException("item-mappings.restart must be notify or when-empty");
     }
 
     /** A switch in the {@code update-check} section; on when the section or the key is missing. */

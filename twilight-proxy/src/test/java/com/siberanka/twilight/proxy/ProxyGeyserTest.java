@@ -212,7 +212,10 @@ class ProxyGeyserTest {
         JsonObject written = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
         assertEquals(2, written.getAsJsonObject("items").getAsJsonArray("minecraft:paper").size());
         assertTrue(platform.infos.contains("Wrote item mappings for Geyser: 2 item(s) from lobby, survival."), platform.infos.toString());
-        assertTrue(platform.warns.stream().anyMatch(line -> line.contains("[twilight_item_mappings.json]")), platform.warns.toString());
+        // A copy from a backend is moved out of Geyser before Geyser reads it.
+        assertTrue(platform.warns.stream().anyMatch(line -> line.startsWith("Moved custom_mappings/twilight_item_mappings.json out of Geyser")),
+                platform.warns.toString());
+        assertFalse(Files.exists(geyser.resolve("custom_mappings/twilight_item_mappings.json")));
         assertFalse(platform.warns.stream().anyMatch(line -> line.contains("restart the proxy")), platform.warns.toString());
 
         // Geyser registers its items; an unchanged file needs no restart.
@@ -277,6 +280,126 @@ class ProxyGeyserTest {
         Files.writeString(old, "{broken");
         assertEquals(0, ItemMappings.clashes(old, merge));
         assertEquals(List.of("twilight_network_item_mappings.json"), ItemMappings.copies(folder));
+    }
+
+    // --- Backends on this machine and stale files ----------------------------------------------
+
+    @Test
+    void findsBackendFoldersOnThisMachineByTheirPort() throws Exception {
+        Path machine = root.resolve("machine");
+        backend(machine.resolve("lobby"), 25583, true);
+        Path backup = backend(machine.resolve("lobby-backup"), 25583, true);
+        Files.setLastModifiedTime(backup.resolve("logs/latest.log"), java.nio.file.attribute.FileTime.fromMillis(1_000));
+        backend(machine.resolve("survival"), 25582, false); // no Twilight installed
+        backend(machine.resolve("events"), 25590, true);
+        Map<String, java.net.InetSocketAddress> servers = new LinkedHashMap<>();
+        servers.put("lobby", new java.net.InetSocketAddress("127.0.0.1", 25583));
+        servers.put("survival", new java.net.InetSocketAddress("127.0.0.1", 25582));
+        servers.put("remote", new java.net.InetSocketAddress(InetAddress.getByAddress(new byte[]{(byte) 203, 0, 113, 5}), 25590));
+        servers.put("events", java.net.InetSocketAddress.createUnresolved("localhost", 25590));
+        List<String> log = new ArrayList<>();
+        Map<String, LocalBackends.Backend> found = LocalBackends.discover(servers, List.of(machine), Map.of(), log::add);
+        assertEquals(List.of("lobby", "events"), List.copyOf(found.keySet()));
+        assertEquals(machine.resolve("lobby"), found.get("lobby").folder(), "the most recently active of two folders with one port");
+        assertTrue(log.getFirst().contains("2 server folders use port 25583"), log.toString());
+        assertEquals(machine.resolve("lobby/" + LocalBackends.EXPORT), found.get("lobby").export());
+
+        // An explicit folder wins, and one without Twilight is refused.
+        Map<String, LocalBackends.Backend> pinned = LocalBackends.discover(servers, List.of(machine),
+                Map.of("lobby", backup, "survival", machine.resolve("survival")), log::add);
+        assertEquals(backup, pinned.get("lobby").folder());
+        assertFalse(pinned.containsKey("survival"));
+        assertEquals(-1, LocalBackends.port(machine.resolve("missing/server.properties")));
+    }
+
+    @Test
+    void readsLocalBackendsBeforeGeyserStartsAndRetiresStaleFiles() throws Exception {
+        Path machine = root.resolve("network");
+        Path proxy = machine.resolve("proxy");
+        Path data = proxy.resolve("plugins/twilight-proxy");
+        Files.createDirectories(data);
+        Path lobby = backend(machine.resolve("lobby"), 25583, true);
+        Files.createDirectories(lobby.resolve("plugins/Twilight/export"));
+        Files.copy(zip("lobby-export.zip", "manifest.json", "{}", ItemMappings.PACK_ENTRY,
+                mappings(legacy("minecraft:paper", 7, "twilight:minecraft_paper_7_aaaaaaaaaaaa")).toString()), lobby.resolve(LocalBackends.EXPORT));
+        Files.setLastModifiedTime(lobby.resolve(LocalBackends.EXPORT), java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 60_000));
+        Path geyser = machine.resolve("proxy/plugins/Geyser-Velocity");
+        Files.createDirectories(geyser.resolve("custom_mappings"));
+        Files.writeString(geyser.resolve("custom_mappings/twilight_network_item_mappings.json"),
+                mappings(legacy("minecraft:paper", 7, "twilight:n_0123456789abcdef0123456789abcdef")).toString());
+        Files.writeString(data.resolve("config.yml"), "packs:\n  default: auto\nitem-mappings:\n  restart: when-empty\n");
+
+        RecordingPlatform platform = new RecordingPlatform(proxy, data, List.of("lobby"));
+        platform.addresses.put("lobby", new java.net.InetSocketAddress("127.0.0.1", 25583));
+        FakeSessions sessions = new FakeSessions(geyser);
+        ProxyCore core = new ProxyCore(platform, this, ignored -> Sessions.Attach.attached(sessions));
+        long[] now = {5_000_000};
+        core.clock(() -> now[0]);
+        core.enable();
+
+        assertTrue(platform.infos.stream().anyMatch(line -> line.startsWith("Reading the Twilight builds of lobby from")), platform.infos.toString());
+        assertTrue(platform.infos.stream().anyMatch(line -> line.startsWith("Loaded the Bedrock pack of lobby from its folder")), platform.infos.toString());
+        assertFalse(Files.exists(geyser.resolve("custom_mappings/twilight_network_item_mappings.json")), "retired before Geyser reads it");
+        assertTrue(platform.warns.stream().anyMatch(line -> line.startsWith("Moved custom_mappings/twilight_network_item_mappings.json out of Geyser")),
+                platform.warns.toString());
+        try (var retired = Files.walk(data.resolve("retired"))) {
+            assertEquals(1, retired.filter(Files::isRegularFile).count());
+        }
+        JsonObject written = JsonParser.parseString(Files.readString(geyser.resolve("custom_mappings/" + ItemMappings.FILE))).getAsJsonObject();
+        assertEquals("twilight:minecraft_paper_7_aaaaaaaaaaaa", written.getAsJsonObject("items").getAsJsonArray("minecraft:paper")
+                .get(0).getAsJsonObject().get("bedrock_identifier").getAsString());
+        assertTrue(core.adminNotice().isEmpty(), "written before Geyser registered its items: no restart needed");
+        assertTrue(core.statusText().contains("local backends: lobby (lobby)"), core.statusText());
+
+        // Geyser registered its items; the backend builds new ones, which the proxy picks up within a sweep.
+        sessions.registered = true;
+        Files.copy(zip("lobby-export-2.zip", "manifest.json", "{}", ItemMappings.PACK_ENTRY,
+                        mappings(legacy("minecraft:paper", 7, "twilight:minecraft_paper_7_aaaaaaaaaaaa"),
+                                legacy("minecraft:paper", 9, "twilight:minecraft_paper_9_bbbbbbbbbbbb")).toString()),
+                lobby.resolve(LocalBackends.EXPORT), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        Files.setLastModifiedTime(lobby.resolve(LocalBackends.EXPORT), java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 10_000));
+        core.sweep();
+        platform.runQueued();
+        assertTrue(core.adminNotice().orElse("").contains("Restart the proxy so Geyser shows them; it restarts by itself once nobody is online"),
+                core.adminNotice().toString());
+        assertTrue(platform.told.stream().anyMatch(line -> line.startsWith("[twilight-proxy] Bedrock custom items changed")), platform.told.toString());
+
+        // when-empty: not before a minute, not while players are online.
+        platform.online = 3;
+        now[0] += 120_000;
+        core.sweep();
+        assertEquals(0, platform.stops.size());
+        platform.online = 0;
+        core.sweep();
+        assertEquals(1, platform.stops.size());
+        core.sweep();
+        assertEquals(1, platform.stops.size(), "stopped once");
+        core.disable();
+    }
+
+    @Test
+    void parsesLocalBackendAndItemMappingSettings() {
+        ProxyConfig defaults = ProxyConfig.parse("packs:\n  default: auto\n");
+        assertTrue(defaults.local().enabled());
+        assertTrue(defaults.retireStaleFiles());
+        assertFalse(defaults.restartWhenEmpty());
+        ProxyConfig custom = ProxyConfig.parse("packs:\n  default: auto\nlocal-backends:\n  mode: off\n  search: [/srv/mc, ../other]\n"
+                + "  server:\n    Survival: ../survival\nitem-mappings:\n  retire-stale-files: false\n  restart: when-empty\n");
+        assertFalse(custom.local().enabled());
+        assertEquals(2, custom.local().search().size());
+        assertEquals(Path.of("../survival").normalize(), custom.local().servers().get("survival"));
+        assertFalse(custom.retireStaleFiles());
+        assertTrue(custom.restartWhenEmpty());
+        assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n  default: auto\nlocal-backends:\n  mode: sometimes\n"));
+        assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n  default: auto\nitem-mappings:\n  restart: always\n"));
+    }
+
+    private static Path backend(Path folder, int port, boolean twilight) throws IOException {
+        Files.createDirectories(folder.resolve("logs"));
+        Files.writeString(folder.resolve("server.properties"), "motd=test\nserver-port=" + port + "\n");
+        Files.writeString(folder.resolve("logs/latest.log"), "started");
+        if (twilight) Files.createDirectories(folder.resolve("plugins/Twilight"));
+        return folder;
     }
 
     // --- Login servers ---------------------------------------------------------------------
@@ -464,8 +587,16 @@ class ProxyGeyserTest {
         @Override public Optional<InetAddress> address(UUID player) { return Optional.empty(); }
         @Override public Optional<String> currentServer(UUID player) { return Optional.empty(); }
         @Override public String version() { return "test"; }
-        @Override public void tellAdmins(String text, String url) { }
+        @Override public void tellAdmins(String text, String url) { told.add(text); }
         @Override public Optional<String> geyserPlugin() { return Optional.ofNullable(geyser); }
+        @Override public Map<String, java.net.InetSocketAddress> serverAddresses() { return addresses; }
+        @Override public int onlinePlayers() { return online; }
+        @Override public void stopProxy(String reason) { stops.add(reason); }
+
+        final List<String> told = new ArrayList<>();
+        final List<String> stops = new ArrayList<>();
+        final Map<String, java.net.InetSocketAddress> addresses = new LinkedHashMap<>();
+        int online;
         @Override public Optional<java.util.Set<String>> pluginFolders() { return Optional.ofNullable(folders); }
 
         String geyser;

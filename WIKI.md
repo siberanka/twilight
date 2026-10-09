@@ -162,6 +162,8 @@ change behaviour.
 | `reload-after-deploy` | `true` | Run `geyser reload` after deploying when no restart is required |
 | `backups-to-keep` | `3` | Geyser snapshots kept for `/twilight rollback` (1-20) |
 | `send-pack-to-bedrock` | `true` | Let Geyser send the pack; `false` when a proxy or another plugin sends `export/Twilight.mcpack` |
+| `retire-stale-files` | `true` | Move Twilight files this server does not own (older versions, copies, sync tools) out of the local Geyser to `plugins/Twilight/retired/`, at start before Geyser loads them and after every deployment |
+| `restart-for-item-changes` | `notify` | Geyser registers custom items only at start. `notify`: tell the console and players with `twilight.admin`; `when-empty`: also restart once nobody is online (`spigot.yml` `settings.restart-script`; without one the server stops) |
 
 ### `ui`
 
@@ -290,20 +292,47 @@ download links), keeps only well-formed Twilight entries, merges them and writes
 `custom_mappings/twilight-proxy_item_mappings.json` in Geyser's folder. Geyser reads that folder once,
 when it starts:
 
-- At proxy start the file is written before Geyser reads it, from the packs of the last run.
-- When a server's items change later, the log asks for a proxy restart; until then those items show
-  as their base item for Bedrock players. The first time, packs arrive when players first join each
-  server, so restart once after that.
+- At proxy start the file is written before Geyser reads it: from the current builds of backends on
+  the same machine ([local backends](#local-backends)), otherwise from the packs of the last run.
+- When a server's items change later, the console and players with `twilight.proxy.admin` (when they
+  join) are told to restart the proxy; until then those items show as their base item for Bedrock
+  players. With `item-mappings.restart: when-empty` the proxy stops by itself a minute later once
+  nobody is online, for hosts that start it again (panel auto-restart, a start script loop, systemd
+  `Restart=always`). Geyser cannot register items without a restart; `geyser reload` does not.
 - The same Java item (custom model data or item model) is the same Bedrock item on every backend,
   and each server's pack decides how it looks there. When two servers map the same selector to
   different Bedrock items (older Twilight versions, hand-made packs), the first server in name order
   wins and the log lists each conflict.
-- Remove other `twilight_*.json` files in the proxy's Geyser (copied by hand or written by an older
-  sync tool, and stop that tool); the log and `/twilightproxy` name them and count the items they map
-  differently.
+- Other Twilight files in the proxy's Geyser (`twilight*.json` under `custom_mappings`, and packs
+  named `twilight*` or whose manifest is named "Twilight") are moved to
+  `plugins/twilight-proxy/retired/<time>/` before Geyser loads them (`item-mappings.retire-stale-files`).
+  They come from older versions, copies by hand or sync tools, and would register the same items with
+  other Bedrock identifiers or send a second Twilight pack: broken icons. Stop such a tool as well.
 - Geyser reads mapping types with the Java locale. On a proxy whose locale is Turkish or Azerbaijani
   it skips every item model mapping; the log warns and the fix is `-Duser.language=en
   -Duser.country=US` on the proxy's Java command.
+
+### Local backends
+
+Backends on the same machine as the proxy are read from their folders: twilight-proxy finds each proxy
+server with a local address (`127.0.0.1`, `localhost` or an address of this machine) in the folder next
+to the proxy's whose `server.properties` uses that port and which has Twilight installed, and reads
+`plugins/Twilight/export/Twilight.mcpack` there. No player has to join a server first, the proxy's
+Geyser starts with every server's current items, and a new build is picked up within seconds.
+`/twilightproxy` lists them.
+
+```yaml
+local-backends:
+  mode: auto          # off: plugin messages only
+  search: []          # more folders that hold server folders, e.g. [/srv/minecraft]
+  server:             # a folder per server when discovery cannot tell
+    survival: ../survival
+```
+
+When two folders use the same port (backup copies), the most recently active one is used and the log
+names both; set it under `server` to be sure. Only that one file in such a folder is read, symbolic
+links are refused, and the pack is checked like every other. Backends on other machines keep using
+plugin messages.
 
 ### Sources
 
@@ -713,6 +742,7 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 | `auto` packs never arrive on the proxy | `/twilightproxy` shows "auto packs off": set the same `secret` on both sides or use modern forwarding |
 | Backend: "Geyser is not on this server (normal when it runs on the proxy)" | Expected on a proxy network; it says whether the pack is shared with twilight-proxy. "pack sharing ... is off" means no shared secret was found: set `proxy.secret` (and `secret` on the proxy) or use BungeeGuard / Velocity forwarding |
 | "Geyser not attached" although Geyser runs | Read the reason in `/twilightproxy` and the log ([attaching to Geyser](#attaching-to-geyser)); versions before 1.0.0-pre.15 gave up when Geyser was still loading |
+| Broken custom item icons after updating | Old Twilight mapping files or packs in Geyser (an older version or a sync tool) and a Geyser that has not restarted since the items changed. From 1.0.0-pre.18 the stale files are moved out automatically; restart once when the log or the admin message asks for it |
 | Custom items show as their base item on a proxy network | Restart the proxy after the log line "Item mappings for Geyser changed"; check the locale warning and listed selector conflicts ([item mappings on a proxy](#item-mappings-on-a-proxy)) |
 | "Twilight content scan failed ... java.time.Instant#seconds" | Fixed in 1.0.0-pre.15 (servers whose Gson cannot reflect into Java 17+ classes) |
 | Bedrock players reconnect on every server switch | Expected when servers use different packs; same packs never reconnect |
@@ -905,6 +935,8 @@ değiştirmek için düzenlenmesi gerekir.
 | `reload-after-deploy` | `true` | Yeniden başlatma gerekmediğinde dağıtımdan sonra `geyser reload` çalıştırır |
 | `backups-to-keep` | `3` | `/twilight rollback` için saklanan Geyser anlık görüntüleri (1-20) |
 | `send-pack-to-bedrock` | `true` | Paketi Geyser'ın göndermesine izin verir; bir proxy veya başka bir eklenti `export/Twilight.mcpack` dosyasını gönderiyorsa `false` |
+| `retire-stale-files` | `true` | Bu sunucunun sahip olmadığı Twilight dosyalarını (eski sürümler, kopyalar, eşitleme araçları) açılışta Geyser onları yüklemeden önce ve her dağıtımdan sonra yerel Geyser'dan `plugins/Twilight/retired/` klasörüne taşır |
+| `restart-for-item-changes` | `notify` | Geyser özel eşyaları yalnızca açılışta kaydeder. `notify`: konsola ve `twilight.admin` iznine sahip oyunculara bildirir; `when-empty`: ayrıca kimse çevrimiçi değilken yeniden başlatır (`spigot.yml` `settings.restart-script`; yoksa sunucu durur) |
 
 ##### `ui`
 
@@ -1034,20 +1066,48 @@ bağlantılarından asla), yalnızca düzgün biçimli Twilight girdilerini tuta
 klasörüne `custom_mappings/twilight-proxy_item_mappings.json` yazar. Geyser bu klasörü yalnızca açılışta
 bir kez okur:
 
-- Proxy açılırken dosya, Geyser okumadan önce son çalıştırmanın paketlerinden yazılır.
-- Bir sunucunun eşyaları sonradan değişince günlük proxy'nin yeniden başlatılmasını ister; o zamana kadar
-  bu eşyalar Bedrock oyuncularına temel eşyaları olarak görünür. İlk seferde paketler, oyuncular her
-  sunucuya ilk kez katıldığında gelir; ardından bir kez yeniden başlatın.
+- Proxy açılırken dosya, Geyser okumadan önce yazılır: aynı makinedeki arka uçların güncel derlemelerinden
+  ([yerel arka uçlar](#yerel-arka-uçlar)), yoksa son çalıştırmanın paketlerinden.
+- Bir sunucunun eşyaları sonradan değişince konsola ve `twilight.proxy.admin` iznine sahip oyunculara
+  (katıldıklarında) proxy'yi yeniden başlatmaları söylenir; o zamana kadar bu eşyalar Bedrock oyuncularına temel
+  eşyaları olarak görünür. `item-mappings.restart: when-empty` ile proxy, kimse çevrimiçi değilken bir dakika
+  sonra kendiliğinden durur; bu, onu yeniden başlatan sunucular içindir (panelin otomatik yeniden başlatması,
+  döngülü bir başlatma betiği, systemd `Restart=always`). Geyser yeniden başlatma olmadan eşya kaydedemez;
+  `geyser reload` bunu yapmaz.
 - Aynı Java eşyası (custom model data veya item model) her arka uçta aynı Bedrock eşyasıdır ve orada nasıl
   görüneceğine her sunucunun kendi paketi karar verir. İki sunucu aynı seçiciyi farklı Bedrock eşyalarına
   eşlerse (eski Twilight sürümleri, elle hazırlanmış paketler) ad sırasında ilk sunucu kazanır ve günlük her
   çakışmayı listeler.
-- Proxy'deki Geyser'da bulunan diğer `twilight_*.json` dosyalarını (elle kopyalanmış veya eski bir eşitleme
-  aracının yazdığı; o aracı da durdurun) kaldırın; günlük ve `/twilightproxy` bunların adını verir ve farklı
-  eşledikleri eşyaları sayar.
+- Proxy'deki Geyser'da bulunan diğer Twilight dosyaları (`custom_mappings` altındaki `twilight*.json` ile adı
+  `twilight*` olan veya manifest adı "Twilight" olan paketler), Geyser onları yüklemeden önce
+  `plugins/twilight-proxy/retired/<zaman>/` klasörüne taşınır (`item-mappings.retire-stale-files`). Bunlar eski
+  sürümlerden, elle yapılmış kopyalardan veya eşitleme araçlarından gelir ve aynı eşyaları başka Bedrock
+  kimlikleriyle kaydeder ya da ikinci bir Twilight paketi gönderirdi: bozuk simgeler. Böyle bir aracı da durdurun.
 - Geyser eşleme türlerini Java'nın diliyle okur. Dili Türkçe veya Azerice olan bir proxy'de her item model
   eşlemesini atlar; günlük uyarır, çözüm proxy'nin Java komutuna `-Duser.language=en -Duser.country=US`
   eklemektir.
+
+##### Yerel arka uçlar
+
+Proxy ile aynı makinedeki arka uçlar klasörlerinden okunur: twilight-proxy, yerel adresli (`127.0.0.1`,
+`localhost` veya bu makinenin bir adresi) her proxy sunucusunu, proxy klasörünün yanındaki ve
+`server.properties` dosyası o portu kullanan, Twilight kurulu klasörde bulur ve oradaki
+`plugins/Twilight/export/Twilight.mcpack` dosyasını okur. Hiçbir oyuncunun önce o sunucuya katılması gerekmez,
+proxy'deki Geyser her sunucunun güncel eşyalarıyla başlar ve yeni bir derleme saniyeler içinde alınır.
+`/twilightproxy` bunları listeler.
+
+```yaml
+local-backends:
+  mode: auto          # off: yalnızca eklenti mesajları
+  search: []          # sunucu klasörlerini içeren başka klasörler, ör. [/srv/minecraft]
+  server:             # algılama karar veremediğinde sunucu başına klasör
+    survival: ../survival
+```
+
+İki klasör aynı portu kullanırsa (yedek kopyalar) en son etkin olan kullanılır ve günlük ikisinin adını verir;
+emin olmak için `server` altında ayarlayın. Böyle bir klasörde yalnızca o tek dosya okunur, sembolik bağlantılar
+reddedilir ve paket diğerleri gibi denetlenir. Başka makinelerdeki arka uçlar eklenti mesajlarını kullanmaya
+devam eder.
 
 ##### Kaynaklar
 
@@ -1459,6 +1519,7 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
 | `auto` paketler proxy'ye hiç ulaşmıyor | `/twilightproxy` "auto packs off" gösteriyor: iki tarafta aynı `secret` değerini ayarlayın veya modern yönlendirme kullanın |
 | Arka uç: "Geyser is not on this server (normal when it runs on the proxy)" | Proxy'li ağda beklenir; paketin twilight-proxy ile paylaşılıp paylaşılmadığını söyler. "pack sharing ... is off" paylaşılan bir gizli anahtar bulunmadığı anlamına gelir: `proxy.secret` (ve proxy'de `secret`) ayarlayın veya BungeeGuard / Velocity yönlendirmesi kullanın |
 | Geyser çalıştığı hâlde "Geyser not attached" | Nedeni `/twilightproxy` ve günlükte okuyun ([Geyser'a bağlanma](#geysera-bağlanma)); 1.0.0-pre.15'ten önceki sürümler Geyser hâlâ yüklenirken vazgeçiyordu |
+| Güncellemeden sonra bozuk özel eşya simgeleri | Geyser'da eski Twilight eşleme dosyaları veya paketleri (eski bir sürüm ya da eşitleme aracı) ve eşyalar değiştiğinden beri yeniden başlamamış bir Geyser. 1.0.0-pre.18'den beri eski dosyalar kendiliğinden taşınır; günlük veya yönetici mesajı istediğinde bir kez yeniden başlatın |
 | Proxy'li ağda özel eşyalar temel eşya olarak görünüyor | "Item mappings for Geyser changed" satırından sonra proxy'yi yeniden başlatın; dil uyarısını ve listelenen seçici çakışmalarını denetleyin ([proxy'de eşya eşlemeleri](#proxyde-eşya-eşlemeleri)) |
 | "Twilight content scan failed ... java.time.Instant#seconds" | 1.0.0-pre.15'te düzeltildi (Gson'u Java 17+ sınıflarına yansıma ile erişemeyen sunucular) |
 | Bedrock oyuncuları her sunucu geçişinde yeniden bağlanıyor | Sunucular farklı paketler kullandığında beklenir; aynı paketler asla yeniden bağlanmaz |

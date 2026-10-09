@@ -26,6 +26,11 @@ interface Sessions {
     /** Geyser's configuration folder ({@code custom_mappings/} lives there), if known. */
     Optional<Path> geyserFolder();
 
+    /** Geyser's pack folder ({@code packs/}), if known. */
+    default Optional<Path> packFolder() {
+        return Optional.empty();
+    }
+
     /** True once Geyser has registered its custom items (it does so once, when it starts). */
     boolean itemsRegistered();
 

@@ -112,6 +112,31 @@ final class PackStore {
                 + checked.hex().substring(0, 12) + ", " + seconds + " s).");
     }
 
+    /**
+     * The export of Twilight on {@code server}, read from its folder on this machine. Replaces the cached pack when
+     * it differs; returns true when it did.
+     */
+    boolean acceptLocal(String server, Path export) throws IOException {
+        String key = server.toLowerCase(Locale.ROOT);
+        if (Files.isSymbolicLink(export)) throw new IOException("the export is a symbolic link");
+        PackFiles.Pack checked = PackFiles.inspect(export, config.maxPackBytes());
+        PackFiles.Pack have = current.get(key);
+        if (have != null && MessageDigest.isEqual(have.sha256(), checked.sha256())) return false;
+        Path temporary = temporaryFile(server);
+        try {
+            Files.copy(export, temporary, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            if (!MessageDigest.isEqual(PackFiles.sha256(temporary), checked.sha256())) {
+                throw new IOException("the export changed while it was read");
+            }
+            Path target = cache.resolve(PackFiles.safeName(server) + ".mcpack");
+            PackFiles.moveInto(temporary, target);
+            use(key, new PackFiles.Pack(target, checked.sha256(), checked.size()));
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
+        return true;
+    }
+
     /** Makes {@code pack} the current one of {@code server}, through an immutable version copy. */
     private void use(String server, PackFiles.Pack pack) throws IOException {
         PackFiles.Pack version = version(pack);

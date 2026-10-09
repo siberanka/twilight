@@ -78,6 +78,15 @@ public final class ProxyCore implements TwilightProxyApi {
     /** Login servers found in login plugins' configuration files (lower case -> file). */
     private volatile Map<String, String> detectedLogin = Map.of();
     private volatile java.util.Set<String> reportedSkippedLogin = java.util.Set.of();
+    /** Backends on this machine whose Twilight exports are read directly (server -> backend). */
+    private volatile Map<String, LocalBackends.Backend> localBackends = Map.of();
+    /** Export state already handled per server: size and modification time. */
+    private final Map<String, String> localSeen = new ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicBoolean localBusy = new java.util.concurrent.atomic.AtomicBoolean();
+    /** Item mappings changed after Geyser registered its items: what the restart would bring, or null. */
+    private volatile String restartPending;
+    private volatile long restartPendingSince;
+    private volatile boolean restarting;
     private volatile com.siberanka.twilight.host.PackHost host;
     private volatile com.siberanka.twilight.update.UpdateCheck updates;
 
@@ -216,6 +225,7 @@ public final class ProxyCore implements TwilightProxyApi {
     }
 
     private void attached(int attempt) {
+        retireStaleFiles();
         platform.info(attempt == 0 ? "Attached to Geyser: Bedrock players get each server's pack."
                 : "Attached to Geyser after it started (attempt " + (attempt + 1) + "): Bedrock players get each server's pack.");
         startHost();
@@ -228,7 +238,141 @@ public final class ProxyCore implements TwilightProxyApi {
 
     /** Geyser is about to read custom_mappings (it does once, when it starts). */
     void beforeGeyserItems() {
+        retireStaleFiles();
         writeItemMappings();
+    }
+
+    /**
+     * Moves Twilight item mappings and packs that twilight-proxy does not own out of the proxy's Geyser
+     * ({@code item-mappings.retire-stale-files}). Done before Geyser reads them; afterwards Geyser keeps what it
+     * loaded until it restarts, which is asked for.
+     */
+    private synchronized void retireStaleFiles() {
+        Sessions bridge = geyser;
+        ProxyConfig current = config;
+        if (bridge == null || current == null || !current.retireStaleFiles()) return;
+        Optional<Path> folder = bridge.geyserFolder();
+        if (folder.isEmpty()) return;
+        try {
+            var retired = com.siberanka.twilight.geyser.StaleFiles.retire(folder.get(), bridge.packFolder().orElse(null),
+                    java.util.Set.of("custom_mappings/" + ItemMappings.FILE), platform.dataDirectory().resolve("retired"));
+            for (var file : retired) {
+                platform.warn("Moved " + file.file() + " out of Geyser to "
+                        + platform.dataDirectory().toAbsolutePath().normalize().relativize(file.to().toAbsolutePath().normalize())
+                        + ": it is a Twilight file twilight-proxy does not own (copied by hand, an older sync tool or an older"
+                        + " Twilight) and would register items twice or send a second Twilight pack.", null);
+            }
+            if (!retired.isEmpty() && bridge.itemsRegistered()) {
+                pendRestart(retired.size() + " stale Twilight file(s) removed from Geyser");
+            }
+        } catch (IOException | RuntimeException failure) {
+            platform.warn("Could not move stale Twilight files out of Geyser: " + failure.getMessage(), failure);
+        }
+    }
+
+    // --- Backends on this machine -----------------------------------------------------------
+
+    private void discoverLocalBackends(ProxyConfig next) {
+        ProxyConfig.LocalSettings settings = next.local();
+        if (!settings.enabled() && settings.servers().isEmpty()) {
+            localBackends = Map.of();
+            return;
+        }
+        Path root = platform.proxyRoot();
+        java.util.List<Path> roots = new java.util.ArrayList<>();
+        if (settings.enabled()) {
+            if (root.getParent() != null) roots.add(root.getParent());
+            settings.search().forEach(folder -> roots.add(root.resolve(folder).normalize()));
+        }
+        Map<String, Path> explicit = new java.util.HashMap<>();
+        settings.servers().forEach((server, folder) -> explicit.put(server, root.resolve(folder).normalize()));
+        Map<String, java.net.InetSocketAddress> servers = new java.util.LinkedHashMap<>();
+        platform.serverAddresses().forEach((server, address) -> {
+            if (next.source(server) instanceof ProxyConfig.PackSource.Auto) servers.put(server, address);
+        });
+        Map<String, LocalBackends.Backend> found = LocalBackends.discover(servers, java.util.List.copyOf(roots), explicit,
+                line -> platform.info(line));
+        if (!found.keySet().equals(localBackends.keySet())) {
+            found.values().forEach(backend -> platform.info("Reading the Twilight builds of " + backend.server() + " from "
+                    + backend.folder() + " (same machine): no player has to join it first."));
+        }
+        localBackends = Map.copyOf(found);
+        localSeen.keySet().retainAll(found.keySet());
+    }
+
+    /**
+     * Loads the exports of local backends that changed. {@code now}: at start and reload, on this thread, so the
+     * proxy's Geyser reads current item mappings; otherwise from the five-second sweep, off the network threads.
+     */
+    private void syncLocalBackends(boolean now) {
+        if (localBackends.isEmpty() || !localBusy.compareAndSet(false, true)) return;
+        Runnable task = () -> {
+            try {
+                for (LocalBackends.Backend backend : localBackends.values()) {
+                    try {
+                        if (!Files.isRegularFile(backend.export())) continue;
+                        var modified = Files.getLastModifiedTime(backend.export()).toMillis();
+                        String state = Files.size(backend.export()) + "@" + modified;
+                        if (state.equals(localSeen.get(backend.server()))) continue;
+                        // Twilight replaces the export atomically; still wait until it has been quiet for a moment.
+                        if (!now && System.currentTimeMillis() - modified < 2_000) continue;
+                        localSeen.put(backend.server(), state);
+                        if (store.acceptLocal(backend.server(), backend.export())) {
+                            platform.info("Loaded the Bedrock pack of " + backend.server() + " from its folder ("
+                                    + store.pack(backend.server()).map(pack -> pack.size() / 1024 + " KiB, " + pack.hex().substring(0, 12)).orElse("?")
+                                    + ").");
+                        }
+                    } catch (IOException | RuntimeException failure) {
+                        platform.warn("Could not read the Twilight build of " + backend.server() + " from " + backend.export()
+                                + ": " + failure.getMessage(), null);
+                    }
+                }
+            } finally {
+                localBusy.set(false);
+            }
+        };
+        if (now) task.run();
+        else platform.async(task);
+    }
+
+    /** Local backends for status output. */
+    Map<String, LocalBackends.Backend> localBackends() {
+        return localBackends;
+    }
+
+    // --- Restarts for changed items ------------------------------------------------------------
+
+    /** Geyser must restart to show {@code what}; tells the admins and, with {@code restart: when-empty}, waits for an empty proxy. */
+    private void pendRestart(String what) {
+        boolean first = restartPending == null;
+        restartPending = what;
+        if (first) restartPendingSince = clock.getAsLong();
+        ProxyConfig current = config;
+        boolean automatic = current != null && current.restartWhenEmpty();
+        platform.tellAdmins(restartNotice(), null);
+        if (automatic) platform.info("The proxy stops by itself once nobody is online (item-mappings.restart: when-empty).");
+    }
+
+    /** The notice for players with the admin permission, or empty when no restart is pending. */
+    public Optional<String> adminNotice() {
+        return restartPending == null ? Optional.empty() : Optional.of(restartNotice());
+    }
+
+    private String restartNotice() {
+        ProxyConfig current = config;
+        return "[twilight-proxy] Bedrock custom items changed (" + restartPending + "). Restart the proxy so Geyser shows them"
+                + (current != null && current.restartWhenEmpty() ? "; it restarts by itself once nobody is online." : ".");
+    }
+
+    /** With {@code restart: when-empty}: stops the proxy once a pending restart has waited a minute and nobody is online. */
+    private void restartIfEmpty() {
+        ProxyConfig current = config;
+        if (restartPending == null || restarting || current == null || !current.restartWhenEmpty()) return;
+        if (clock.getAsLong() - restartPendingSince < 60_000 || platform.onlinePlayers() != 0) return;
+        restarting = true;
+        platform.warn("Stopping the proxy so Geyser registers the changed Bedrock items (" + restartPending
+                + "); nobody is online and item-mappings.restart is when-empty.", null);
+        platform.stopProxy("Updating Bedrock custom items; back in a moment.");
     }
 
     /** A pack changed: merge the item mappings again shortly (several packs often change together). */
@@ -311,6 +455,7 @@ public final class ProxyCore implements TwilightProxyApi {
                 mappingsState = summary + "; restart the proxy to register the changes";
                 platform.warn("Item mappings for Geyser changed (" + summary + "). Geyser registers custom items when it starts:"
                         + " restart the proxy; until then Bedrock players see new or changed items as their base item.", null);
+                pendRestart(summary);
             } else if (changed) {
                 mappingsState = summary;
                 platform.info("Wrote item mappings for Geyser: " + summary + ".");
@@ -419,6 +564,8 @@ public final class ProxyCore implements TwilightProxyApi {
                         + "): Bedrock players are never reconnected for it."));
             }
             detectedLogin = Map.copyOf(login);
+            discoverLocalBackends(next);
+            syncLocalBackends(true);
             configureUpdates(next);
             queueItemMappings();
             return true;
@@ -684,8 +831,11 @@ public final class ProxyCore implements TwilightProxyApi {
         return configured.isEmpty() ? platform.defaultServer().toLowerCase(Locale.ROOT) : configured;
     }
 
-    private void sweep() {
+    /** Every five seconds (package-private for tests). */
+    void sweep() {
         transfers.sweep();
+        syncLocalBackends(false);
+        restartIfEmpty();
         long now = now();
         ProxyConfig settings = config;
         if (settings != null) store.sweepVersions(settings.transferDeadlineMillis(settings.maxPackBytes()) + 600_000);
@@ -718,6 +868,10 @@ public final class ProxyCore implements TwilightProxyApi {
         ProxyConfig current = config;
         if (current != null) login.addAll(current.loginServers());
         out.append("\n  login servers: ").append(login.isEmpty() ? "none" : String.join(", ", login));
+        Map<String, LocalBackends.Backend> local = localBackends;
+        if (!local.isEmpty()) out.append("\n  local backends: ").append(String.join(", ", local.values().stream()
+                .map(backend -> backend.server() + " (" + backend.folder().getFileName() + ")").toList()));
+        if (restartPending != null) out.append("\n  restart pending: ").append(restartPending);
         var check = updates;
         out.append("\n  ").append(check == null ? "update check disabled" : check.status());
         for (String server : platform.serverNames()) {

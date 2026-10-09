@@ -180,6 +180,34 @@ AuthMeBungee and LibreLogin files and an unrelated plugin that is not read.
 - Login server detection reads a few keys of a few files and writes nothing.
 - No change affects forwarding secrets, LeaderOS signatures or backend access.
 
+## 6. Broken item icons after updating (1.0.0-pre.18)
+
+After updating without other changes, custom item icons looked broken. Two things lead there:
+
+- Geyser still had the old sync tool's `twilight_network_item_mappings.json`, with the old Bedrock
+  identifiers. Geyser loads every `.json` under `custom_mappings`, recursively, and every pack in `packs`.
+- Geyser registers custom items only when it starts, and nothing told the admins that it had to.
+
+1.0.0-pre.18 handles both on proxies and single servers:
+
+- **Stale files.** Twilight files that the current setup does not own are moved to `retired/<time>/`,
+  never deleted, before Geyser loads them: Twilight's load phase on a server, the attach on a proxy.
+- **Backends on the same machine.** They are read from their folders: matched by port and Twilight
+  installation, their exports are loaded at proxy start and within seconds after every build. No player
+  has to join first.
+- **Restarts.** A needed restart is shown to admins (console, online admins, admins joining,
+  `/twilightproxy`), and `when-empty` restarts once nobody is online.
+
+**Verified live.**
+
+| Setup | Result |
+|---|---|
+| Velocity | With no backend running and no player, the lobby's export was read from its folder; an old mapping file and an old Twilight pack were moved out; Geyser registered all 134 items |
+| Velocity, rebuilt export | Changing the lobby's export while the proxy ran was picked up 20 s later. With `restart: when-empty` and nobody online, the proxy stopped itself a minute later |
+| Waterfall with Floodgate first | Found the same backend and moved the stale file |
+| Paper with Geyser-Spigot | Moved a stale mapping file and pack in Twilight's load phase, before Geyser registered its items |
+| Paper, `restart-for-item-changes: when-empty` | A deployment that changed items was announced; 90 s later, with nobody online, Twilight restarted the server (it stopped, as there was no restart script) |
+
 ## Not covered
 
 - GeyserReversion was not installed in the tests. Its documentation says it does not work with servers
@@ -388,6 +416,37 @@ AuthMeBungee ve LibreLogin dosyalarını ve okunmayan ilgisiz bir eklentiyi kaps
   gönderebilir ne değiştirebilir.
 - Giriş sunucusu algılama birkaç dosyanın birkaç anahtarını okur ve hiçbir şey yazmaz.
 - Hiçbir değişiklik yönlendirme anahtarlarını, LeaderOS imzalarını veya arka uç erişimini etkilemez.
+
+#### 6. Güncellemeden sonra bozuk eşya simgeleri (1.0.0-pre.18)
+
+Başka bir değişiklik yapmadan güncelledikten sonra özel eşya simgeleri bozuk göründü. Buna iki şey yol açar:
+
+- Geyser'da eski eşitleme aracının eski Bedrock kimliklerini içeren `twilight_network_item_mappings.json`
+  dosyası hâlâ duruyordu. Geyser `custom_mappings` altındaki her `.json` dosyasını alt klasörleriyle birlikte
+  ve `packs` içindeki her paketi yükler.
+- Geyser özel eşyaları yalnızca açılışta kaydeder ve yöneticilere yeniden başlatmaları gerektiğini hiçbir şey
+  söylemiyordu.
+
+1.0.0-pre.18 ikisini de proxy'lerde ve tek sunucularda ele alır:
+
+- **Eski dosyalar.** Mevcut kurulumun sahip olmadığı Twilight dosyaları, Geyser onları yüklemeden önce
+  `retired/<zaman>/` klasörüne taşınır, asla silinmez: sunucuda Twilight'ın yükleme aşamasında, proxy'de
+  bağlanma sırasında.
+- **Aynı makinedeki arka uçlar.** Klasörlerinden okunurlar: port ve Twilight kurulumuyla eşleşen dışa
+  aktarımları proxy açılışında ve her derlemeden sonra saniyeler içinde yüklenir. Önce bir oyuncunun
+  katılması gerekmez.
+- **Yeniden başlatmalar.** Gereken bir yeniden başlatma yöneticilere gösterilir (konsol, çevrimiçi yöneticiler,
+  katılan yöneticiler, `/twilightproxy`); `when-empty` kimse çevrimiçi değilken yeniden başlatır.
+
+**Canlı doğrulandı.**
+
+| Kurulum | Sonuç |
+|---|---|
+| Velocity | Hiçbir arka uç çalışmıyor ve hiç oyuncu yokken lobinin dışa aktarımı klasöründen okundu; eski bir eşleme dosyası ve eski bir Twilight paketi taşındı; Geyser 134 eşyanın tümünü kaydetti |
+| Velocity, yeniden derlenen dışa aktarım | Proxy çalışırken lobinin dışa aktarımını değiştirmek 20 sn sonra algılandı. `restart: when-empty` ile ve kimse çevrimiçi değilken proxy bir dakika sonra kendini durdurdu |
+| Floodgate'i önce yükleyen Waterfall | Aynı arka ucu buldu ve eski dosyayı taşıdı |
+| Geyser-Spigot bulunan Paper | Eski bir eşleme dosyasını ve paketi, Geyser eşyalarını kaydetmeden önce Twilight'ın yükleme aşamasında taşıdı |
+| Paper, `restart-for-item-changes: when-empty` | Eşyaları değiştiren bir dağıtım duyuruldu; 90 sn sonra, kimse çevrimiçi değilken Twilight sunucuyu yeniden başlattı (yeniden başlatma betiği olmadığı için durdu) |
 
 #### Kapsam dışında kalanlar
 

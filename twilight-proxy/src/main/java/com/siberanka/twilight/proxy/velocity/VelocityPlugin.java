@@ -164,6 +164,9 @@ public final class VelocityPlugin {
         core.updateNotice().filter(release -> admin(player)).ifPresent(release -> later(() -> {
             if (player.isActive()) tell(player, core.updateText(release), release.page());
         }, 3000));
+        core.adminNotice().filter(notice -> admin(player)).ifPresent(notice -> later(() -> {
+            if (player.isActive()) tell(player, notice, null);
+        }, 3500));
     }
 
     static boolean admin(Player player) {
@@ -171,6 +174,10 @@ public final class VelocityPlugin {
     }
 
     static void tell(Player player, String text, String url) {
+        if (url == null) {
+            player.sendMessage(Component.text(text));
+            return;
+        }
         player.sendMessage(Component.text(text).append(Component.text(url)
                 .clickEvent(net.kyori.adventure.text.event.ClickEvent.openUrl(url))));
     }

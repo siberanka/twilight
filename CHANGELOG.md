@@ -4,6 +4,22 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.18 - 2026-10-09
+
+- Move stale Twilight files out of Geyser automatically, before Geyser loads them: item mappings
+  (`twilight*.json` under `custom_mappings`) and packs (`twilight*` or a manifest named "Twilight") left
+  by older versions, hand copies or sync tools. They registered the same items with other Bedrock
+  identifiers or sent a second Twilight pack, which showed as broken icons after updating. Files go to
+  `retired/<time>/` in Twilight's or twilight-proxy's folder, never deleted (`retire-stale-files`).
+- twilight-proxy reads backends on the same machine from their folders (`local-backends: auto`):
+  matched by port and Twilight installation, it loads each `export/Twilight.mcpack` at start (so
+  Geyser starts with every server's current items, no player needed) and within seconds after each
+  build.
+- Pending Geyser restarts for changed items are shown to admins when they join and to online admins
+  at once, and in `/twilightproxy`; `item-mappings.restart: when-empty` (proxy) and
+  `geyser.restart-for-item-changes: when-empty` (server) restart once nobody is online.
+- 244 tests pass (215 Twilight, 29 proxy).
+
 ## 1.0.0-pre.17 - 2026-10-09
 
 - Attach to Geyser on proxies and servers that load Floodgate before Geyser. Floodgate bundles its
@@ -423,6 +439,22 @@ Fixes from a field report on a proxy network; each point was reproduced locally 
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-pre.18 - 2026-10-09
+
+- Eski Twilight dosyaları, Geyser yüklemeden önce Geyser'dan kendiliğinden taşınır: eski sürümlerin, elle
+  yapılmış kopyaların veya eşitleme araçlarının bıraktığı eşya eşlemeleri (`custom_mappings` altındaki
+  `twilight*.json`) ve paketler (`twilight*` veya manifest adı "Twilight"). Bunlar aynı eşyaları başka Bedrock
+  kimlikleriyle kaydediyor veya ikinci bir Twilight paketi gönderiyordu; güncellemeden sonra bozuk simgeler
+  olarak görünüyordu. Dosyalar Twilight'ın veya twilight-proxy'nin klasöründe `retired/<zaman>/` altına taşınır,
+  asla silinmez (`retire-stale-files`).
+- twilight-proxy aynı makinedeki arka uçları klasörlerinden okur (`local-backends: auto`): port ve Twilight
+  kurulumuyla eşleşen her `export/Twilight.mcpack` dosyasını açılışta (böylece Geyser her sunucunun güncel
+  eşyalarıyla başlar, oyuncu gerekmez) ve her derlemeden sonra saniyeler içinde yükler.
+- Değişen eşyalar için bekleyen Geyser yeniden başlatmaları yöneticilere katıldıklarında, çevrimiçi
+  yöneticilere hemen ve `/twilightproxy` içinde gösterilir; `item-mappings.restart: when-empty` (proxy) ve
+  `geyser.restart-for-item-changes: when-empty` (sunucu) kimse çevrimiçi değilken yeniden başlatır.
+- 244 test geçti (215 Twilight, 29 proxy).
 
 #### 1.0.0-pre.17 - 2026-10-09
 

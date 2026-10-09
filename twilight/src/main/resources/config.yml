@@ -48,6 +48,15 @@ geyser:
   # off when another plugin or a proxy sends that pack instead. Item mappings
   # are still deployed to a local Geyser.
   send-pack-to-bedrock: true
+  # Move Twilight files this server does not own out of the local Geyser (item mappings and packs left by an
+  # older version, copied by hand or written by a sync tool) to plugins/Twilight/retired/, at start before
+  # Geyser loads them and after every deployment. They would register items twice or send a second pack.
+  retire-stale-files: true
+  # Geyser registers custom items only when the server starts. When a build changes them:
+  #   notify     - tell the console and players with twilight.admin to restart
+  #   when-empty - also restart once nobody is online (spigot.yml settings.restart-script; without
+  #                one the server stops, so use it only where the host starts it again)
+  restart-for-item-changes: notify
 
 ui:
   # Desktop chest screens use Java's container layout: the title is unwrapped,

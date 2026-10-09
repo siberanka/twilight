@@ -39,6 +39,20 @@ public interface Platform {
     /** The backend server a player is connected to, if any. */
     java.util.Optional<String> currentServer(java.util.UUID player);
 
+    /** The address of every backend server in the proxy's server list (name -> address). */
+    default java.util.Map<String, java.net.InetSocketAddress> serverAddresses() {
+        return java.util.Map.of();
+    }
+
+    /** Players online on the proxy, or -1 when unknown. */
+    default int onlinePlayers() {
+        return -1;
+    }
+
+    /** Stops the proxy (for a host that starts it again). */
+    default void stopProxy(String reason) {
+    }
+
     /** The installed Geyser plugin ("Geyser-BungeeCord 2.11.3"), if the proxy lists one. */
     default java.util.Optional<String> geyserPlugin() {
         return java.util.Optional.empty();
@@ -56,7 +70,7 @@ public interface Platform {
     String version();
 
     /**
-     * Sends {@code text} followed by the clickable link {@code url} to every online player with
+     * Sends {@code text} followed by the clickable link {@code url} (none when null) to every online player with
      * {@link ProxyCore#UPDATE_PERMISSION} or {@link ProxyCore#ADMIN_PERMISSION}.
      */
     void tellAdmins(String text, String url);

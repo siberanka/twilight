@@ -50,6 +50,20 @@ final class VelocityPlatform implements Platform {
 
     @Override public String version() { return plugin.version(); }
 
+    @Override public java.util.Map<String, java.net.InetSocketAddress> serverAddresses() {
+        java.util.Map<String, java.net.InetSocketAddress> addresses = new java.util.LinkedHashMap<>();
+        for (var server : plugin.proxy().getAllServers()) {
+            addresses.put(server.getServerInfo().getName(), server.getServerInfo().getAddress());
+        }
+        return addresses;
+    }
+
+    @Override public int onlinePlayers() { return plugin.proxy().getPlayerCount(); }
+
+    @Override public void stopProxy(String reason) {
+        plugin.proxy().shutdown(net.kyori.adventure.text.Component.text(reason));
+    }
+
     @Override public java.util.Optional<java.util.Set<String>> pluginFolders() {
         return java.util.Optional.of(plugin.proxy().getPluginManager().getPlugins().stream()
                 .map(container -> container.getDescription().getId()).collect(java.util.stream.Collectors.toSet()));

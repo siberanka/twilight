@@ -75,8 +75,9 @@ final class GeyserBridge implements Sessions {
             }
             try {
                 bridge.folder = api.configDirectory();
+                bridge.packFolder = api.packDirectory();
             } catch (RuntimeException | LinkageError unknown) {
-                bridge.folder = null;
+                // Geyser's folders are unknown: no item mappings are written and nothing is retired.
             }
             return Attach.attached(bridge);
         } catch (RuntimeException | LinkageError failure) {
@@ -86,6 +87,12 @@ final class GeyserBridge implements Sessions {
     }
 
     private volatile java.nio.file.Path folder;
+    private volatile java.nio.file.Path packFolder;
+
+    @Override
+    public Optional<java.nio.file.Path> packFolder() {
+        return Optional.ofNullable(packFolder);
+    }
     private volatile boolean itemsRegistered;
 
     @Override

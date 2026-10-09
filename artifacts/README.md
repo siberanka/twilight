@@ -1,4 +1,4 @@
-# Twilight 1.0.0-pre.17 prerelease build
+# Twilight 1.0.0-pre.18 prerelease build
 
 > Türkçe: [aşağıda](#türkçe)
 
@@ -8,7 +8,7 @@
 
 Built locally by siberanka using Java 25.0.2 and Gradle 9.6.0, with
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`.
-239 tests across 41 suites passed. No hosted CI was used.
+244 tests across 42 suites passed. No hosted CI was used.
 
 The corresponding source is in this commit under `twilight/`, `twilight-proxy/` and `protocol/`, with build files
 at the repository root. Licensed under [LGPL-3.0-or-later](../LICENSE.LESSER);
@@ -16,9 +16,11 @@ the accompanying [GPL text](../LICENSE) is also provided.
 
 Read the [release notes](../RELEASE_NOTES.md), the [wiki](../WIKI.md) and the
 [stacked images, nameplates and exact biomes](../docs/LAYERS_BIOMES_2026-10-04.md)
-report before deployment. This prerelease attaches twilight-proxy to Geyser on proxies that load
-Floodgate first (FlameCord, Waterfall, Velocity with Floodgate), which every earlier version failed with
-"loader constraint violation" ([field report](../docs/FIELD_REPORT_2026-10-09.md)). 1.0.0-pre.16 named a
+report before deployment. This prerelease moves stale Twilight files out of Geyser automatically, reads
+backends on the same machine from their folders and announces (or performs, with `when-empty`) the Geyser
+restarts changed items need. 1.0.0-pre.17 attached twilight-proxy to Geyser on proxies that load
+Floodgate first (FlameCord, Waterfall, Velocity with Floodgate), which every earlier version had failed
+with "loader constraint violation" ([field report](../docs/FIELD_REPORT_2026-10-09.md)). 1.0.0-pre.16 named a
 Geyser that a proxy fork hides and explained the missing Geyser on backends of a proxy network. 1.0.0-pre.15 fixed conversions on Paper 1.21 servers with Java 17+, made
 twilight-proxy find a Geyser that loads after it, delivered every backend's custom items to the proxy's
 Geyser and found login servers on its own ([field report](../docs/FIELD_REPORT_2026-10-09.md)); restart
@@ -65,7 +67,7 @@ item, glyph and menu results.
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.17 ön sürüm derlemesi
+### Twilight 1.0.0-pre.18 ön sürüm derlemesi
 
 [Twilight.jar indir](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256) (arka uç sunucuları)
 
@@ -73,7 +75,7 @@ item, glyph and menu results.
 
 siberanka tarafından Java 25.0.2 ve Gradle 9.6.0 ile yerel olarak
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`
-komutuyla derlendi. 41 paketteki 239 test geçti. Barındırılan CI kullanılmadı.
+komutuyla derlendi. 42 paketteki 244 test geçti. Barındırılan CI kullanılmadı.
 
 İlgili kaynak kod bu commit içinde `twilight/`, `twilight-proxy/` ve `protocol/` altında, derleme
 dosyaları depo kökündedir. [LGPL-3.0-or-later](../LICENSE.LESSER) ile lisanslanmıştır;
@@ -81,8 +83,10 @@ eşlik eden [GPL metni](../LICENSE) de sağlanır.
 
 Dağıtımdan önce [sürüm notlarını](../RELEASE_NOTES.md), [wiki'yi](../WIKI.md) ve
 [üst üste görseller, isim plakaları ve birebir biyomlar](../docs/LAYERS_BIOMES_2026-10-04.md)
-raporunu okuyun. Bu ön sürüm twilight-proxy'yi Floodgate'i önce yükleyen proxy'lerde (FlameCord, Waterfall,
-Floodgate bulunan Velocity) Geyser'a bağlar; önceki bütün sürümler burada "loader constraint violation" ile
+raporunu okuyun. Bu ön sürüm eski Twilight dosyalarını Geyser'dan kendiliğinden taşır, aynı makinedeki arka
+uçları klasörlerinden okur ve değişen eşyaların gerektirdiği Geyser yeniden başlatmalarını duyurur (`when-empty`
+ile yapar). 1.0.0-pre.17 twilight-proxy'yi Floodgate'i önce yükleyen proxy'lerde (FlameCord, Waterfall,
+Floodgate bulunan Velocity) Geyser'a bağladı; önceki bütün sürümler burada "loader constraint violation" ile
 başarısız oluyordu ([saha raporu](../docs/FIELD_REPORT_2026-10-09.md)). 1.0.0-pre.16, bir proxy türevinin
 gizlediği Geyser'ı adıyla bildirdi ve proxy'li ağın arka uçlarında Geyser'ın neden olmadığını açıkladı. 1.0.0-pre.15 Java 17+ ile çalışan Paper 1.21 sunucularında dönüştürmeleri düzeltti,
 twilight-proxy'nin kendisinden sonra yüklenen bir Geyser'ı bulmasını sağladı, her arka ucun özel eşyalarını

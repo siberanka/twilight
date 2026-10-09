@@ -136,6 +136,9 @@ public final class BungeePlugin extends Plugin implements Listener {
         core.updateNotice().filter(release -> admin(player)).ifPresent(release -> getProxy().getScheduler().schedule(this, () -> {
             if (player.isConnected()) tell(player, core.updateText(release), release.page());
         }, 3, TimeUnit.SECONDS));
+        core.adminNotice().filter(notice -> admin(player)).ifPresent(notice -> getProxy().getScheduler().schedule(this, () -> {
+            if (player.isConnected()) tell(player, notice, null);
+        }, 4, TimeUnit.SECONDS));
     }
 
     private static boolean admin(ProxiedPlayer player) {
@@ -143,6 +146,10 @@ public final class BungeePlugin extends Plugin implements Listener {
     }
 
     private static void tell(ProxiedPlayer player, String text, String url) {
+        if (url == null) {
+            player.sendMessage(new TextComponent(text));
+            return;
+        }
         TextComponent link = new TextComponent(url);
         link.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.OPEN_URL, url));
         TextComponent message = new TextComponent(text);
@@ -199,6 +206,18 @@ public final class BungeePlugin extends Plugin implements Listener {
         }
 
         @Override public String version() { return getDescription().getVersion(); }
+
+        @Override public Map<String, java.net.InetSocketAddress> serverAddresses() {
+            Map<String, java.net.InetSocketAddress> addresses = new java.util.LinkedHashMap<>();
+            getProxy().getServers().forEach((name, info) -> {
+                if (info.getSocketAddress() instanceof java.net.InetSocketAddress socket) addresses.put(name, socket);
+            });
+            return addresses;
+        }
+
+        @Override public int onlinePlayers() { return getProxy().getOnlineCount(); }
+
+        @Override public void stopProxy(String reason) { getProxy().stop(reason); }
 
         @Override public Optional<java.util.Set<String>> pluginFolders() {
             return Optional.of(getProxy().getPluginManager().getPlugins().stream()

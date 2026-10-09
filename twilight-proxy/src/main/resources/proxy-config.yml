@@ -69,6 +69,30 @@ pack-host:
   # Reverse proxies whose X-Forwarded-For header is trusted, e.g. [127.0.0.1]
   trusted-proxies: []
 
+# Backends on this machine: read each one's Twilight build straight from
+# <server>/plugins/Twilight/export/Twilight.mcpack, without waiting for a player to join it. The proxy's
+# Geyser then gets every server's current items when it starts, and a new build within seconds.
+local-backends:
+  # auto - find the folders of proxy servers with a local address (127.0.0.1, localhost or this machine)
+  #        next to the proxy's folder, by the port in their server.properties; off - plugin messages only.
+  mode: auto
+  # More folders that hold server folders, e.g. [/srv/minecraft]
+  search: []
+  # The folder of a server when discovery cannot tell (paths relative to the proxy folder or absolute):
+# server:
+#   survival: ../survival
+
+# Geyser item mappings of every server, written to the proxy's Geyser (custom_mappings/twilight-proxy_item_mappings.json).
+item-mappings:
+  # Move other Twilight item mappings and Twilight packs out of the proxy's Geyser (copied by hand, written by an
+  # older sync tool or an older Twilight) to plugins/twilight-proxy/retired/ before Geyser loads them.
+  retire-stale-files: true
+  # Geyser registers custom items only when it starts. When they change while the proxy runs:
+  #   notify     - tell the console and players with twilight.proxy.admin to restart the proxy
+  #   when-empty - also stop the proxy once nobody is online; only for hosts that start it again by
+  #                themselves (panel auto-restart, a start script loop, systemd Restart=always)
+  restart: notify
+
 # Look for a newer twilight-proxy release on GitHub (on the GitLab mirror when GitHub
 # cannot be reached) shortly after start and every six hours. A newer version is written
 # to the console and shown to players with twilight.proxy.update or twilight.proxy.admin.

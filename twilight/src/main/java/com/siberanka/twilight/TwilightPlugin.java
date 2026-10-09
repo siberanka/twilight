@@ -73,6 +73,32 @@ public final class TwilightPlugin extends JavaPlugin {
     private volatile com.siberanka.twilight.update.UpdateCheck updates;
     private volatile boolean notifyUpdatePlayers = true;
 
+    /**
+     * Before any plugin enables, so before Geyser loads its folder: moves Twilight files this server does not own
+     * out of its Geyser (item mappings and packs from older versions, copies or sync tools), which would otherwise
+     * register items twice or send a second Twilight pack.
+     */
+    @Override
+    public void onLoad() {
+        try {
+            saveDefaultConfig();
+            reloadConfig();
+            if (!getConfig().getBoolean("geyser.retire-stale-files", true)) return;
+            Path root = getServer().getWorldContainer().toPath().toAbsolutePath().normalize();
+            var service = new GeyserDeploymentService(root, getDataFolder().toPath(), TwilightConfig.read(getConfig(), root));
+            for (var file : service.retireStaleFiles()) {
+                getLogger().warning("Moved " + file.file() + " out of Geyser to "
+                        + getDataFolder().toPath().toAbsolutePath().normalize().relativize(file.to().toAbsolutePath().normalize())
+                        + ": a Twilight file this server does not own (older version, copy or sync tool) that would register"
+                        + " items twice or send a second Twilight pack.");
+            }
+        } catch (java.io.IOException noLocalGeyser) {
+            // Geyser is not on this server (the usual proxy layout): nothing to clean up.
+        } catch (RuntimeException failure) {
+            getLogger().log(Level.WARNING, "Could not check Geyser for stale Twilight files", failure);
+        }
+    }
+
     @Override
     public void onEnable() {
         saveDefaultConfig();
@@ -544,6 +570,47 @@ public final class TwilightPlugin extends JavaPlugin {
     }
 
     static final String UPDATE_PERMISSION = "twilight.update";
+    private volatile long restartPendingSince;
+    private volatile boolean restarting;
+
+    /**
+     * Geyser registers custom items only when the server starts. Tells the console and players with twilight.admin,
+     * and with {@code geyser.restart-for-item-changes: when-empty} restarts the server once nobody is online.
+     */
+    private void pendRestart() {
+        boolean first = restartPendingSince == 0;
+        if (first) restartPendingSince = System.currentTimeMillis();
+        boolean automatic = restartWhenEmpty();
+        getLogger().warning(restartNotice());
+        scheduler.execute(() -> {
+            for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {
+                if (online.hasPermission("twilight.admin")) online.sendMessage("§5[Twilight] §f" + restartNotice());
+            }
+        });
+        if (first && automatic) scheduler.delayed(this::restartIfEmpty, 600L);
+    }
+
+    private boolean restartWhenEmpty() {
+        return "when-empty".equalsIgnoreCase(getConfig().getString("geyser.restart-for-item-changes", "notify").strip());
+    }
+
+    private String restartNotice() {
+        return "Bedrock custom items changed. Restart the server so Geyser shows them"
+                + (restartWhenEmpty() ? "; it restarts by itself once nobody is online." : ".");
+    }
+
+    /** With when-empty: restarts once the change has waited a minute and nobody is online; checks every 30 s. */
+    private void restartIfEmpty() {
+        if (restarting || restartPendingSince == 0 || !restartWhenEmpty() || !isEnabled()) return;
+        if (System.currentTimeMillis() - restartPendingSince >= 60_000 && Bukkit.getOnlinePlayers().isEmpty()) {
+            restarting = true;
+            getLogger().warning("Restarting so Geyser registers the changed Bedrock items; nobody is online"
+                    + " (geyser.restart-for-item-changes: when-empty). Without spigot.yml settings.restart-script the server stops.");
+            Bukkit.restart();
+            return;
+        }
+        scheduler.delayed(this::restartIfEmpty, 600L);
+    }
 
     private void tellUpdate(CommandSender target, com.siberanka.twilight.update.UpdateCheck.Release release) {
         target.sendMessage(net.kyori.adventure.text.Component.text("[Twilight] ", net.kyori.adventure.text.format.NamedTextColor.DARK_PURPLE)
@@ -556,6 +623,7 @@ public final class TwilightPlugin extends JavaPlugin {
     private void reloadGeyser(OperationLog operationLog, DeploymentResult deploymentResult) throws Exception {
         if (deploymentResult.restartRequired()) {
             operationLog.warn("geyser-restart-required", deploymentResult.message());
+            pendRestart();
             return;
         }
         if (!config.reloadAfterDeploy()) {
@@ -626,6 +694,12 @@ public final class TwilightPlugin extends JavaPlugin {
 
         @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
         public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+            org.bukkit.entity.Player joined = event.getPlayer();
+            if (restartPendingSince != 0 && joined.hasPermission("twilight.admin")) {
+                scheduler.delayed(() -> {
+                    if (joined.isOnline()) joined.sendMessage("§5[Twilight] §f" + restartNotice());
+                }, 70L);
+            }
             var check = updates;
             if (check == null || !notifyUpdatePlayers) return;
             var release = check.latest();

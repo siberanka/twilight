@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
@@ -81,9 +82,16 @@ public final class GeyserDeploymentService {
                 Properties next = manifestFor(artifacts);
                 storeManifest(next);
                 retainNewestSnapshots();
-                boolean restart = !startupMappings.get(geyser).equals(mappingHashes(geyser));
+                Set<String> keep = new java.util.HashSet<>(CANONICAL);
+                keep.addAll(artifacts.keySet());
+                var retired = com.siberanka.twilight.geyser.StaleFiles.retire(geyser, geyser.resolve("packs"), keep,
+                        dataDirectory.resolve("retired"));
+                boolean restart = !retired.isEmpty() || !startupMappings.get(geyser).equals(mappingHashes(geyser));
                 return new DeploymentResult(true, geyser, snapshot, List.copyOf(artifacts.keySet()),
                         "Deployed " + artifacts.size() + " Twilight files; retained " + config.backupsToKeep() + " Geyser snapshots."
+                                + (retired.isEmpty() ? "" : " Moved " + retired.size() + " stale Twilight file(s) out of Geyser to "
+                                + dataDirectory.relativize(retired.getFirst().to().getParent().getParent()) + ": "
+                                + String.join(", ", retired.stream().map(com.siberanka.twilight.geyser.StaleFiles.Retired::file).toList()) + ".")
                                 + (restart ? " Restart the server to activate changed Geyser item mappings or display variants; geyser reload is insufficient." : ""), restart);
             } catch (Exception failure) {
                 if (publicationStarted) {
@@ -95,6 +103,27 @@ public final class GeyserDeploymentService {
             } finally {
                 deleteTree(staging, geyser);
             }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /** Files Twilight deploys to Geyser under fixed names; kept even before the first deployment. */
+    private static final Set<String> CANONICAL = Set.of("packs/twilight.zip", "custom_mappings/twilight_item_mappings.json");
+
+    /**
+     * Moves Twilight files this server does not own out of its Geyser ({@link com.siberanka.twilight.geyser.StaleFiles}):
+     * item mappings and packs from older versions, copies or sync tools. Run before Geyser loads its folder (Twilight's
+     * load phase) and after every deployment.
+     */
+    public List<com.siberanka.twilight.geyser.StaleFiles.Retired> retireStaleFiles() throws IOException {
+        lock.lock();
+        try {
+            Path geyser = resolveGeyserDirectory();
+            Set<String> keep = new java.util.HashSet<>(CANONICAL);
+            for (String owned : loadManifest().stringPropertyNames()) keep.add(owned.replace('\\', '/'));
+            return com.siberanka.twilight.geyser.StaleFiles.retire(geyser, geyser.resolve("packs"), keep,
+                    dataDirectory.resolve("retired"));
         } finally {
             lock.unlock();
         }
