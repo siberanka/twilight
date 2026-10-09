@@ -8,6 +8,7 @@ import com.siberanka.twilight.protocol.PackChannel;
 import com.siberanka.twilight.proxy.api.TwilightProxyApi;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -56,7 +57,25 @@ public final class ProxyCore implements TwilightProxyApi {
     private final java.util.Set<String> hinted = ConcurrentHashMap.newKeySet();
     private final Map<String, Deque<Long>> recentTransfers = new ConcurrentHashMap<>();
     private volatile ProxyConfig config;
-    private volatile GeyserBridge geyser;
+    private volatile Sessions geyser;
+    /** Why twilight-proxy is not attached to Geyser ("" once attached). */
+    private volatile String geyserProblem = "not attached yet";
+    private final Sessions.Attacher attacher;
+    private volatile boolean enabled;
+    private volatile long lastAttachAttempt;
+    private java.util.function.LongSupplier clock = System::currentTimeMillis;
+    /** The proxy's login rate limit, checked again when Geyser attaches late. */
+    private volatile String loginLimitSetting;
+    private volatile long loginLimitMillis;
+    /** Attached after Geyser had probably started (a late attempt): its items are already registered. */
+    private volatile boolean attachedLate;
+    private final java.util.concurrent.atomic.AtomicBoolean mappingsQueued = new java.util.concurrent.atomic.AtomicBoolean();
+    private volatile String mappingsState = "not written";
+    private volatile String reportedConflicts = "";
+    private volatile boolean reportedCopies;
+    private volatile boolean reportedLocale;
+    /** Login servers found in login plugins' configuration files (lower case -> file). */
+    private volatile Map<String, String> detectedLogin = Map.of();
     private volatile com.siberanka.twilight.host.PackHost host;
     private volatile com.siberanka.twilight.update.UpdateCheck updates;
 
@@ -65,11 +84,20 @@ public final class ProxyCore implements TwilightProxyApi {
     public static final String ADMIN_PERMISSION = "twilight.proxy.admin";
 
     public ProxyCore(Platform platform, Object owner) {
+        this(platform, owner, null);
+    }
+
+    /** {@code attacher} null: Geyser on this proxy. */
+    ProxyCore(Platform platform, Object owner, Sessions.Attacher attacher) {
         this.platform = platform;
         this.owner = owner;
+        this.attacher = attacher != null ? attacher : core -> geyserAttach(owner, core);
         this.store = new PackStore(platform);
         this.transfers = new AutoTransfers(platform, store);
-        store.onChange(this::prewarm);
+        store.onChange(pack -> {
+            prewarm(pack);
+            queueItemMappings();
+        });
     }
 
     /**
@@ -79,7 +107,7 @@ public final class ProxyCore implements TwilightProxyApi {
     private void prewarm(PackFiles.Pack pack) {
         long started = System.nanoTime();
         try {
-            GeyserBridge bridge = geyser;
+            Sessions bridge = geyser;
             if (bridge != null) bridge.prepare(pack.path());
             var running = host;
             if (running != null) running.snapshot(pack.path(), pack.sha256());
@@ -93,24 +121,207 @@ public final class ProxyCore implements TwilightProxyApi {
 
     public void enable() throws IOException {
         if (!reload()) throw new IOException("twilight-proxy configuration is invalid; see the log");
-        try {
-            geyser = GeyserBridge.attach(owner, this);
-        } catch (LinkageError absent) {
-            geyser = null; // Geyser's API classes are not on this proxy
-        }
-        if (geyser == null) platform.info("Geyser is not installed on this proxy: packs are prepared but not sent.");
-        else {
-            startHost();
-            platform.async(() -> platform.serverNames().forEach(server -> store.pack(server).ifPresent(this::prewarm)));
-        }
+        enabled = true;
+        attachGeyser(0);
         platform.repeat(this::sweep, 5);
         TwilightProxyApi.Holder.set(this);
+    }
+
+    /** Attempts while Geyser starts: every two seconds for two minutes, then whenever a player joins. */
+    static final int ATTACH_ATTEMPTS = 60;
+    static final long ATTACH_RETRY_MILLIS = 2_000;
+    private static final String NOT_INSTALLED = "Geyser is not installed on this proxy";
+
+    /** Geyser on this proxy: absent when its API classes are not visible, otherwise {@link GeyserBridge}. */
+    private static Sessions.Attach geyserAttach(Object owner, ProxyCore core) {
+        try {
+            Class.forName("org.geysermc.geyser.api.GeyserApi", false, ProxyCore.class.getClassLoader());
+        } catch (ClassNotFoundException | LinkageError absent) {
+            return Sessions.Attach.failed(NOT_INSTALLED);
+        }
+        return GeyserBridge.attach(owner, core);
+    }
+
+    /**
+     * Attaches to Geyser. Geyser may finish loading after twilight-proxy (Velocity starts both in the same
+     * event), so a Geyser that is not ready yet is tried again instead of being reported as absent.
+     */
+    private synchronized void attachGeyser(int attempt) {
+        if (geyser != null || !enabled) return;
+        lastAttachAttempt = clock.getAsLong();
+        Sessions.Attach result;
+        try {
+            result = attacher.attach(this);
+        } catch (RuntimeException | LinkageError failure) {
+            result = Sessions.Attach.failed("Geyser's API could not be used (" + Sessions.describe(failure) + ")");
+        }
+        if (result.sessions() != null) {
+            attachedLate = attempt > ATTACH_ATTEMPTS;
+            geyser = result.sessions();
+            geyserProblem = "";
+            attached(attempt);
+            return;
+        }
+        boolean changed = !result.problem().equals(geyserProblem);
+        geyserProblem = result.problem();
+        if (!result.retry()) {
+            if (result.problem().equals(NOT_INSTALLED)) {
+                if (attempt == 0) platform.info(NOT_INSTALLED + ": packs are prepared but not sent.");
+            } else if (changed) {
+                platform.warn("Could not attach to Geyser: " + result.problem() + ". Bedrock players get no per-server packs;"
+                        + " check that Geyser and twilight-proxy are up to date.", null);
+            }
+            return;
+        }
+        if (attempt == 0) platform.info("Geyser is installed but not started yet; attaching when it is ready.");
+        if (attempt < ATTACH_ATTEMPTS) {
+            platform.later(() -> attachGeyser(attempt + 1), ATTACH_RETRY_MILLIS);
+        } else if (attempt == ATTACH_ATTEMPTS) {
+            platform.warn("Geyser did not become ready within " + ATTACH_ATTEMPTS * ATTACH_RETRY_MILLIS / 1000 + " s ("
+                    + result.problem() + "); twilight-proxy tries again when a player joins.", null);
+        }
+    }
+
+    /** A late attempt when a player joins while Geyser was not ready; at most every ten seconds. */
+    private void attachLate() {
+        if (geyser != null || !enabled || NOT_INSTALLED.equals(geyserProblem)) return;
+        if (clock.getAsLong() - lastAttachAttempt < 10_000) return;
+        attachGeyser(ATTACH_ATTEMPTS + 1);
+    }
+
+    private void attached(int attempt) {
+        platform.info(attempt == 0 ? "Attached to Geyser: Bedrock players get each server's pack."
+                : "Attached to Geyser after it started (attempt " + (attempt + 1) + "): Bedrock players get each server's pack.");
+        startHost();
+        platform.async(() -> platform.serverNames().forEach(server -> store.pack(server).ifPresent(this::prewarm)));
+        if (loginLimitSetting != null) checkLoginLimit(loginLimitSetting, loginLimitMillis);
+        writeItemMappings();
+    }
+
+    // --- Item mappings for the proxy's Geyser ------------------------------------------------
+
+    /** Geyser is about to read custom_mappings (it does once, when it starts). */
+    void beforeGeyserItems() {
+        writeItemMappings();
+    }
+
+    /** A pack changed: merge the item mappings again shortly (several packs often change together). */
+    private void queueItemMappings() {
+        if (geyser == null || !mappingsQueued.compareAndSet(false, true)) return;
+        platform.later(() -> {
+            mappingsQueued.set(false);
+            writeItemMappings();
+        }, 3_000);
+    }
+
+    /**
+     * Merges the Geyser item mappings in the packs of the servers ({@code auto} and files in {@code packs/}) into
+     * {@link ItemMappings#FILE} in Geyser's {@code custom_mappings}. Geyser registers custom items when it starts;
+     * a file that changes afterwards needs a proxy restart, which is logged.
+     */
+    private synchronized void writeItemMappings() {
+        Sessions bridge = geyser;
+        ProxyConfig current = config;
+        if (bridge == null || current == null) return;
+        Optional<Path> folder = bridge.geyserFolder();
+        if (folder.isEmpty()) {
+            mappingsState = "Geyser's folder is unknown";
+            return;
+        }
+        Path custom = folder.get().resolve("custom_mappings");
+        Map<String, com.google.gson.JsonObject> servers = new java.util.TreeMap<>();
+        for (String server : platform.serverNames()) {
+            ProxyConfig.PackSource source = current.source(server);
+            if (!(source instanceof ProxyConfig.PackSource.Auto) && !(source instanceof ProxyConfig.PackSource.File)) continue;
+            Optional<PackFiles.Pack> pack = store.pack(server);
+            if (pack.isEmpty()) continue;
+            try {
+                ItemMappings.read(pack.get().path()).ifPresent(mappings -> servers.put(server, mappings));
+            } catch (IOException | RuntimeException unreadable) {
+                platform.warn("Could not read the item mappings in " + server + "'s pack: " + unreadable.getMessage(), null);
+            }
+        }
+        ItemMappings.Merge merge = ItemMappings.merge(servers);
+        String conflicts = String.join("\n", merge.conflicts());
+        if (!conflicts.isEmpty() && !conflicts.equals(reportedConflicts)) {
+            platform.warn(merge.conflicts().size() + " Java item selector(s) are mapped differently by two servers; Geyser keeps"
+                    + " one per selector, so the other server shows that item wrongly. Give the item the same model on"
+                    + " both servers or a different custom model data / item model:", null);
+            merge.conflicts().stream().limit(20).forEach(line -> platform.warn("  " + line, null));
+            if (merge.conflicts().size() > 20) platform.warn("  ... and " + (merge.conflicts().size() - 20) + " more", null);
+        }
+        reportedConflicts = conflicts;
+        if (merge.count() > 0 && !reportedLocale && !localeReadsMappings(Locale.getDefault())) {
+            reportedLocale = true;
+            platform.warn("This Java runs with the " + Locale.getDefault() + " locale, in which Geyser cannot read item mappings"
+                    + " (\"definition\" is upper-cased with a dotted I) and skips them: Bedrock players then see these items as"
+                    + " their base item. Start the proxy with -Duser.language=en -Duser.country=US.", null);
+        }
+        if (merge.invalid() > 0) {
+            platform.warn(merge.invalid() + " item mapping(s) in the servers' packs were malformed and left out.", null);
+        }
+        try {
+            if (!reportedCopies) {
+                List<String> copies = ItemMappings.copies(custom);
+                if (!copies.isEmpty()) {
+                    reportedCopies = true;
+                    platform.warn("Geyser's custom_mappings holds Twilight files copied from a backend " + copies + ": remove them;"
+                            + " twilight-proxy writes " + ItemMappings.FILE + " with every server's items, and copies register"
+                            + " the same items twice.", null);
+                }
+            }
+            if (merge.count() == 0 && !Files.isRegularFile(custom.resolve(ItemMappings.FILE))) {
+                mappingsState = "no Twilight items in the servers' packs yet";
+                return;
+            }
+            boolean changed = ItemMappings.write(custom, merge);
+            String summary = merge.count() + " item(s) from " + (servers.isEmpty() ? "no server" : String.join(", ", servers.keySet()));
+            boolean registered = bridge.itemsRegistered() || attachedLate;
+            if (changed && registered) {
+                mappingsState = summary + "; restart the proxy to register the changes";
+                platform.warn("Item mappings for Geyser changed (" + summary + "). Geyser registers custom items when it starts:"
+                        + " restart the proxy; until then Bedrock players see new or changed items as their base item.", null);
+            } else if (changed) {
+                mappingsState = summary;
+                platform.info("Wrote item mappings for Geyser: " + summary + ".");
+            } else {
+                mappingsState = summary + (registered ? ", registered" : "");
+            }
+        } catch (IOException | RuntimeException failure) {
+            mappingsState = "could not be written";
+            platform.warn("Could not write " + ItemMappings.FILE + " in " + custom + ": " + failure.getMessage(), null);
+        }
+    }
+
+    /** Geyser upper-cases mapping types with the default locale; Turkish and Azerbaijani turn "i" into a dotted "I". */
+    static boolean localeReadsMappings(Locale locale) {
+        return "definition".toUpperCase(locale).equals("DEFINITION");
+    }
+
+    /** The item mapping state for status output. */
+    String itemMappingsState() {
+        return mappingsState;
+    }
+
+    /** A login, captcha or limbo server: listed in {@code login-servers} or found in a login plugin's configuration. */
+    private boolean loginServer(ProxyConfig current, String server) {
+        return current.loginServer(server) || detectedLogin.containsKey(server.toLowerCase(Locale.ROOT));
+    }
+
+    /** For tests: the clock of the late attach attempts. */
+    void clock(java.util.function.LongSupplier clock) {
+        this.clock = clock;
+    }
+
+    /** Why twilight-proxy is not attached to Geyser, or empty when it is. */
+    String geyserProblem() {
+        return geyserProblem;
     }
 
     /** The pack host Bedrock players download from ({@code pack-host.enabled}); changes take effect on restart. */
     private void startHost() {
         var settings = config.host();
-        if (!settings.enabled()) return;
+        if (!settings.enabled() || host != null) return;
         try {
             host = com.siberanka.twilight.host.PackHost.start(settings, platform.dataDirectory().resolve("pack-host"), platform::info);
         } catch (IOException | RuntimeException failure) {
@@ -131,6 +342,8 @@ public final class ProxyCore implements TwilightProxyApi {
      * that refuses logins from the same address within a longer time turns the pack reconnect into a refusal.
      */
     public void checkLoginLimit(String setting, long millis) {
+        loginLimitSetting = setting;
+        loginLimitMillis = millis;
         if (geyser != null && millis > RECONNECT_LOGIN_MILLIS && config != null && config.transferOnSwitch()) {
             platform.warn(setting + " is " + millis + " ms: Bedrock players who reconnect for a server's pack log in again"
                     + " about " + RECONNECT_LOGIN_MILLIS / 1000 + " s after leaving and may be refused. Keep it at "
@@ -139,6 +352,7 @@ public final class ProxyCore implements TwilightProxyApi {
     }
 
     public void disable() {
+        enabled = false;
         TwilightProxyApi.Holder.set(null);
         var check = updates;
         if (check != null) check.close();
@@ -162,7 +376,14 @@ public final class ProxyCore implements TwilightProxyApi {
                     ? "No secret is shared with the backends (secret, Velocity forwarding or BungeeGuard): 'auto' packs are off."
                     : "Packs from Twilight on the backends are on (" + keys.size() + " shared secret(s)).");
             if (next.urlRefreshMinutes() > 0) store.refreshLinks();
+            Map<String, String> login = LoginServers.detect(platform.proxyRoot(), platform.serverNames());
+            if (!login.equals(detectedLogin)) {
+                login.forEach((server, file) -> platform.info("Login server " + server + " (found in " + file
+                        + "): Bedrock players are never reconnected for it."));
+            }
+            detectedLogin = Map.copyOf(login);
             configureUpdates(next);
+            queueItemMappings();
             return true;
         } catch (IOException | IllegalArgumentException failure) {
             platform.warn("Could not load twilight-proxy's configuration: " + failure.getMessage(), null);
@@ -245,7 +466,8 @@ public final class ProxyCore implements TwilightProxyApi {
      * {@code original} the one the proxy picked; returns the server to use instead, if any.
      */
     public Optional<String> initial(UUID player, String name, String chosen, String original) {
-        GeyserBridge bridge = geyser;
+        attachLate();
+        Sessions bridge = geyser;
         if (bridge == null) return Optional.empty();
         long now = now();
         Optional<String> xuid = xuidOf(bridge, player, name, now);
@@ -270,13 +492,13 @@ public final class ProxyCore implements TwilightProxyApi {
      * {@code first} is true for the first server of a session.
      */
     public Route beforeConnect(UUID player, String name, String server, boolean first) {
-        GeyserBridge bridge = geyser;
+        Sessions bridge = geyser;
         ProxyConfig current = config;
         if (bridge == null || current == null) return ALLOW;
         long now = now();
         Optional<String> xuid = xuidOf(bridge, player, name, now);
         if (xuid.isEmpty()) return ALLOW;
-        Switches.Connect step = switches.connect(xuid.get(), server, first || current.loginServer(server), now);
+        Switches.Connect step = switches.connect(xuid.get(), server, first || loginServer(current, server), now);
         if (step instanceof Switches.Connect.Redirect redirect) {
             platform.info("Sending " + name + " on to " + redirect.entry().to + " instead of " + server
                     + " (the server it reconnected for, " + redirect.entry().seconds(now) + " s ago).");
@@ -284,7 +506,7 @@ public final class ProxyCore implements TwilightProxyApi {
         }
         // The pack of a session was chosen for the server the proxy expected; when a plugin sends the player
         // somewhere else first (a login or limbo server), reconnecting there would only loop.
-        if (first || !current.transferOnSwitch() || current.loginServer(server)) return ALLOW;
+        if (first || !current.transferOnSwitch() || loginServer(current, server)) return ALLOW;
         if (!needsReconnect(xuid.get(), server)) return ALLOW;
         return reconnect(bridge, current, player, name, xuid.get(), server, now) ? new Route.Transferred() : ALLOW;
     }
@@ -297,7 +519,7 @@ public final class ProxyCore implements TwilightProxyApi {
     }
 
     /** Transfers the client to load the pack of {@code server}; false when it was not (limits, no address). */
-    private boolean reconnect(GeyserBridge bridge, ProxyConfig current, UUID player, String name, String xuidValue,
+    private boolean reconnect(Sessions bridge, ProxyConfig current, UUID player, String name, String xuidValue,
                               String server, long now) {
         Optional<String> xuid = Optional.of(xuidValue);
         Deque<Long> recent = recentTransfers.computeIfAbsent(xuid.get(), ignored -> new ArrayDeque<>());
@@ -333,7 +555,7 @@ public final class ProxyCore implements TwilightProxyApi {
      * other server (a login server, or where a plugin sent the player) it waits for the next server change.
      */
     public void connected(UUID player, String name, String server) {
-        GeyserBridge bridge = geyser;
+        Sessions bridge = geyser;
         ProxyConfig current = config;
         if (bridge == null || current == null || server == null) return;
         long now = now();
@@ -344,7 +566,7 @@ public final class ProxyCore implements TwilightProxyApi {
         // A fresh session whose first server is not the one its pack was chosen for (a proxy that reconnects
         // players to their last server, forced hosts): reconnect once for this server's pack. Cancelling the
         // first connection instead is not possible on every proxy, so this happens once the player is on it.
-        if (first && state instanceof Switches.Connected.None && current.transferOnSwitch() && !current.loginServer(server)
+        if (first && state instanceof Switches.Connected.None && current.transferOnSwitch() && !loginServer(current, server)
                 && needsReconnect(xuid.get(), server)) {
             platform.info(name + " joined " + server + ", not the server its pack was chosen for; reconnecting it once for "
                     + server + "'s pack (set initial-server to the server players join first to avoid this).");
@@ -378,7 +600,7 @@ public final class ProxyCore implements TwilightProxyApi {
      * to the server the proxy picked first; the reconnect then waits for the player's next server change.
      */
     public boolean refusedFirst(UUID player, String name, String server) {
-        GeyserBridge bridge = geyser;
+        Sessions bridge = geyser;
         if (bridge == null) return false;
         long now = now();
         Optional<String> xuid = xuidOf(bridge, player, name, now);
@@ -391,7 +613,7 @@ public final class ProxyCore implements TwilightProxyApi {
 
     public void disconnect(UUID player, String name) {
         seated.remove(player);
-        GeyserBridge bridge = geyser;
+        Sessions bridge = geyser;
         if (bridge == null) return;
         // A transferred player keeps its switch; its new session records its pack again.
         bridge.xuid(player, name, platform.address(player).orElse(null)).ifPresent(xuid -> {
@@ -403,7 +625,7 @@ public final class ProxyCore implements TwilightProxyApi {
      * The Bedrock session (XUID) of a proxy player: through Geyser, or for a transferred player whose Java UUID
      * Geyser does not know yet, by its name from the address its client plays from.
      */
-    private Optional<String> xuidOf(GeyserBridge bridge, UUID player, String name, long now) {
+    private Optional<String> xuidOf(Sessions bridge, UUID player, String name, long now) {
         java.net.InetAddress address = platform.address(player).map(com.siberanka.twilight.host.PackHost::normalise).orElse(null);
         return bridge.xuid(player, name, address).or(() -> switches.xuidByName(name, address, now));
     }
@@ -451,7 +673,13 @@ public final class ProxyCore implements TwilightProxyApi {
     public String statusText() {
         StringBuilder out = new StringBuilder("twilight-proxy: ")
                 .append(transfers.enabled() ? "auto packs on" : "auto packs off (no shared secret)")
-                .append(", Geyser ").append(geyser == null ? "absent" : "present");
+                .append(", Geyser ").append(geyser == null ? "not attached (" + geyserProblem + ")" : "attached")
+                .append(", pack host ").append(host == null ? "off" : "on");
+        if (geyser != null) out.append("\n  item mappings: ").append(mappingsState);
+        java.util.Set<String> login = new java.util.TreeSet<>(detectedLogin.keySet());
+        ProxyConfig current = config;
+        if (current != null) login.addAll(current.loginServers());
+        out.append("\n  login servers: ").append(login.isEmpty() ? "none" : String.join(", ", login));
         var check = updates;
         out.append("\n  ").append(check == null ? "update check disabled" : check.status());
         for (String server : platform.serverNames()) {

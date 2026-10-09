@@ -164,6 +164,11 @@ with the pack and every step is logged; see the
 [reconnect test](docs/PROXY_RECONNECT_2026-10-08.md). Tested with LeaderOS Auth Plus, BungeeGuard,
 Floodgate and Velocity modern forwarding ([login plugin test](docs/PROXY_AUTH_2026-10-09.md)).
 
+Custom items work on a proxy without copying files: twilight-proxy merges every backend's Geyser item
+mappings into the proxy's Geyser, where the same Java item is the same Bedrock item on every backend
+and each server's pack decides its look ([field report](docs/FIELD_REPORT_2026-10-09.md),
+[wiki](WIKI.md#item-mappings-on-a-proxy)).
+
 ## Pack hosting
 
 Bedrock players can download the packs over HTTP from the server that runs Geyser (a backend or the
@@ -390,6 +395,11 @@ sunucusuna gönderilen bir oyuncu, giriş yaptıktan sonra seçtiği sunucuya gi
 paketle büyür ve her adım günlüğe yazılır; [yeniden bağlanma testine](docs/PROXY_RECONNECT_2026-10-08.md) bakın.
 LeaderOS Auth Plus, BungeeGuard, Floodgate ve Velocity modern yönlendirmesiyle test edildi
 ([giriş eklentisi testi](docs/PROXY_AUTH_2026-10-09.md)).
+
+Özel eşyalar proxy'de dosya kopyalamadan çalışır: twilight-proxy her arka ucun Geyser eşya eşlemelerini
+proxy'deki Geyser'da birleştirir; aynı Java eşyası her arka uçta aynı Bedrock eşyasıdır ve görünüşüne her
+sunucunun paketi karar verir ([saha raporu](docs/FIELD_REPORT_2026-10-09.md),
+[wiki](WIKI.md#proxyde-eşya-eşlemeleri)).
 
 #### Paket sunucusu
 

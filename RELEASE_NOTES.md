@@ -1,6 +1,38 @@
-# Twilight 1.0.0-pre.14 - prerelease
+# Twilight 1.0.0-pre.15 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+This prerelease fixes the problems a proxy network reported with 1.0.0-pre.13; each was reproduced on
+isolated servers first ([field report](docs/FIELD_REPORT_2026-10-09.md)).
+
+- **Conversions work again on Paper 1.21 servers with Java 17+.** The content report no longer uses
+  Gson reflection, which failed with "java.time.Instant#seconds" and stopped every build.
+- **twilight-proxy finds Geyser reliably.** It starts after Geyser on Velocity, waits for a Geyser that
+  is still loading, and logs why when it cannot attach. Before, such a Geyser was reported as "not
+  installed" and Bedrock players got no per-server packs.
+- **Custom items work on proxy networks.** twilight-proxy writes every backend's item mappings into the
+  proxy's Geyser. The same Java item is the same Bedrock item on every backend, and conflicts between
+  servers are listed.
+- **Login servers are found automatically** in LeaderOS Auth, AuthMeVelocity, AuthMeBungee, LibreLogin
+  and JPremium configurations.
+
+After updating:
+
+- restart Geyser once, because the Bedrock item identifiers changed;
+- on a proxy, restart again after the first packs arrived;
+- start the proxy's Java with `-Duser.language=en -Duser.country=US` when its locale is Turkish or
+  Azerbaijani. Geyser then reads the item mappings; the log warns when this is needed.
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 234 tests
+across 41 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.14 - prerelease
 
 This prerelease adds an update check to Twilight and twilight-proxy.
 
@@ -21,8 +53,6 @@ across 39 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.13 - prerelease
 
@@ -384,7 +414,40 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.14 - ön sürüm
+### Twilight 1.0.0-pre.15 - ön sürüm
+
+Bu ön sürüm, proxy'li bir ağın 1.0.0-pre.13 ile bildirdiği sorunları düzeltir; her biri önce yalıtılmış
+sunucularda yeniden üretildi ([saha raporu](docs/FIELD_REPORT_2026-10-09.md)).
+
+- **Java 17+ ile çalışan Paper 1.21 sunucularında dönüştürmeler yeniden çalışır.** İçerik raporu artık Gson
+  yansıması kullanmaz; bu yansıma "java.time.Instant#seconds" ile başarısız oluyor ve her derlemeyi
+  durduruyordu.
+- **twilight-proxy Geyser'ı güvenilir biçimde bulur.** Velocity'de Geyser'dan sonra başlar, hâlâ yüklenen bir
+  Geyser'ı bekler ve bağlanamadığında nedenini günlüğe yazar. Önceden böyle bir Geyser "kurulu değil" olarak
+  bildiriliyor ve Bedrock oyuncuları sunucu başına paket almıyordu.
+- **Özel eşyalar proxy'li ağlarda çalışır.** twilight-proxy her arka ucun eşya eşlemelerini proxy'deki
+  Geyser'a yazar. Aynı Java eşyası her arka uçta aynı Bedrock eşyasıdır ve sunucular arasındaki çakışmalar
+  listelenir.
+- **Giriş sunucuları kendiliğinden bulunur:** LeaderOS Auth, AuthMeVelocity, AuthMeBungee, LibreLogin ve
+  JPremium yapılandırmalarından okunur.
+
+Güncellemeden sonra:
+
+- Bedrock eşya kimlikleri değiştiği için Geyser'ı bir kez yeniden başlatın;
+- proxy'de ilk paketler geldikten sonra bir kez daha yeniden başlatın;
+- proxy'nin dili Türkçe veya Azerice ise Java'sını `-Duser.language=en -Duser.country=US` ile başlatın.
+  Geyser eşya eşlemelerini ancak böyle okur; gerektiğinde günlük uyarır.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 41 paketteki 234
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.14 - ön sürüm
 
 Bu ön sürüm Twilight ve twilight-proxy'ye bir güncelleme denetimi ekler.
 
@@ -405,8 +468,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.13 - ön sürüm
 

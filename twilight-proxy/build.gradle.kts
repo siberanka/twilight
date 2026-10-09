@@ -17,6 +17,8 @@ dependencies {
 
     testImplementation(platform("org.junit:junit-bom:5.14.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    // The proxies provide Gson at runtime (item mappings).
+    testImplementation("com.google.code.gson:gson:2.11.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

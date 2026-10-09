@@ -61,6 +61,10 @@ are in the [reports](docs/); limits per feature are in [docs/COMPATIBILITY.md](d
    plugins then share that secret automatically. Without it, set the same `secret` in
    twilight-proxy's `config.yml` and `proxy.secret` in each backend's Twilight `config.yml`.
 4. Each Bedrock player now loads the pack of the server they join; see [twilight-proxy](#twilight-proxy-1).
+5. Custom items need no copying: twilight-proxy writes every server's Geyser item mappings into the
+   proxy's Geyser ([item mappings on a proxy](#item-mappings-on-a-proxy)). Restart the proxy once after
+   the first packs arrived, and after item changes when the log asks for it. Start the proxy's Java with
+   `-Duser.language=en -Duser.country=US` when its system locale is Turkish or Azerbaijani.
 
 Optional on both layouts: let Bedrock players download the packs over HTTP from the server that runs
 Geyser instead of Geyser's slower in-game transfer, with the [pack host](#pack-hosting).
@@ -247,7 +251,7 @@ update-check:            # see "Updates"
 | `transfer-address`, `transfer-port` | Where transferred players reconnect (useful behind a load balancer) |
 | `initial-server` | Server whose pack a new session loads |
 | `transfer-timeout-seconds` | How long a reconnect may take, from the transfer until the player reaches its server (download and login included). `auto`: three minutes plus the pack at 128 KiB/s, at most an hour (a 150 MiB pack: 23 minutes) |
-| `login-servers` | Servers players pass through before playing (login, captcha, limbo): Bedrock players are never reconnected for them, and a reconnect in progress continues when the player moves on. Login plugins that choose such a server are detected without this list |
+| `login-servers` | Servers players pass through before playing (login, captcha, limbo): Bedrock players are never reconnected for them, and a reconnect in progress continues when the player moves on. The login servers in the configuration of LeaderOS Auth, AuthMeVelocity, AuthMeBungee, LibreLogin, JPremium and similar plugins are added automatically (logged at start, shown by `/twilightproxy`), and login plugins that choose such a server are detected at run time as well |
 | `secret` | Shared secret for `auto` packs |
 | `max-pack-size-mb` | Largest accepted pack (1-2048) |
 | `download-timeout-seconds` | A link download stops after this long without data, or when it is slower than 64 KiB/s overall (5-600) |
@@ -259,6 +263,44 @@ update-check:            # see "Updates"
 Every pack is checked before use: it must be a ZIP below the size limit with `manifest.json` at its
 root and no entry that could escape a folder. A pack that fails the check, a failed download or an
 incomplete transfer keeps the previous pack.
+
+### Attaching to Geyser
+
+twilight-proxy attaches to the proxy's Geyser when the proxy starts. On Velocity both start in the
+same event and twilight-proxy runs last; a Geyser that is still loading is tried again every two
+seconds for two minutes and then whenever a player joins. The log says which case applies:
+
+| Log line | Meaning |
+|---|---|
+| "Attached to Geyser: Bedrock players get each server's pack." | Working |
+| "Geyser is installed but not started yet; attaching when it is ready." | Followed by "Attached to Geyser after it started" |
+| "Geyser is not installed on this proxy" | Geyser's API is not visible to twilight-proxy |
+| "Could not attach to Geyser: ..." | Geyser's API refused the listeners; the reason follows. Update Geyser and twilight-proxy |
+
+`/twilightproxy` shows the state ("Geyser attached" or "Geyser not attached (reason)"), whether the
+pack host runs, the item mappings and the login servers.
+
+### Item mappings on a proxy
+
+Geyser on the proxy translates the items of every backend, so it needs every backend's custom item
+mappings. Twilight puts them into the pack it shares (`twilight/geyser_item_mappings.json`, ignored
+by Bedrock); twilight-proxy takes them from `auto` packs and pack files in `packs/` (never from
+download links), keeps only well-formed Twilight entries, merges them and writes
+`custom_mappings/twilight-proxy_item_mappings.json` in Geyser's folder. Geyser reads that folder once,
+when it starts:
+
+- At proxy start the file is written before Geyser reads it, from the packs of the last run.
+- When a server's items change later, the log asks for a proxy restart; until then those items show
+  as their base item for Bedrock players. The first time, packs arrive when players first join each
+  server, so restart once after that.
+- The same Java item (custom model data or item model) is the same Bedrock item on every backend,
+  and each server's pack decides how it looks there. When two servers map the same selector to
+  different Bedrock items (older Twilight versions, hand-made packs), the first server in name order
+  wins and the log lists each conflict.
+- Remove `twilight_*.json` files copied into the proxy's Geyser by hand; the log names them.
+- Geyser reads mapping types with the Java locale. On a proxy whose locale is Turkish or Azerbaijani
+  it skips every item model mapping; the log warns and the fix is `-Duser.language=en
+  -Duser.country=US` on the proxy's Java command.
 
 ### Sources
 
@@ -351,13 +393,14 @@ plugins, anti-bot checks, connection limits) sees it, so these settings keep it 
 | Velocity `login-ratelimit` | 3000 (default) or less; a reconnect logs in about four seconds after leaving |
 | Velocity `accepts-transfers`, BungeeCord `reject_transfers` | leave as they are; Bedrock reconnects do not use Java transfers |
 | Backends | reachable only from the proxy (firewall or bind address); `bukkit.yml` `connection-throttle: -1` |
+| Proxy Java command | `-Duser.language=en -Duser.country=US` when the system locale is Turkish or Azerbaijani (Geyser item mappings) |
 
 **twilight-proxy**
 
 | Setting | Value |
 |---|---|
 | `transfer-address`, `transfer-port` | the public Bedrock address when players join through another one (DNS split, load balancer) |
-| `login-servers` | the login server(s), e.g. `[auth_lobby]` |
+| `login-servers` | the login server(s), e.g. `[auth_lobby]`; found automatically in the login plugins named above |
 | `transfer-timeout-seconds` | `auto` |
 | `pack-host` | enabled for packs above a few MiB |
 
@@ -547,6 +590,7 @@ In Geyser's folder Twilight owns `packs/twilight.zip`, `custom_mappings/twilight
 | `cache/link-<hash>.mcpack` (+ `.etag`) | Downloaded packs |
 | `cache/versions/<sha256>.mcpack` | The copy of each pack version Geyser reads; replaced versions are removed after the longest reconnect |
 | `pack-host/<sha256>.zip` | Copies the [pack host](#pack-hosting) serves; cleared at start, removed when unused |
+| `plugins/Geyser-*/custom_mappings/twilight-proxy_item_mappings.json` | Every server's item mappings for the proxy's Geyser ([item mappings on a proxy](#item-mappings-on-a-proxy)) |
 
 ## Developer API
 
@@ -648,6 +692,10 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
   plain host name or IP address, and only ever reach the player's own client. Sending a player on
   after a login is a new connection request that every plugin checks again; refusals by login,
   permission or protection plugins are respected. Reconnects are limited per player.
+- **Proxy item mappings.** Only mappings in signed `auto` packs and in pack files the administrator
+  put in `packs/` are used, never those in download links. Only Geyser's documented keys are kept;
+  Java items, models, Bedrock identifiers (`twilight:` only) and icons must match strict patterns, and
+  sizes and counts are limited. Clients can neither send nor change them.
 - **Update check.** Read-only HTTPS requests to GitHub and GitLab that send nothing about the server;
   only version tags are used from the answer, nothing is downloaded or installed, and the check can be
   turned off ([updates](#updates)).
@@ -660,6 +708,9 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 | "Restart the server to activate changed Geyser item mappings" | Geyser registers items at startup; restart once |
 | A build is not published | `build/current/build-report.json` → `problems`; strict builds keep the last good pack |
 | `auto` packs never arrive on the proxy | `/twilightproxy` shows "auto packs off": set the same `secret` on both sides or use modern forwarding |
+| "Geyser not attached" although Geyser runs | Read the reason in `/twilightproxy` and the log ([attaching to Geyser](#attaching-to-geyser)); versions before 1.0.0-pre.15 gave up when Geyser was still loading |
+| Custom items show as their base item on a proxy network | Restart the proxy after the log line "Item mappings for Geyser changed"; check the locale warning and listed selector conflicts ([item mappings on a proxy](#item-mappings-on-a-proxy)) |
+| "Twilight content scan failed ... java.time.Instant#seconds" | Fixed in 1.0.0-pre.15 (servers whose Gson cannot reflect into Java 17+ classes) |
 | Bedrock players reconnect on every server switch | Expected when servers use different packs; same packs never reconnect |
 | Transferred players end up on the wrong server | `transfer-address`/`transfer-port` must reach the same proxy |
 | "Server not found" after a server change | The client could not reach the transfer address: check the log line "has not come back ... after the transfer to <address>", `transfer-address`/`transfer-port`, and that UDP protection and anti-bot plugins allow a quick reconnect |
@@ -749,6 +800,10 @@ Bu sayfa yöneticiler ve eklenti geliştiricileri için başvuru kaynağıdır. 
    ayarlayın.
 4. Artık her Bedrock oyuncusu katıldığı sunucunun paketini yükler; [twilight-proxy](#twilight-proxy-4)
    bölümüne bakın.
+5. Özel eşyalar için kopyalama gerekmez: twilight-proxy her sunucunun Geyser eşya eşlemelerini proxy'deki
+   Geyser'a yazar ([proxy'de eşya eşlemeleri](#proxyde-eşya-eşlemeleri)). İlk paketler geldikten sonra ve
+   günlük istediğinde eşya değişikliklerinden sonra proxy'yi bir kez yeniden başlatın. Proxy'nin sistem dili
+   Türkçe veya Azerice ise Java'yı `-Duser.language=en -Duser.country=US` ile başlatın.
 
 İki düzende de isteğe bağlı: [paket sunucusu](#paket-sunucusu) ile Bedrock oyuncuları paketleri Geyser'ın
 yavaş oyun içi aktarımı yerine Geyser'ı çalıştıran sunucudan HTTP ile indirir.
@@ -936,7 +991,7 @@ update-check:            # "Güncellemeler" bölümüne bakın
 | `transfer-address`, `transfer-port` | Aktarılan oyuncuların yeniden bağlandığı yer (yük dengeleyici arkasında yararlı) |
 | `initial-server` | Yeni bir oturumun paketini yüklediği sunucu |
 | `transfer-timeout-seconds` | Bir yeniden bağlanmanın aktarımdan oyuncu sunucusuna ulaşana kadar (indirme ve giriş dahil) ne kadar sürebileceği. `auto`: üç dakika artı paketin 128 KiB/s ile süresi, en fazla bir saat (150 MiB'lik paket: 23 dakika) |
-| `login-servers` | Oyuncuların oynamadan önce geçtiği sunucular (giriş, captcha, limbo): Bedrock oyuncuları bunlar için asla yeniden bağlanmaz ve süren bir yeniden bağlanma oyuncu oradan ayrılınca devam eder. Böyle bir sunucuyu seçen giriş eklentileri bu liste olmadan da algılanır |
+| `login-servers` | Oyuncuların oynamadan önce geçtiği sunucular (giriş, captcha, limbo): Bedrock oyuncuları bunlar için asla yeniden bağlanmaz ve süren bir yeniden bağlanma oyuncu oradan ayrılınca devam eder. LeaderOS Auth, AuthMeVelocity, AuthMeBungee, LibreLogin, JPremium ve benzeri eklentilerin yapılandırmasındaki giriş sunucuları kendiliğinden eklenir (açılışta günlüğe yazılır, `/twilightproxy` gösterir); böyle bir sunucuyu seçen giriş eklentileri çalışırken de algılanır |
 | `secret` | `auto` paketler için paylaşılan gizli anahtar |
 | `max-pack-size-mb` | Kabul edilen en büyük paket (1-2048) |
 | `download-timeout-seconds` | Bir bağlantı indirmesi bu süre boyunca veri gelmezse veya toplamda 64 KiB/s'den yavaşsa durur (5-600) |
@@ -948,6 +1003,44 @@ update-check:            # "Güncellemeler" bölümüne bakın
 Her paket kullanılmadan önce denetlenir: boyut sınırının altında, kökünde `manifest.json` bulunan ve hiçbir
 girdisi klasör dışına çıkamayan bir ZIP olmalıdır. Denetimi geçemeyen bir paket, başarısız bir indirme veya
 eksik bir aktarım önceki paketi korur.
+
+##### Geyser'a bağlanma
+
+twilight-proxy, proxy açılırken proxy'deki Geyser'a bağlanır. Velocity'de ikisi aynı olayda başlar ve
+twilight-proxy en son çalışır; hâlâ yüklenen bir Geyser iki dakika boyunca iki saniyede bir, ardından her
+oyuncu katıldığında yeniden denenir. Günlük hangi durumun geçerli olduğunu söyler:
+
+| Günlük satırı | Anlamı |
+|---|---|
+| "Attached to Geyser: Bedrock players get each server's pack." | Çalışıyor |
+| "Geyser is installed but not started yet; attaching when it is ready." | Ardından "Attached to Geyser after it started" gelir |
+| "Geyser is not installed on this proxy" | Geyser'ın API'si twilight-proxy'ye görünmüyor |
+| "Could not attach to Geyser: ..." | Geyser'ın API'si dinleyicileri reddetti; nedeni ardından yazılır. Geyser'ı ve twilight-proxy'yi güncelleyin |
+
+`/twilightproxy` durumu ("Geyser attached" veya "Geyser not attached (neden)"), paket sunucusunun çalışıp
+çalışmadığını, eşya eşlemelerini ve giriş sunucularını gösterir.
+
+##### Proxy'de eşya eşlemeleri
+
+Proxy'deki Geyser her arka ucun eşyalarını çevirir, bu yüzden her arka ucun özel eşya eşlemelerine ihtiyaç
+duyar. Twilight bunları paylaştığı pakete koyar (`twilight/geyser_item_mappings.json`, Bedrock yok sayar);
+twilight-proxy bunları `auto` paketlerden ve `packs/` içindeki paket dosyalarından alır (indirme
+bağlantılarından asla), yalnızca düzgün biçimli Twilight girdilerini tutar, birleştirir ve Geyser'ın
+klasörüne `custom_mappings/twilight-proxy_item_mappings.json` yazar. Geyser bu klasörü yalnızca açılışta
+bir kez okur:
+
+- Proxy açılırken dosya, Geyser okumadan önce son çalıştırmanın paketlerinden yazılır.
+- Bir sunucunun eşyaları sonradan değişince günlük proxy'nin yeniden başlatılmasını ister; o zamana kadar
+  bu eşyalar Bedrock oyuncularına temel eşyaları olarak görünür. İlk seferde paketler, oyuncular her
+  sunucuya ilk kez katıldığında gelir; ardından bir kez yeniden başlatın.
+- Aynı Java eşyası (custom model data veya item model) her arka uçta aynı Bedrock eşyasıdır ve orada nasıl
+  görüneceğine her sunucunun kendi paketi karar verir. İki sunucu aynı seçiciyi farklı Bedrock eşyalarına
+  eşlerse (eski Twilight sürümleri, elle hazırlanmış paketler) ad sırasında ilk sunucu kazanır ve günlük her
+  çakışmayı listeler.
+- Proxy'deki Geyser'a elle kopyalanmış `twilight_*.json` dosyalarını kaldırın; günlük bunların adını verir.
+- Geyser eşleme türlerini Java'nın diliyle okur. Dili Türkçe veya Azerice olan bir proxy'de her item model
+  eşlemesini atlar; günlük uyarır, çözüm proxy'nin Java komutuna `-Duser.language=en -Duser.country=US`
+  eklemektir.
 
 ##### Kaynaklar
 
@@ -1041,13 +1134,14 @@ eklentileri, anti-bot denetimleri, bağlantı sınırları) onu görür; bu ayar
 | Velocity `login-ratelimit` | 3000 (varsayılan) veya daha az; bir yeniden bağlanma ayrıldıktan yaklaşık dört saniye sonra giriş yapar |
 | Velocity `accepts-transfers`, BungeeCord `reject_transfers` | olduğu gibi bırakın; Bedrock yeniden bağlanmaları Java aktarımlarını kullanmaz |
 | Arka uçlar | yalnızca proxy'den erişilebilir (güvenlik duvarı veya bağlanma adresi); `bukkit.yml` `connection-throttle: -1` |
+| Proxy'nin Java komutu | sistem dili Türkçe veya Azerice ise `-Duser.language=en -Duser.country=US` (Geyser eşya eşlemeleri) |
 
 **twilight-proxy**
 
 | Ayar | Değer |
 |---|---|
 | `transfer-address`, `transfer-port` | oyuncular başka bir adresle katılıyorsa (ayrık DNS, yük dengeleyici) herkese açık Bedrock adresi |
-| `login-servers` | giriş sunucu(lar)ı, ör. `[auth_lobby]` |
+| `login-servers` | giriş sunucu(lar)ı, ör. `[auth_lobby]`; yukarıda adı geçen giriş eklentilerinde kendiliğinden bulunur |
 | `transfer-timeout-seconds` | `auto` |
 | `pack-host` | birkaç MiB'den büyük paketler için açık |
 
@@ -1238,6 +1332,7 @@ Geyser klasöründe Twilight yalnızca `packs/twilight.zip`, `custom_mappings/tw
 | `cache/link-<karma>.mcpack` (+ `.etag`) | İndirilen paketler |
 | `cache/versions/<sha256>.mcpack` | Geyser'ın okuduğu her paket sürümünün kopyası; değiştirilen sürümler en uzun yeniden bağlanmadan sonra silinir |
 | `pack-host/<sha256>.zip` | [Paket sunucusunun](#paket-sunucusu) sunduğu kopyalar; açılışta temizlenir, kullanılmayınca silinir |
+| `plugins/Geyser-*/custom_mappings/twilight-proxy_item_mappings.json` | Proxy'deki Geyser için her sunucunun eşya eşlemeleri ([proxy'de eşya eşlemeleri](#proxyde-eşya-eşlemeleri)) |
 
 #### Geliştirici API'si
 
@@ -1339,6 +1434,10 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
   alan adı ya da IP adresi olan bir katılma adresini içerir ve yalnızca oyuncunun kendi istemcisine ulaşır. Bir
   oyuncunun girişten sonra ileri gönderilmesi, her eklentinin yeniden denetlediği yeni bir bağlantı isteğidir;
   giriş, izin ve koruma eklentilerinin retleri dikkate alınır. Yeniden bağlanmalar oyuncu başına sınırlıdır.
+- **Proxy eşya eşlemeleri.** Yalnızca imzalı `auto` paketlerdeki ve yöneticinin `packs/` içine koyduğu paket
+  dosyalarındaki eşlemeler kullanılır, indirme bağlantılarındakiler asla. Yalnızca Geyser'ın belgelenmiş
+  anahtarları tutulur; Java eşyaları, modeller, Bedrock kimlikleri (yalnızca `twilight:`) ve simgeler sıkı
+  kalıplara uymalıdır, boyut ve sayılar sınırlıdır. İstemciler bunları ne gönderebilir ne değiştirebilir.
 - **Güncelleme denetimi.** GitHub ve GitLab'a, sunucu hakkında hiçbir şey göndermeyen salt okunur HTTPS
   istekleri; yanıttan yalnızca sürüm etiketleri kullanılır, hiçbir şey indirilmez veya kurulmaz ve denetim
   kapatılabilir ([güncellemeler](#güncellemeler)).
@@ -1351,6 +1450,9 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
 | "Restart the server to activate changed Geyser item mappings" | Geyser eşyaları açılışta kaydeder; bir kez yeniden başlatın |
 | Bir derleme yayımlanmıyor | `build/current/build-report.json` → `problems`; katı derlemeler son iyi paketi korur |
 | `auto` paketler proxy'ye hiç ulaşmıyor | `/twilightproxy` "auto packs off" gösteriyor: iki tarafta aynı `secret` değerini ayarlayın veya modern yönlendirme kullanın |
+| Geyser çalıştığı hâlde "Geyser not attached" | Nedeni `/twilightproxy` ve günlükte okuyun ([Geyser'a bağlanma](#geysera-bağlanma)); 1.0.0-pre.15'ten önceki sürümler Geyser hâlâ yüklenirken vazgeçiyordu |
+| Proxy'li ağda özel eşyalar temel eşya olarak görünüyor | "Item mappings for Geyser changed" satırından sonra proxy'yi yeniden başlatın; dil uyarısını ve listelenen seçici çakışmalarını denetleyin ([proxy'de eşya eşlemeleri](#proxyde-eşya-eşlemeleri)) |
+| "Twilight content scan failed ... java.time.Instant#seconds" | 1.0.0-pre.15'te düzeltildi (Gson'u Java 17+ sınıflarına yansıma ile erişemeyen sunucular) |
 | Bedrock oyuncuları her sunucu geçişinde yeniden bağlanıyor | Sunucular farklı paketler kullandığında beklenir; aynı paketler asla yeniden bağlanmaz |
 | Aktarılan oyuncular yanlış sunucuya düşüyor | `transfer-address`/`transfer-port` aynı proxy'ye ulaşmalı |
 | Sunucu değişikliğinden sonra "Sunucu bulunamadı" | İstemci aktarım adresine ulaşamadı: günlükteki "has not come back ... after the transfer to <adres>" satırını, `transfer-address`/`transfer-port` değerlerini ve UDP korumasıyla anti-bot eklentilerinin hızlı yeniden bağlanmaya izin verdiğini denetleyin |

@@ -56,7 +56,8 @@ public final class VelocityPlugin {
         this.dataDirectory = dataDirectory;
     }
 
-    @Subscribe
+    /** After every other plugin's start-up, so Geyser (which loads in the same event) is usually ready. */
+    @Subscribe(order = PostOrder.LAST)
     public void onInitialize(ProxyInitializeEvent event) {
         proxy.getChannelRegistrar().register(CHANNEL);
         ProxyCore created = new ProxyCore(new VelocityPlatform(this), this);

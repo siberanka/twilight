@@ -120,6 +120,79 @@ class BedrockPackCompilerTest {
         }
     }
 
+    /**
+     * Backends of a proxy network share one Geyser registry. The same Java selector must therefore become the
+     * same Bedrock item on every backend, whatever model each backend's pack draws for it.
+     */
+    @Test
+    void sameSelectorIsTheSameBedrockItemOnEveryBackend() throws Exception {
+        Path flat = root.resolve("backend-a");
+        write(flat, "assets/minecraft/models/item/paper.json", """
+                {"parent":"minecraft:item/generated","overrides":[
+                  {"predicate":{"custom_model_data":7},"model":"alpha:item/coin"}]}
+                """);
+        write(flat, "assets/alpha/models/item/coin.json", """
+                {"parent":"minecraft:item/generated","textures":{"layer0":"alpha:item/coin"}}
+                """);
+        png(flat.resolve("assets/alpha/textures/item/coin.png"), Color.YELLOW);
+        write(flat, "assets/demo/items/hammer.json", """
+                {"model":{"type":"minecraft:model","model":"alpha:item/hammer_flat"}}
+                """);
+        write(flat, "assets/alpha/models/item/hammer_flat.json", """
+                {"parent":"minecraft:item/generated","textures":{"layer0":"alpha:item/coin"}}
+                """);
+
+        Path volumetric = root.resolve("backend-b");
+        write(volumetric, "assets/minecraft/models/item/paper.json", """
+                {"parent":"minecraft:item/generated","overrides":[
+                  {"predicate":{"custom_model_data":7},"model":"beta:item/gem"}]}
+                """);
+        write(volumetric, "assets/beta/models/item/gem.json", cube("beta:item/gem"));
+        png(volumetric.resolve("assets/beta/textures/item/gem.png"), Color.CYAN);
+        write(volumetric, "assets/demo/items/hammer.json", """
+                {"model":{"type":"minecraft:model","model":"beta:item/hammer"}}
+                """);
+        write(volumetric, "assets/beta/models/item/hammer.json", cube("beta:item/gem"));
+
+        CustomItemDescriptor hammer = new CustomItemDescriptor("test", "minecraft:iron_pickaxe",
+                Optional.of("demo:hammer"), OptionalInt.empty(), "Hammer");
+        BuildResult a = new BedrockPackCompiler(root.resolve("data-a"), config())
+                .build(List.of(new ContentSource("a", ContentSource.Kind.RESOURCE_PACK, flat, 1)), List.of(hammer));
+        BuildResult b = new BedrockPackCompiler(root.resolve("data-b"), config())
+                .build(List.of(new ContentSource("b", ContentSource.Kind.RESOURCE_PACK, volumetric, 1)), List.of(hammer));
+        assertEquals(2, a.converted());
+        assertEquals(2, b.converted());
+        assertEquals(0, a.threeDimensional());
+        assertEquals(2, b.threeDimensional());
+
+        JsonObject itemsA = mappings(a).getAsJsonObject("items");
+        JsonObject itemsB = mappings(b).getAsJsonObject("items");
+        String coinA = itemsA.getAsJsonArray("minecraft:paper").get(0).getAsJsonObject().get("bedrock_identifier").getAsString();
+        String coinB = itemsB.getAsJsonArray("minecraft:paper").get(0).getAsJsonObject().get("bedrock_identifier").getAsString();
+        assertEquals(coinA, coinB, "custom model data 7 on paper must be one Bedrock item on every backend");
+        assertTrue(coinA.startsWith("twilight:minecraft_paper_7_"), coinA);
+        String hammerA = itemsA.getAsJsonArray("minecraft:iron_pickaxe").get(0).getAsJsonObject().get("bedrock_identifier").getAsString();
+        String hammerB = itemsB.getAsJsonArray("minecraft:iron_pickaxe").get(0).getAsJsonObject().get("bedrock_identifier").getAsString();
+        assertEquals(hammerA, hammerB, "an item model must be one Bedrock item on every backend");
+        assertFalse(coinA.equals(hammerA));
+
+        // The pack carries the same mappings for twilight-proxy; each pack draws the item its own way.
+        for (BuildResult result : List.of(a, b)) {
+            try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
+                assertEquals(mappings(result), read(zip, BedrockPackCompiler.PACK_MAPPINGS));
+            }
+        }
+        try (ZipFile zip = new ZipFile(b.outputDirectory().resolve("pack.zip").toFile())) {
+            String safe = coinB.substring(coinB.indexOf(':') + 1);
+            assertNotNull(zip.getEntry("attachables/" + safe + ".json"), "backend b draws the coin as a 3D model");
+        }
+    }
+
+    private static JsonObject mappings(BuildResult result) throws Exception {
+        return JsonParser.parseString(Files.readString(result.outputDirectory()
+                .resolve("custom_mappings/geyser_item_mappings.json"))).getAsJsonObject();
+    }
+
     @Test
     void resolvesSpritesThatTextureAtlasesRename() throws Exception {
         // ItemsAdder's generated packs reference atlas sprites such as "ia:2015" that a "single"

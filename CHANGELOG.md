@@ -4,6 +4,34 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.15 - 2026-10-09
+
+Fixes from a field report on a proxy network; each point was reproduced locally first
+([field report](docs/FIELD_REPORT_2026-10-09.md)).
+
+- Write the content report without Gson reflection. On servers whose Gson cannot open `java.time`
+  (Paper 1.21 and forks with Gson 2.11 on Java 17+) every scan failed with
+  "Failed making field 'java.time.Instant#seconds' accessible" and no pack was built. A report that
+  cannot be written no longer stops a build.
+- Attach twilight-proxy to Geyser reliably: initialise after every other plugin on Velocity, retry a
+  Geyser that is still loading (two minutes, then when players join), tell absent, not ready and
+  incompatible apart with the reason, remove half-registered listeners, start the pack host once
+  attached, and show the state in `/twilightproxy`. Before, a Geyser that loaded after twilight-proxy
+  was reported as "not installed".
+- Deliver custom items on proxy networks: Twilight puts its Geyser item mappings into the shared
+  pack, and twilight-proxy merges those of every `auto` and `packs/` source into
+  `custom_mappings/twilight-proxy_item_mappings.json` of the proxy's Geyser before Geyser reads it,
+  asks for a restart when they change later, lists selectors two servers map differently, names
+  hand-made copies and warns when the proxy's locale (Turkish, Azerbaijani) keeps Geyser from reading
+  them.
+- Derive the Bedrock item of a Java selector only from what Geyser matches (item, custom model data or
+  item model, predicates), so the same selector is the same Bedrock item on every backend; a second
+  model for an already used selector is reported and skipped. Item identifiers change once: restart
+  Geyser after updating.
+- Find login servers in the configuration of LeaderOS Auth, AuthMeVelocity, AuthMeBungee, LibreLogin,
+  JPremium and similar plugins on the proxy and treat them like `login-servers`.
+- 234 tests pass (212 Twilight, 22 proxy).
+
 ## 1.0.0-pre.14 - 2026-10-09
 
 - Add an update check to Twilight and twilight-proxy (`update-check`, on by default): about 20 seconds
@@ -368,6 +396,33 @@ All notable changes in Twilight are documented here.
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-pre.15 - 2026-10-09
+
+Proxy'li bir ağdan gelen saha raporunun düzeltmeleri; her madde önce yerelde yeniden üretildi
+([saha raporu](docs/FIELD_REPORT_2026-10-09.md)).
+
+- İçerik raporu Gson yansıması olmadan yazılır. Gson'u `java.time` paketini açamayan sunucularda (Java 17+
+  üzerinde Gson 2.11 kullanan Paper 1.21 ve türevleri) her tarama "Failed making field
+  'java.time.Instant#seconds' accessible" ile başarısız oluyor ve paket derlenmiyordu. Yazılamayan bir rapor
+  artık derlemeyi durdurmaz.
+- twilight-proxy Geyser'a güvenilir biçimde bağlanır: Velocity'de diğer bütün eklentilerden sonra başlar,
+  hâlâ yüklenen bir Geyser'ı yeniden dener (iki dakika, ardından oyuncular katıldığında), kurulu değil, hazır
+  değil ve uyumsuz durumlarını nedeniyle ayırır, yarım kalan dinleyicileri kaldırır, bağlanınca paket
+  sunucusunu başlatır ve durumu `/twilightproxy` içinde gösterir. Önceden twilight-proxy'den sonra yüklenen
+  bir Geyser "kurulu değil" olarak bildiriliyordu.
+- Proxy'li ağlarda özel eşyalar sağlanır: Twilight Geyser eşya eşlemelerini paylaşılan pakete koyar,
+  twilight-proxy her `auto` ve `packs/` kaynağınınkileri Geyser okumadan önce proxy'deki Geyser'ın
+  `custom_mappings/twilight-proxy_item_mappings.json` dosyasında birleştirir, sonradan değiştiklerinde
+  yeniden başlatma ister, iki sunucunun farklı eşlediği seçicileri listeler, elle yapılmış kopyaların adını
+  verir ve proxy'nin dili (Türkçe, Azerice) Geyser'ın bunları okumasını engellediğinde uyarır.
+- Bir Java seçicisinin Bedrock eşyası yalnızca Geyser'ın eşleştirdiğinden (eşya, custom model data veya item
+  model, koşullar) türetilir; böylece aynı seçici her arka uçta aynı Bedrock eşyasıdır. Zaten kullanılan bir
+  seçici için ikinci bir model bildirilir ve atlanır. Eşya kimlikleri bir kez değişir: güncellemeden sonra
+  Geyser'ı yeniden başlatın.
+- Giriş sunucuları proxy'deki LeaderOS Auth, AuthMeVelocity, AuthMeBungee, LibreLogin, JPremium ve benzeri
+  eklentilerin yapılandırmasında bulunur ve `login-servers` gibi ele alınır.
+- 234 test geçti (212 Twilight, 22 proxy).
 
 #### 1.0.0-pre.14 - 2026-10-09
 

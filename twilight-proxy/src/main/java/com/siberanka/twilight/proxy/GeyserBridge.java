@@ -23,37 +23,81 @@ import java.util.UUID;
  * The only class that touches Geyser's API, so twilight-proxy loads without Geyser. Packs are
  * registered per Bedrock session when it loads its resource packs (before it joins a server).
  */
-final class GeyserBridge {
+final class GeyserBridge implements Sessions {
     private final EventRegistrar registrar;
 
     private GeyserBridge(Object owner) {
         this.registrar = EventRegistrar.of(owner);
     }
 
-    /** Null when Geyser is not installed on this proxy. */
+    /**
+     * Registers the pack listeners with Geyser. Geyser's API exists once Geyser has loaded (on Velocity in its
+     * own start-up event, which may run after twilight-proxy's): until then the result asks to try again. A
+     * failure after the first listener was registered removes it again, so nothing is left half attached.
+     */
     @SuppressWarnings("deprecation") // register(ResourcePack) is the form every Geyser 2.x accepts
-    static GeyserBridge attach(Object owner, ProxyCore core) {
+    static Attach attach(Object owner, ProxyCore core) {
+        GeyserApi api;
         try {
-            Class.forName("org.geysermc.geyser.api.GeyserApi");
-            GeyserApi api = GeyserApi.api();
-            if (api == null) return null;
-            GeyserBridge bridge = new GeyserBridge(owner);
+            api = GeyserApi.api();
+        } catch (RuntimeException notLoaded) {
+            return Attach.notReady("Geyser's API is not available yet (" + Sessions.describe(notLoaded) + ")");
+        }
+        if (api == null) return Attach.notReady("Geyser's API is not available yet");
+        GeyserBridge bridge = new GeyserBridge(owner);
+        try {
             api.eventBus().subscribe(bridge.registrar, SessionLoadResourcePacksEvent.class, event -> {
                 GeyserConnection connection = event.connection();
                 core.packFor(connection.xuid()).ifPresent(pack -> event.register(bridge.loaded(pack)));
             });
             // After every listener has added its packs, the pack host (when it runs) turns them all into links.
-            api.eventBus().subscribe(bridge.registrar, SessionLoadResourcePacksEvent.class, event -> {
+            java.util.function.Consumer<SessionLoadResourcePacksEvent> hostAll = event -> {
                 var host = core.host();
                 if (host == null) return;
                 com.siberanka.twilight.host.SessionHosting.hostAll(host, event, (pack, reason) -> {
                     if (bridge.warned.add(pack + reason)) core.warn("pack-host: " + pack + " is sent by Geyser: " + reason);
                 });
-            }, PostOrder.LAST);
-            return bridge;
-        } catch (ClassNotFoundException | LinkageError | RuntimeException absent) {
-            return null;
+            };
+            try {
+                api.eventBus().subscribe(bridge.registrar, SessionLoadResourcePacksEvent.class, hostAll, PostOrder.LAST);
+            } catch (NoSuchMethodError | NoClassDefFoundError unordered) {
+                api.eventBus().subscribe(bridge.registrar, SessionLoadResourcePacksEvent.class, hostAll);
+                core.warn("This Geyser cannot order event listeners; pack-host links may miss packs that other plugins "
+                        + "register after twilight-proxy (" + Sessions.describe(unordered) + ").");
+            }
+            try {
+                // Geyser fires this right before it reads custom_mappings: the merged file is written first.
+                api.eventBus().subscribe(bridge.registrar,
+                        org.geysermc.geyser.api.event.lifecycle.GeyserDefineCustomItemsEvent.class, event -> {
+                            core.beforeGeyserItems();
+                            bridge.itemsRegistered = true;
+                        });
+            } catch (RuntimeException | LinkageError unknown) {
+                bridge.itemsRegistered = true; // cannot tell: assume Geyser has started
+            }
+            try {
+                bridge.folder = api.configDirectory();
+            } catch (RuntimeException | LinkageError unknown) {
+                bridge.folder = null;
+            }
+            return Attach.attached(bridge);
+        } catch (RuntimeException | LinkageError failure) {
+            bridge.close();
+            return Attach.failed("Geyser's event API could not be used (" + Sessions.describe(failure) + ")");
         }
+    }
+
+    private volatile java.nio.file.Path folder;
+    private volatile boolean itemsRegistered;
+
+    @Override
+    public boolean itemsRegistered() {
+        return itemsRegistered;
+    }
+
+    @Override
+    public Optional<java.nio.file.Path> geyserFolder() {
+        return Optional.ofNullable(folder);
     }
 
     /** Geyser's pack record of each pack file, reused while the file is unchanged (hashed once, not per session). */
@@ -77,7 +121,8 @@ final class GeyserBridge {
     }
 
     /** Reads and hashes a pack file the way Geyser will, ahead of the first session that needs it. */
-    void prepare(java.nio.file.Path file) {
+    @Override
+    public void prepare(java.nio.file.Path file) {
         ResourcePack pack = loaded(file);
         pack.codec().sha256();
         pack.codec().size();
@@ -89,13 +134,15 @@ final class GeyserBridge {
      * matched as well, but only for a session not linked to a Java player yet and connected from the same
      * address, so a Java player who takes a Bedrock player's name on an offline-mode network never matches.
      */
-    Optional<String> xuid(UUID player, String name, InetAddress address) {
+    @Override
+    public Optional<String> xuid(UUID player, String name, InetAddress address) {
         GeyserConnection connection = connection(player, name, address);
         return connection == null ? Optional.empty() : Optional.ofNullable(connection.xuid());
     }
 
     /** The address Geyser sees the session of {@code xuid} connect from. */
-    Optional<InetAddress> address(UUID player, String name, InetAddress address) {
+    @Override
+    public Optional<InetAddress> address(UUID player, String name, InetAddress address) {
         GeyserConnection connection = connection(player, name, address);
         return connection == null ? Optional.empty() : Optional.ofNullable(SessionHosting.address(connection));
     }
@@ -121,7 +168,8 @@ final class GeyserBridge {
      * {@code host:port} it was sent to, or empty when the transfer was not possible. The join address comes
      * from the client, so it is only used when it is a plain host name or IP address.
      */
-    Optional<String> transfer(UUID player, String name, InetAddress from, String address, int port) {
+    @Override
+    public Optional<String> transfer(UUID player, String name, InetAddress from, String address, int port) {
         GeyserConnection connection = connection(player, name, from);
         if (connection == null) return Optional.empty();
         String host = address.isEmpty() ? connection.joinAddress() : address;
@@ -131,7 +179,8 @@ final class GeyserBridge {
         return Optional.of(host + ":" + target);
     }
 
-    void close() {
+    @Override
+    public void close() {
         try { GeyserApi.api().eventBus().unregisterAll(registrar); } catch (RuntimeException | LinkageError ignored) { }
     }
 }

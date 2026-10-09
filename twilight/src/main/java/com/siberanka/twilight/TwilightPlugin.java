@@ -240,7 +240,13 @@ public final class TwilightPlugin extends JavaPlugin {
                 operationLog.info("input-fingerprint", inputFingerprint);
                 ContentReport report = new ContentInspector(config).inspect(sources);
                 operationLog.info("content-report", report);
-                ContentReportWriter.write(getDataFolder().toPath().resolve("reports/content-report.json"), report);
+                try {
+                    ContentReportWriter.write(getDataFolder().toPath().resolve("reports/content-report.json"), report);
+                } catch (java.io.IOException | RuntimeException reportFailure) {
+                    // The report is diagnostic only; it never stops a build.
+                    operationLog.warn("content-report-file", rootMessage(reportFailure));
+                    getLogger().warning("Could not write reports/content-report.json: " + rootMessage(reportFailure));
+                }
                 lastReport.set(report);
                 boolean unchanged = buildRequested && skipUnchanged &&
                         inputFingerprint.equals(lastSuccessfulInputFingerprint.get());
