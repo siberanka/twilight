@@ -90,7 +90,7 @@ public final class SessionHosting {
     }
 
     /** The address Geyser sees the session connect from (the real client behind a PROXY-protocol front). */
-    static InetAddress address(GeyserConnection connection) {
+    public static InetAddress address(GeyserConnection connection) {
         try {
             Object socket = connection.getClass().getMethod("getSocketAddress").invoke(connection);
             return socket instanceof InetSocketAddress address && address.getAddress() != null

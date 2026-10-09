@@ -22,6 +22,16 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Configuration, pack checks and the signed pack transfer between a backend and the proxy. */
 class ProxyTest {
     private static final PackChannel.Key KEY = PackChannel.Key.derive("a-shared-secret-of-enough-length");
+    private static final java.net.InetAddress LOCAL = java.net.InetAddress.getLoopbackAddress();
+    private static final java.net.InetAddress OTHER = address(new byte[]{(byte) 198, 51, 100, 7});
+
+    private static java.net.InetAddress address(byte[] bytes) {
+        try {
+            return java.net.InetAddress.getByAddress(bytes);
+        } catch (java.net.UnknownHostException impossible) {
+            throw new IllegalStateException(impossible);
+        }
+    }
     @TempDir Path root;
 
     @Test
@@ -62,34 +72,59 @@ class ProxyTest {
         long now = 1_000_000;
         Switches switches = new Switches();
         // A login plugin chose "auth" for the reconnected session: it keeps the last word.
-        switches.start(new Switches.Switch("x1", "Steve", "lobby", "survival", 1 << 20, now, now + 600_000, "play.example.com:19132"));
-        assertTrue(switches.xuidByName("steve", now).isEmpty(), "a name counts only once the client is back");
+        switches.start(new Switches.Switch("x1", "Steve", "lobby", "survival", 1 << 20, now, now + 600_000, "play.example.com:19132", LOCAL));
+        assertTrue(switches.xuidByName("steve", LOCAL, now).isEmpty(), "a name counts only once the client is back");
         assertTrue(switches.reconnected("x1", now + 4_000).isPresent());
         assertTrue(switches.reconnected("x1", now + 5_000).isEmpty(), "reported once");
-        assertEquals(java.util.Optional.of("x1"), switches.xuidByName("STEVE", now + 5_000));
+        assertEquals(java.util.Optional.of("x1"), switches.xuidByName("STEVE", LOCAL, now + 5_000));
+        // A Java player who takes the name from another address (offline-mode networks) never matches.
+        assertTrue(switches.xuidByName("Steve", OTHER, now + 5_000).isEmpty());
+        assertTrue(switches.xuidByName("Steve", null, now + 5_000).isEmpty());
         assertInstanceOf(Switches.Initial.Defer.class, switches.initial("x1", "auth", "lobby", now + 6_000));
-        assertInstanceOf(Switches.Connect.Hold.class, switches.connect("x1", "auth", true, now + 6_000));
+        assertInstanceOf(Switches.Connect.None.class, switches.connect("x1", "auth", true, now + 6_000));
+        var held = assertInstanceOf(Switches.Connected.Held.class, switches.connected("x1", "auth", now + 6_500));
+        assertFalse(held.first(), "the deferral was already reported when the first server was chosen");
         // After the login, the plugin sends the player to the lobby: it goes to survival instead, once.
         var redirect = assertInstanceOf(Switches.Connect.Redirect.class, switches.connect("x1", "lobby", false, now + 40_000));
         assertEquals("survival", redirect.entry().to);
-        assertInstanceOf(Switches.Connect.None.class, switches.connect("x1", "lobby", false, now + 41_000));
+        assertInstanceOf(Switches.Connect.None.class, switches.connect("x1", "survival", false, now + 40_100));
+        var arrived = assertInstanceOf(Switches.Connected.Arrived.class, switches.connected("x1", "survival", now + 41_000));
+        assertEquals(41, arrived.entry().seconds(now + 41_000));
+        assertInstanceOf(Switches.Connect.None.class, switches.connect("x1", "lobby", false, now + 50_000));
 
-        // Nobody else changed the first server: straight to the destination.
+        // Nobody else changed the first server: straight to the destination; arrival counts once connected.
         switches.start(new Switches.Switch("x2", "Alex", "lobby", "survival", 0, now, now + 600_000, "a:1"));
         switches.reconnected("x2", now + 1_000);
         var route = assertInstanceOf(Switches.Initial.Route.class, switches.initial("x2", "lobby", "lobby", now + 2_000));
         assertEquals("survival", route.entry().to);
-        assertInstanceOf(Switches.Connect.Arrived.class, switches.connect("x2", "survival", true, now + 2_000));
-        assertTrue(switches.get("x2", now + 2_000).isEmpty());
+        assertInstanceOf(Switches.Connect.None.class, switches.connect("x2", "survival", true, now + 2_000));
+        assertTrue(switches.get("x2", now + 2_000).isPresent(), "a request is not an arrival");
+        assertInstanceOf(Switches.Connected.Arrived.class, switches.connected("x2", "survival", now + 2_500));
+        assertTrue(switches.get("x2", now + 2_500).isEmpty());
+
+        // A login plugin that runs after everyone (BungeeCord priority 127) turned the routed request into its
+        // auth server: the player is held there and goes on at its next server change.
+        switches.start(new Switches.Switch("x5", "Ray", "lobby", "survival", 0, now, now + 600_000, "a:1"));
+        switches.reconnected("x5", now + 1_000);
+        switches.initial("x5", "lobby", "lobby", now + 2_000);
+        assertInstanceOf(Switches.Connect.None.class, switches.connect("x5", "survival", true, now + 2_000));
+        assertInstanceOf(Switches.Connected.Held.class, switches.connected("x5", "auth_lobby", now + 2_400));
+        // That plugin returns the player to survival itself: no redirect, arrival.
+        assertInstanceOf(Switches.Connect.None.class, switches.connect("x5", "survival", false, now + 20_000));
+        assertInstanceOf(Switches.Connected.Arrived.class, switches.connected("x5", "survival", now + 20_500));
 
         // A login plugin refused the destination as the first server: join the lobby, go on later.
         switches.start(new Switches.Switch("x3", "Kai", "lobby", "survival", 0, now, now + 600_000, "a:1"));
         switches.reconnected("x3", now + 1_000);
         switches.initial("x3", "lobby", "lobby", now + 2_000);
         assertTrue(switches.refused("x3", "survival", now + 2_000).isPresent());
-        assertInstanceOf(Switches.Connect.Hold.class, switches.connect("x3", "lobby", true, now + 2_100));
+        assertInstanceOf(Switches.Connect.None.class, switches.connect("x3", "lobby", true, now + 2_100));
+        assertInstanceOf(Switches.Connected.Held.class, switches.connected("x3", "lobby", now + 2_200));
         assertInstanceOf(Switches.Connect.Redirect.class, switches.connect("x3", "hub", false, now + 30_000));
-        assertTrue(switches.refused("x3", "survival", now + 30_000).isEmpty());
+        // The redirect was refused as well: the player goes where it asked and the switch ends.
+        assertInstanceOf(Switches.Connect.None.class, switches.connect("x3", "hub", false, now + 30_500));
+        assertTrue(switches.get("x3", now + 30_500).isEmpty());
+        assertInstanceOf(Switches.Connected.None.class, switches.connected("x3", "hub", now + 31_000));
 
         // A client that never comes back: one warning, then the switch expires.
         switches.start(new Switches.Switch("x4", "Lee", "lobby", "survival", 0, now, now + 300_000, "play.example.com:19132"));
@@ -101,6 +136,20 @@ class ProxyTest {
         assertTrue(switches.sweep(now + 62_000).isEmpty(), "warned once");
         assertEquals(1, switches.sweep(now + 300_000).size());
         assertEquals(0, switches.size());
+    }
+
+    @Test
+    void transfersOnlyNamePlainHosts() {
+        for (String host : List.of("play.example.com", "127.0.0.1", "2001:db8::1", "[2001:db8::1]", "mc-01.example.net")) {
+            assertTrue(TransferHosts.valid(host, 19132), host);
+        }
+        // A join address is chosen by the client: anything else is never echoed back in a transfer.
+        for (String host : List.of("", "evil.com/path", "a b", "x\nINFO fake", "host:19132", "\u00e7ok.com", "a".repeat(254))) {
+            assertFalse(TransferHosts.valid(host, 19132), host);
+        }
+        assertFalse(TransferHosts.valid(null, 19132));
+        assertFalse(TransferHosts.valid("play.example.com", 0));
+        assertFalse(TransferHosts.valid("play.example.com", 70_000));
     }
 
     @Test
@@ -288,6 +337,8 @@ class ProxyTest {
         @Override public void warn(String message, Throwable failure) { }
         @Override public void async(Runnable task) { queued.add(task); }
         @Override public void repeat(Runnable task, long periodSeconds) { }
+        @Override public void later(Runnable task, long millis) { }
         @Override public java.util.Optional<String> currentServer(java.util.UUID player) { return java.util.Optional.empty(); }
+        @Override public java.util.Optional<java.net.InetAddress> address(java.util.UUID player) { return java.util.Optional.empty(); }
     }
 }

@@ -4,6 +4,22 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.13 - 2026-10-09
+
+- Count a pack reconnect as arrived only once the player is connected to its server. Login plugins that
+  change the target after every other plugin (LeaderOS Auth on BungeeCord, priority 127) used to make
+  twilight-proxy believe the player had arrived, so the login plugin's later move to the lobby caused a
+  second reconnect.
+- Reconnect a fresh session once, a few seconds after it is in game, when its first server is not the one
+  its pack was chosen for (BungeeCord returning players to their last server, forced hosts).
+- Match a Bedrock session by name only before Geyser linked it to a Java player and only from the address
+  it plays from, so on offline-mode networks a Java player who takes a Bedrock player's name cannot steer or
+  trigger its reconnects; use a client's join address for a transfer only when it is a plain host name or
+  IP address.
+- Tested with LeaderOS Auth Plus 1.1.1 on BungeeCord (BungeeGuard, with and without Floodgate) and Velocity
+  (LimboAPI, Sonar): one reconnect per server change with and without a login session; see the
+  [login plugin test](docs/PROXY_AUTH_2026-10-09.md). 215 tests pass (204 Twilight, 11 proxy).
+
 ## 1.0.0-pre.12 - 2026-10-08
 
 - Make twilight-proxy's pack reconnects work with login plugins (AuthMe with AuthMeVelocity or
@@ -336,6 +352,22 @@ All notable changes in Twilight are documented here.
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-pre.13 - 2026-10-09
+
+- Bir paket yeniden bağlanması artık yalnızca oyuncu sunucusuna bağlandığında varmış sayılır. Hedefi diğer
+  bütün eklentilerden sonra değiştiren giriş eklentileri (BungeeCord'da LeaderOS Auth, öncelik 127)
+  twilight-proxy'nin oyuncunun vardığını sanmasına yol açıyordu; bu yüzden giriş eklentisinin sonradan lobiye
+  taşıması ikinci bir yeniden bağlanmaya neden oluyordu.
+- İlk sunucusu paketinin seçildiği sunucu olmayan yeni bir oturum (BungeeCord'un oyuncuları son sunucularına
+  geri göndermesi, zorunlu sunucular) oyuna girdikten birkaç saniye sonra bir kez yeniden bağlanır.
+- Bir Bedrock oturumu adla yalnızca Geyser onu bir Java oyuncusuna bağlamadan önce ve yalnızca oynadığı
+  adresten eşleştirilir; böylece çevrimdışı ağlarda bir Bedrock oyuncusunun adını alan bir Java oyuncusu onun
+  yeniden bağlanmalarını yönlendiremez veya tetikleyemez; bir istemcinin katılma adresi aktarımda yalnızca düz
+  bir alan adı veya IP adresiyse kullanılır.
+- BungeeCord'da (BungeeGuard, Floodgate ile ve onsuz) ve Velocity'de (LimboAPI, Sonar) LeaderOS Auth Plus 1.1.1
+  ile test edildi: giriş oturumuyla ve oturumsuz, sunucu değişikliği başına tek yeniden bağlanma;
+  [giriş eklentisi testine](docs/PROXY_AUTH_2026-10-09.md) bakın. 215 test geçti (204 Twilight, 11 proxy).
 
 #### 1.0.0-pre.12 - 2026-10-08
 

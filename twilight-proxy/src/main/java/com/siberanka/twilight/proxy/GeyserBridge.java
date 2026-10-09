@@ -12,6 +12,10 @@ import org.geysermc.geyser.api.event.bedrock.SessionLoadResourcePacksEvent;
 import org.geysermc.geyser.api.pack.PackCodec;
 import org.geysermc.geyser.api.pack.ResourcePack;
 
+import com.siberanka.twilight.host.PackHost;
+import com.siberanka.twilight.host.SessionHosting;
+
+import java.net.InetAddress;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -79,40 +83,51 @@ final class GeyserBridge {
         pack.codec().size();
     }
 
-    boolean bedrock(UUID player, String name) {
-        return connection(player, name) != null;
-    }
-
     /**
-     * The Bedrock session of a proxy player. While the first server connection is being chosen,
-     * some proxies (BungeeCord) know the player before Geyser recorded its Java UUID, so the
-     * session's Java name is matched as well.
+     * The Bedrock session of a proxy player. While the first server connection is being chosen, some proxies
+     * (BungeeCord) know the player before Geyser recorded its Java UUID; the session's Java name is then
+     * matched as well, but only for a session not linked to a Java player yet and connected from the same
+     * address, so a Java player who takes a Bedrock player's name on an offline-mode network never matches.
      */
-    Optional<String> xuid(UUID player, String name) {
-        GeyserConnection connection = connection(player, name);
+    Optional<String> xuid(UUID player, String name, InetAddress address) {
+        GeyserConnection connection = connection(player, name, address);
         return connection == null ? Optional.empty() : Optional.ofNullable(connection.xuid());
     }
 
-    private static GeyserConnection connection(UUID player, String name) {
+    /** The address Geyser sees the session of {@code xuid} connect from. */
+    Optional<InetAddress> address(UUID player, String name, InetAddress address) {
+        GeyserConnection connection = connection(player, name, address);
+        return connection == null ? Optional.empty() : Optional.ofNullable(SessionHosting.address(connection));
+    }
+
+    private static GeyserConnection connection(UUID player, String name, InetAddress address) {
         GeyserApi api = GeyserApi.api();
         GeyserConnection connection = api.connectionByUuid(player);
         if (connection != null) return connection;
         for (GeyserConnection online : api.onlineConnections()) {
-            if (player.equals(online.javaUuid()) || name != null && name.equalsIgnoreCase(online.javaUsername())) return online;
+            if (player.equals(online.javaUuid())) return online;
+        }
+        if (name == null || address == null) return null;
+        InetAddress from = PackHost.normalise(address);
+        for (GeyserConnection online : api.onlineConnections()) {
+            if (online.javaUuid() == null && name.equalsIgnoreCase(online.javaUsername())
+                    && from.equals(SessionHosting.address(online))) return online;
         }
         return null;
     }
 
     /**
      * Sends the Bedrock client back to Geyser (configured address or the one it joined with); returns the
-     * {@code host:port} it was sent to, or empty when the transfer was not possible.
+     * {@code host:port} it was sent to, or empty when the transfer was not possible. The join address comes
+     * from the client, so it is only used when it is a plain host name or IP address.
      */
-    Optional<String> transfer(UUID player, String name, String address, int port) {
-        GeyserConnection connection = connection(player, name);
+    Optional<String> transfer(UUID player, String name, InetAddress from, String address, int port) {
+        GeyserConnection connection = connection(player, name, from);
         if (connection == null) return Optional.empty();
         String host = address.isEmpty() ? connection.joinAddress() : address;
         int target = port > 0 ? port : connection.joinPort();
-        if (host == null || host.isEmpty() || target <= 0 || !connection.transfer(host, target)) return Optional.empty();
+        if (!TransferHosts.valid(host, target)) return Optional.empty();
+        if (!connection.transfer(host, target)) return Optional.empty();
         return Optional.of(host + ":" + target);
     }
 

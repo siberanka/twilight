@@ -616,7 +616,7 @@ public final class PackHost implements AutoCloseable {
         }
     }
 
-    static InetAddress normalise(InetAddress address) {
+    public static InetAddress normalise(InetAddress address) {
         if (address instanceof java.net.Inet6Address six) {
             byte[] bytes = six.getAddress();
             boolean mapped = true;

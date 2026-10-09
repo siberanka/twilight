@@ -37,6 +37,12 @@ final class VelocityPlatform implements Platform {
 
     @Override public void repeat(Runnable task, long periodSeconds) { plugin.repeat(task, periodSeconds); }
 
+    @Override public void later(Runnable task, long millis) { plugin.later(task, millis); }
+
+    @Override public java.util.Optional<java.net.InetAddress> address(java.util.UUID player) {
+        return plugin.proxy().getPlayer(player).map(found -> found.getRemoteAddress().getAddress());
+    }
+
     @Override public java.util.Optional<String> currentServer(java.util.UUID player) {
         return plugin.proxy().getPlayer(player).flatMap(found -> found.getCurrentServer())
                 .map(connection -> connection.getServerInfo().getName());

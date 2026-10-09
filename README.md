@@ -161,7 +161,8 @@ pack. Both proxies were tested live with two backends; see the
 Login plugins (AuthMe, LibreLogin, nLogin, JPremium) keep the last word on a reconnect: a player sent
 to the login server first goes on to the server it chose after logging in. Reconnect deadlines grow
 with the pack and every step is logged; see the
-[reconnect test](docs/PROXY_RECONNECT_2026-10-08.md).
+[reconnect test](docs/PROXY_RECONNECT_2026-10-08.md). Tested with LeaderOS Auth Plus, BungeeGuard,
+Floodgate and Velocity modern forwarding ([login plugin test](docs/PROXY_AUTH_2026-10-09.md)).
 
 ## Pack hosting
 
@@ -378,6 +379,8 @@ iki arka uçla canlı test edildi; [proxy testine](docs/PROXY_2026-10-05.md) ve
 Giriş eklentileri (AuthMe, LibreLogin, nLogin, JPremium) bir yeniden bağlanmada son sözü söyler: önce giriş
 sunucusuna gönderilen bir oyuncu, giriş yaptıktan sonra seçtiği sunucuya gider. Yeniden bağlanma süre sınırları
 paketle büyür ve her adım günlüğe yazılır; [yeniden bağlanma testine](docs/PROXY_RECONNECT_2026-10-08.md) bakın.
+LeaderOS Auth Plus, BungeeGuard, Floodgate ve Velocity modern yönlendirmesiyle test edildi
+([giriş eklentisi testi](docs/PROXY_AUTH_2026-10-09.md)).
 
 #### Paket sunucusu
 

@@ -30,6 +30,12 @@ public interface Platform {
 
     void repeat(Runnable task, long periodSeconds);
 
+    /** Runs a task once after {@code millis}. */
+    void later(Runnable task, long millis);
+
+    /** The address a player is connected to the proxy from, if known. */
+    java.util.Optional<java.net.InetAddress> address(java.util.UUID player);
+
     /** The backend server a player is connected to, if any. */
     java.util.Optional<String> currentServer(java.util.UUID player);
 }

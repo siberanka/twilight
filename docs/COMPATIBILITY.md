@@ -28,6 +28,9 @@ Java 21 is the minimum bytecode level. Local builds use Java 25.
 | Velocity 3.x, Waterfall, older BungeeCord | Uses only long-standing API (`order` subscriptions, `ServerConnectEvent` with a fallback for proxies without `Reason`); not tested live |
 | Download links | Implemented and unit-checked; not tested against a live host |
 | Login plugins (AuthMe with AuthMeVelocity/AuthMeBungee, LibreLogin, nLogin, JPremium) | Tested on Velocity with a stand-in that forces a login server and refuses other servers before the login: the reconnected player logs in once and reaches its server; the real plugins were not installed |
+| LeaderOS Auth Plus 1.1.1 | Tested live on BungeeCord (with BungeeGuard 1.4, with and without Floodgate 2.2.5) and Velocity (LimboAPI 1.1.27 dev build): one reconnect per server change with and without a session; on Velocity with Minecraft 26.2 the LimboAPI login command was not received from Bedrock (session login worked) |
+| BungeeGuard 1.4, Floodgate 2.2.5, Velocity modern forwarding | Tested live; nothing to configure for twilight-proxy |
+| Sonar 2.1.52 | Ran on Velocity without effect on reconnects; did not start on the test BungeeCord build |
 | Packs up to 152 MiB and 6,000 entries | Tested live through Geyser (172 s) and through the pack host (123 s) |
 
 Per-server packs need a reconnect when the pack changes, because Bedrock loads packs only when it
@@ -164,6 +167,9 @@ En düşük bytecode düzeyi Java 21'dir. Yerel derlemeler Java 25 kullanır.
 | Velocity 3.x, Waterfall, eski BungeeCord | Yalnızca uzun süredir var olan API'yi kullanır (`order` abonelikleri, `Reason` olmayan proxy'ler için yedekli `ServerConnectEvent`); canlı test edilmedi |
 | İndirme bağlantıları | Uygulandı ve birim testlerle denetlendi; canlı bir sunucuya karşı test edilmedi |
 | Giriş eklentileri (AuthMeVelocity/AuthMeBungee ile AuthMe, LibreLogin, nLogin, JPremium) | Velocity'de bir giriş sunucusunu zorlayan ve girişten önce diğer sunucuları reddeden bir yerine geçen eklentiyle test edildi: yeniden bağlanan oyuncu bir kez giriş yapar ve sunucusuna ulaşır; gerçek eklentiler kurulmadı |
+| LeaderOS Auth Plus 1.1.1 | BungeeCord'da (BungeeGuard 1.4 ile, Floodgate 2.2.5 ile ve onsuz) ve Velocity'de (LimboAPI 1.1.27 geliştirme derlemesi) canlı test edildi: oturumla ve oturumsuz sunucu değişikliği başına tek yeniden bağlanma; Velocity'de Minecraft 26.2 ile LimboAPI giriş komutu Bedrock'tan alınmadı (oturumlu giriş çalıştı) |
+| BungeeGuard 1.4, Floodgate 2.2.5, Velocity modern yönlendirmesi | Canlı test edildi; twilight-proxy için ayarlanacak bir şey yok |
+| Sonar 2.1.52 | Velocity'de yeniden bağlanmaları etkilemeden çalıştı; test BungeeCord derlemesinde başlamadı |
 | 152 MiB'e ve 6.000 girdiye kadar paketler | Geyser üzerinden (172 sn) ve paket sunucusu üzerinden (123 sn) canlı test edildi |
 
 Sunucu başına paketler, paket değiştiğinde yeniden bağlanma gerektirir, çünkü Bedrock paketleri yalnızca

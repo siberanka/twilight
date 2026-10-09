@@ -16,6 +16,7 @@ import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.PlayerDisconnectEvent;
 import net.md_5.bungee.api.event.PluginMessageEvent;
 import net.md_5.bungee.api.event.ServerConnectEvent;
+import net.md_5.bungee.api.event.ServerConnectedEvent;
 import net.md_5.bungee.api.plugin.Command;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
@@ -122,6 +123,12 @@ public final class BungeePlugin extends Plugin implements Listener {
     }
 
     @EventHandler
+    public void onConnected(ServerConnectedEvent event) {
+        if (core != null) core.connected(event.getPlayer().getUniqueId(), event.getPlayer().getName(),
+                event.getServer().getInfo().getName());
+    }
+
+    @EventHandler
     public void onDisconnect(PlayerDisconnectEvent event) {
         originals.remove(event.getPlayer().getUniqueId());
         if (core != null) core.disconnect(event.getPlayer().getUniqueId(), event.getPlayer().getName());
@@ -152,6 +159,16 @@ public final class BungeePlugin extends Plugin implements Listener {
 
         @Override public void repeat(Runnable task, long periodSeconds) {
             getProxy().getScheduler().schedule(BungeePlugin.this, task, periodSeconds, periodSeconds, TimeUnit.SECONDS);
+        }
+
+        @Override public void later(Runnable task, long millis) {
+            getProxy().getScheduler().schedule(BungeePlugin.this, task, millis, TimeUnit.MILLISECONDS);
+        }
+
+        @Override public Optional<java.net.InetAddress> address(UUID player) {
+            ProxiedPlayer online = getProxy().getPlayer(player);
+            if (online == null || !(online.getSocketAddress() instanceof java.net.InetSocketAddress socket)) return Optional.empty();
+            return Optional.ofNullable(socket.getAddress());
         }
 
         @Override public Optional<String> currentServer(UUID player) {

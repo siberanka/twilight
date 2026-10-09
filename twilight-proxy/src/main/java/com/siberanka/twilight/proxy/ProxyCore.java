@@ -39,6 +39,8 @@ public final class ProxyCore implements TwilightProxyApi {
     private static final long GEYSER_BYTES_PER_SECOND = 1_250_000;
     /** The shortest time between a transfer and the client's next login seen in tests (cached pack). */
     private static final long RECONNECT_LOGIN_MILLIS = 4_000;
+    /** A client that just joined its first server ignores a transfer until it is in game. */
+    private static final long FIRST_SERVER_RECONNECT_DELAY_MILLIS = 5_000;
 
     private final Platform platform;
     private final Object owner;
@@ -48,6 +50,8 @@ public final class ProxyCore implements TwilightProxyApi {
     private final Map<String, String> loaded = new ConcurrentHashMap<>();
     /** Reconnects in progress, from the transfer until the player reaches its server. */
     private final Switches switches = new Switches();
+    /** Proxy players already connected to a backend server; a session's first server is checked once. */
+    private final java.util.Set<UUID> seated = ConcurrentHashMap.newKeySet();
     /** Servers whose large pack already got the pack-host hint. */
     private final java.util.Set<String> hinted = ConcurrentHashMap.newKeySet();
     private final Map<String, Deque<Long>> recentTransfers = new ConcurrentHashMap<>();
@@ -205,7 +209,7 @@ public final class ProxyCore implements TwilightProxyApi {
         GeyserBridge bridge = geyser;
         if (bridge == null) return Optional.empty();
         long now = now();
-        Optional<String> xuid = bridge.xuid(player, name).or(() -> switches.xuidByName(name, now));
+        Optional<String> xuid = xuidOf(bridge, player, name, now);
         if (xuid.isEmpty()) return Optional.empty();
         Switches.Initial decision = switches.initial(xuid.get(), chosen, original, now);
         if (decision instanceof Switches.Initial.Route route) {
@@ -231,18 +235,10 @@ public final class ProxyCore implements TwilightProxyApi {
         ProxyConfig current = config;
         if (bridge == null || current == null) return ALLOW;
         long now = now();
-        Optional<String> xuid = bridge.xuid(player, name).or(() -> switches.xuidByName(name, now));
+        Optional<String> xuid = xuidOf(bridge, player, name, now);
         if (xuid.isEmpty()) return ALLOW;
         Switches.Connect step = switches.connect(xuid.get(), server, first || current.loginServer(server), now);
-        if (step instanceof Switches.Connect.Arrived arrived) {
-            Switches.Switch entry = arrived.entry();
-            platform.info(name + " reached " + entry.to + " " + entry.seconds(now) + " s after the transfer"
-                    + (entry.reconnected > 0 ? " (reconnect " + Math.max(0, (entry.reconnected - entry.started + 500) / 1000)
-                    + " s, pack and login " + Math.max(0, (now - entry.reconnected + 500) / 1000) + " s)" : "") + ".");
-        } else if (step instanceof Switches.Connect.Hold hold && hold.first()) {
-            platform.info(name + " joins " + server + " first (a login or limbo server chosen by another plugin); it goes on to "
-                    + hold.entry().to + " when it next changes servers.");
-        } else if (step instanceof Switches.Connect.Redirect redirect) {
+        if (step instanceof Switches.Connect.Redirect redirect) {
             platform.info("Sending " + name + " on to " + redirect.entry().to + " instead of " + server
                     + " (the server it reconnected for, " + redirect.entry().seconds(now) + " s ago).");
             return new Route.Redirect(redirect.entry().to);
@@ -250,33 +246,86 @@ public final class ProxyCore implements TwilightProxyApi {
         // The pack of a session was chosen for the server the proxy expected; when a plugin sends the player
         // somewhere else first (a login or limbo server), reconnecting there would only loop.
         if (first || !current.transferOnSwitch() || current.loginServer(server)) return ALLOW;
-        String have = loaded.get(xuid.get());
+        if (!needsReconnect(xuid.get(), server)) return ALLOW;
+        return reconnect(bridge, current, player, name, xuid.get(), server, now) ? new Route.Transferred() : ALLOW;
+    }
+
+    /** True when the session's loaded pack is not the one {@code server} needs (and that one is known). */
+    private boolean needsReconnect(String xuid, String server) {
+        String have = loaded.get(xuid);
         String want = wanted(server);
-        if (have == null || want == null || want.equals(have)) return ALLOW;
+        return have != null && want != null && !want.equals(have);
+    }
+
+    /** Transfers the client to load the pack of {@code server}; false when it was not (limits, no address). */
+    private boolean reconnect(GeyserBridge bridge, ProxyConfig current, UUID player, String name, String xuidValue,
+                              String server, long now) {
+        Optional<String> xuid = Optional.of(xuidValue);
         Deque<Long> recent = recentTransfers.computeIfAbsent(xuid.get(), ignored -> new ArrayDeque<>());
         synchronized (recent) {
             while (!recent.isEmpty() && now - recent.peekFirst() > TRANSFER_WINDOW_MILLIS) recent.pollFirst();
             if (recent.size() >= TRANSFERS_PER_WINDOW) {
                 platform.warn(name + " was reconnected " + TRANSFERS_PER_WINDOW + " times in "
                         + TRANSFER_WINDOW_MILLIS / 60_000 + " minutes; it joins " + server + " with the pack it has.", null);
-                return ALLOW;
+                return false;
             }
             recent.addLast(now);
         }
         long bytes = store.pack(server).map(PackFiles.Pack::size).orElse(0L);
         long deadline = current.transferDeadlineMillis(bytes);
         String from = platform.currentServer(player).orElse("");
-        Optional<String> address = bridge.transfer(player, name, current.transferAddress(), current.transferPort());
-        if (address.isEmpty()) return ALLOW;
+        java.net.InetAddress client = platform.address(player).orElse(null);
+        java.net.InetAddress playing = bridge.address(player, name, client).orElse(null);
+        Optional<String> address = bridge.transfer(player, name, client, current.transferAddress(), current.transferPort());
+        if (address.isEmpty()) return false;
         switches.start(new Switches.Switch(xuid.get(), name, from, server.toLowerCase(Locale.ROOT), bytes, now,
-                now + deadline, address.get()));
+                now + deadline, address.get(), playing == null ? null : com.siberanka.twilight.host.PackHost.normalise(playing)));
         platform.info("Reconnecting " + name + " to load the Bedrock pack of " + server + " (" + mib(bytes)
                 + "); waiting up to " + Math.max(1, deadline / 60_000) + " min for it to come back.");
         if (bytes >= LARGE_PACK_BYTES && host == null && hinted.add(server.toLowerCase(Locale.ROOT))) {
             platform.info("The pack of " + server + " is " + mib(bytes) + ": Geyser sends at most about 1.2 MiB/s, so it takes "
                     + Math.max(1, bytes / GEYSER_BYTES_PER_SECOND) + " s or longer. Enable pack-host to let Bedrock download it over HTTP.");
         }
-        return new Route.Transferred();
+        return true;
+    }
+
+    /**
+     * {@code player} is now connected to {@code server}. A reconnect ends here when that is its server; on any
+     * other server (a login server, or where a plugin sent the player) it waits for the next server change.
+     */
+    public void connected(UUID player, String name, String server) {
+        GeyserBridge bridge = geyser;
+        ProxyConfig current = config;
+        if (bridge == null || current == null || server == null) return;
+        long now = now();
+        Optional<String> xuid = xuidOf(bridge, player, name, now);
+        if (xuid.isEmpty()) return;
+        boolean first = seated.size() < MAX_TRACKED && seated.add(player);
+        Switches.Connected state = switches.connected(xuid.get(), server, now);
+        // A fresh session whose first server is not the one its pack was chosen for (a proxy that reconnects
+        // players to their last server, forced hosts): reconnect once for this server's pack. Cancelling the
+        // first connection instead is not possible on every proxy, so this happens once the player is on it.
+        if (first && state instanceof Switches.Connected.None && current.transferOnSwitch() && !current.loginServer(server)
+                && needsReconnect(xuid.get(), server)) {
+            platform.info(name + " joined " + server + ", not the server its pack was chosen for; reconnecting it once for "
+                    + server + "'s pack (set initial-server to the server players join first to avoid this).");
+            // Bedrock ignores a transfer while it is still loading the world: wait until it is in game.
+            platform.later(() -> {
+                if (!platform.currentServer(player).map(server::equalsIgnoreCase).orElse(false)) return;
+                if (!needsReconnect(xuid.get(), server)) return;
+                reconnect(bridge, current, player, name, xuid.get(), server, now());
+            }, FIRST_SERVER_RECONNECT_DELAY_MILLIS);
+            return;
+        }
+        if (state instanceof Switches.Connected.Arrived arrived) {
+            Switches.Switch entry = arrived.entry();
+            platform.info(name + " reached " + entry.to + " " + entry.seconds(now) + " s after the transfer"
+                    + (entry.reconnected > 0 ? " (reconnect " + Math.max(0, (entry.reconnected - entry.started + 500) / 1000)
+                    + " s, pack and login " + Math.max(0, (now - entry.reconnected + 500) / 1000) + " s)" : "") + ".");
+        } else if (state instanceof Switches.Connected.Held held && held.first()) {
+            platform.info(name + " joined " + server + " first (a login or limbo server, or another plugin's choice); it goes on to "
+                    + held.entry().to + " when it next changes servers.");
+        }
     }
 
     /** The connection of a {@link Route.Redirect} failed; the player goes where it asked to instead. */
@@ -293,7 +342,7 @@ public final class ProxyCore implements TwilightProxyApi {
         GeyserBridge bridge = geyser;
         if (bridge == null) return false;
         long now = now();
-        Optional<String> xuid = bridge.xuid(player, name).or(() -> switches.xuidByName(name, now));
+        Optional<String> xuid = xuidOf(bridge, player, name, now);
         Optional<Switches.Switch> entry = xuid.flatMap(found -> switches.refused(found, server, now));
         entry.ifPresent(found -> platform.info("Another plugin refused " + server + " as " + name
                 + "'s first server (login required?); it joins the proxy's first server and goes on to " + server
@@ -302,12 +351,22 @@ public final class ProxyCore implements TwilightProxyApi {
     }
 
     public void disconnect(UUID player, String name) {
+        seated.remove(player);
         GeyserBridge bridge = geyser;
         if (bridge == null) return;
         // A transferred player keeps its switch; its new session records its pack again.
-        bridge.xuid(player, name).ifPresent(xuid -> {
+        bridge.xuid(player, name, platform.address(player).orElse(null)).ifPresent(xuid -> {
             if (switches.get(xuid, now()).isEmpty()) loaded.remove(xuid);
         });
+    }
+
+    /**
+     * The Bedrock session (XUID) of a proxy player: through Geyser, or for a transferred player whose Java UUID
+     * Geyser does not know yet, by its name from the address its client plays from.
+     */
+    private Optional<String> xuidOf(GeyserBridge bridge, UUID player, String name, long now) {
+        java.net.InetAddress address = platform.address(player).map(com.siberanka.twilight.host.PackHost::normalise).orElse(null);
+        return bridge.xuid(player, name, address).or(() -> switches.xuidByName(name, address, now));
     }
 
     private static String mib(long bytes) {

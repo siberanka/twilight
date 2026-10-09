@@ -1,6 +1,32 @@
-# Twilight 1.0.0-pre.12 - prerelease
+# Twilight 1.0.0-pre.13 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+This prerelease makes twilight-proxy's pack reconnects work with LeaderOS Auth Plus and similar login
+plugins, BungeeGuard, Floodgate and Velocity modern forwarding, and closes a name-spoofing gap on
+offline-mode networks.
+
+- A reconnect counts as arrived only once the player is on its server. Login plugins that move players to
+  their auth server after every other plugin no longer cause a second reconnect after the login.
+- A fresh session that lands on another first server than expected (last-server reconnects, forced hosts)
+  is reconnected once for that server's pack instead of keeping the wrong one.
+- A Java player who takes a Bedrock player's name can no longer influence that player's reconnects, and a
+  client's join address is used for a transfer only when it is a plain host name or IP address.
+- Tested with LeaderOS Auth Plus 1.1.1 on BungeeCord (BungeeGuard, Floodgate) and Velocity (LimboAPI,
+  Sonar): one reconnect per server change, with or without a login session. See the
+  [login plugin test](docs/PROXY_AUTH_2026-10-09.md) and the
+  [wiki](WIKI.md#reconnects-login-plugins-and-protections).
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 215 tests
+across 38 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.12 - prerelease
 
 This prerelease makes twilight-proxy's pack reconnects reliable on networks with login plugins,
 protections and large packs.
@@ -29,8 +55,6 @@ across 38 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.11 - prerelease
 
@@ -338,7 +362,33 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.12 - ön sürüm
+### Twilight 1.0.0-pre.13 - ön sürüm
+
+Bu ön sürüm twilight-proxy'nin paket yeniden bağlanmalarını LeaderOS Auth Plus ve benzeri giriş eklentileri,
+BungeeGuard, Floodgate ve Velocity modern yönlendirmesiyle çalışır hâle getirir ve çevrimdışı ağlardaki bir ad
+taklidi açığını kapatır.
+
+- Bir yeniden bağlanma ancak oyuncu sunucusundayken varmış sayılır. Oyuncuları diğer bütün eklentilerden sonra
+  auth sunucusuna taşıyan giriş eklentileri artık girişten sonra ikinci bir yeniden bağlanmaya yol açmaz.
+- Beklenenden başka bir ilk sunucuya düşen yeni bir oturum (son sunucuya geri bağlama, zorunlu sunucular)
+  yanlış paketi tutmak yerine o sunucunun paketi için bir kez yeniden bağlanır.
+- Bir Bedrock oyuncusunun adını alan bir Java oyuncusu artık o oyuncunun yeniden bağlanmalarını etkileyemez ve
+  bir istemcinin katılma adresi aktarımda yalnızca düz bir alan adı veya IP adresiyse kullanılır.
+- BungeeCord'da (BungeeGuard, Floodgate) ve Velocity'de (LimboAPI, Sonar) LeaderOS Auth Plus 1.1.1 ile test
+  edildi: giriş oturumuyla veya oturumsuz, sunucu değişikliği başına tek yeniden bağlanma.
+  [Giriş eklentisi testine](docs/PROXY_AUTH_2026-10-09.md) ve
+  [wiki'ye](WIKI.md#yeniden-bağlanmalar-giriş-eklentileri-ve-korumalar) bakın.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 38 paketteki 215
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.12 - ön sürüm
 
 Bu ön sürüm, twilight-proxy'nin paket yeniden bağlanmalarını giriş eklentileri, korumalar ve büyük paketler
 bulunan ağlarda güvenilir hâle getirir.
@@ -367,8 +417,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.11 - ön sürüm
 

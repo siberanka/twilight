@@ -277,11 +277,20 @@ keep the last word, because a reconnect is a new connection that may have to log
 | Sends the reconnected player to its login server first | Lets it; after the login, when the login plugin sends the player on (for example to the lobby), the player is sent to the server it reconnected for instead, through a new connection request that every plugin checks again |
 | Refuses every other server before the login | Notices the refusal of the first server, lets the player join the proxy's first server and continues the same way after the login |
 | Keeps a session (no new login after a reconnect) | Nothing to do: the player goes straight to its server |
+| Changes the target after every other plugin (BungeeCord priority 127) | A reconnect only counts as arrived once the player is connected to its server, so a later change is noticed and handled like a login server |
+| Sends the player back to the server it asked for after the login | Nothing to do: the player arrives there |
 
-A session's first server never causes a reconnect: the pack was chosen for the server the proxy
-expected, and reconnecting again because a plugin sent the player somewhere else would only loop.
-Each player is reconnected at most four times in five minutes; after that it joins with the pack it
-has (logged as a warning). A reconnect that is not finished by its deadline is abandoned (logged).
+Tested with LeaderOS Auth Plus 1.1.1 on BungeeCord (with BungeeGuard, with and without Floodgate) and
+on Velocity (LimboAPI login), and with a stand-in for the other behaviours above; see the
+[login plugin test](docs/PROXY_AUTH_2026-10-09.md).
+
+A reconnect never causes a second one by itself: when a plugin sends the reconnected player somewhere
+else first, the player waits there with the pack it loaded. A fresh session whose first server is not
+the one its pack was chosen for (BungeeCord sends players back to their last server, forced hosts,
+hub balancers) is reconnected once, a few seconds after it is in game, for that server's pack; set
+`initial-server` to the server players join first to avoid it. Each player is reconnected at most
+four times in five minutes; after that it joins with the pack it has (logged as a warning). A
+reconnect that is not finished by its deadline is abandoned (logged).
 
 Forwarding stays as it is: Velocity modern forwarding, BungeeGuard and legacy forwarding see a
 reconnected player like any other login. Protections in front of the network have to allow one
@@ -585,6 +594,13 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
   player's IP address by default, the same empty 404 for every refusal, strict request parsing with
   time limits, rate limits and temporary blocks for guessing, and immutable copies checked against
   Geyser's SHA-256. A refused download falls back to Geyser's in-game transfer.
+- **Proxy reconnects.** A player is matched to its Bedrock session by its Java UUID; a name is used
+  only for a session Geyser has not linked yet and only from the address that session plays from,
+  so on offline-mode networks a Java player who takes a Bedrock player's name can neither steer nor
+  trigger its reconnects. Transfers only name the configured address or a join address that is a
+  plain host name or IP address, and only ever reach the player's own client. Sending a player on
+  after a login is a new connection request that every plugin checks again; refusals by login,
+  permission or protection plugins are respected. Reconnects are limited per player.
 
 ## Troubleshooting
 
@@ -599,6 +615,7 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 | "Server not found" after a server change | The client could not reach the transfer address: check the log line "has not come back ... after the transfer to <address>", `transfer-address`/`transfer-port`, and that UDP protection and anti-bot plugins allow a quick reconnect |
 | After the pack download the player is on the login server again | Expected without login sessions; after logging in it is sent on to the server it chose. Enable sessions in the login plugin to skip the second login |
 | Large packs take minutes | Geyser sends about 1.2 MiB/s; enable `pack-host` |
+| "joined X, not the server its pack was chosen for" | The proxy picked another first server than twilight-proxy expected (last server, forced host): set `initial-server`, or BungeeCord `force_default_server: true` |
 | Custom biomes look like vanilla ones | More than 25 distinct looks, or `world.bedrock-biome-matching: false` |
 | Packs still download slowly with `pack-host` on | No "first download" line: the port is closed or unreachable; `http://<address>:<port>/` must answer an empty 404 from outside |
 | "... is sent by Geyser: no host for links" | The join address cannot be used in a link: set `pack-host.public-address` |
@@ -897,11 +914,20 @@ sözü söyler, çünkü bir yeniden bağlanma yeniden giriş yapması gerekebil
 | Yeniden bağlanan oyuncuyu önce giriş sunucusuna gönderir | Buna izin verir; girişten sonra giriş eklentisi oyuncuyu ileri gönderdiğinde (ör. lobiye), oyuncu bunun yerine yeniden bağlandığı sunucuya gönderilir; bu, her eklentinin yeniden denetlediği yeni bir bağlantı isteğiyle yapılır |
 | Girişten önce diğer her sunucuyu reddeder | İlk sunucunun reddedildiğini fark eder, oyuncuyu proxy'nin ilk sunucusuna alır ve girişten sonra aynı şekilde devam eder |
 | Oturum tutar (yeniden bağlanmadan sonra yeni giriş yok) | Yapacak bir şey yok: oyuncu doğrudan sunucusuna gider |
+| Hedefi diğer bütün eklentilerden sonra değiştirir (BungeeCord önceliği 127) | Bir yeniden bağlanma ancak oyuncu sunucusuna bağlandığında varmış sayılır; böylece sonraki bir değişiklik fark edilir ve giriş sunucusu gibi ele alınır |
+| Girişten sonra oyuncuyu istediği sunucuya geri gönderir | Yapacak bir şey yok: oyuncu oraya varır |
 
-Bir oturumun ilk sunucusu asla yeniden bağlanmaya yol açmaz: paket proxy'nin beklediği sunucu için seçildi ve
-bir eklenti oyuncuyu başka bir yere gönderdiği için yeniden bağlanmak yalnızca döngü yaratırdı. Her oyuncu beş
-dakikada en fazla dört kez yeniden bağlanır; sonrasında elindeki paketle katılır (uyarı olarak günlüğe yazılır).
-Süresi içinde bitmeyen bir yeniden bağlanma bırakılır (günlüğe yazılır).
+BungeeCord üzerinde (BungeeGuard ile, Floodgate ile ve onsuz) ve Velocity üzerinde (LimboAPI girişi) LeaderOS
+Auth Plus 1.1.1 ile, yukarıdaki diğer davranışlar için de yerine geçen bir eklentiyle test edildi;
+[giriş eklentisi testine](docs/PROXY_AUTH_2026-10-09.md) bakın.
+
+Bir yeniden bağlanma kendi başına ikincisine yol açmaz: bir eklenti yeniden bağlanan oyuncuyu önce başka yere
+gönderdiğinde oyuncu yüklediği paketle orada bekler. İlk sunucusu paketinin seçildiği sunucu olmayan yeni bir
+oturum (BungeeCord oyuncuları son sunucularına geri gönderir, zorunlu sunucular, hub dengeleyicileri), oyuna
+girdikten birkaç saniye sonra o sunucunun paketi için bir kez yeniden bağlanır; bunu önlemek için `initial-server`
+değerini oyuncuların ilk katıldığı sunucu yapın. Her oyuncu beş dakikada en fazla dört kez yeniden bağlanır;
+sonrasında elindeki paketle katılır (uyarı olarak günlüğe yazılır). Süresi içinde bitmeyen bir yeniden bağlanma
+bırakılır (günlüğe yazılır).
 
 Yönlendirme olduğu gibi kalır: Velocity modern yönlendirmesi, BungeeGuard ve eski (legacy) yönlendirme yeniden
 bağlanan oyuncuyu diğer her giriş gibi görür. Ağın önündeki korumalar sunucu değişikliği başına bir hızlı
@@ -1205,6 +1231,13 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
   oyuncunun IP adresine bağlılık, her ret durumunda aynı boş 404, zaman sınırlı katı istek ayrıştırma, hız sınırları ve
   tahmin denemelerine geçici engeller ve Geyser'ın SHA-256 değeriyle denetlenen değişmez kopyalar. Reddedilen
   bir indirme Geyser'ın oyun içi aktarımına döner.
+- **Proxy yeniden bağlanmaları.** Bir oyuncu Bedrock oturumuyla Java UUID'si üzerinden eşleştirilir; ad yalnızca
+  Geyser'ın henüz bağlamadığı bir oturum için ve yalnızca o oturumun oynadığı adresten kullanılır; böylece
+  çevrimdışı (offline-mode) ağlarda bir Bedrock oyuncusunun adını alan bir Java oyuncusu onun yeniden
+  bağlanmalarını ne yönlendirebilir ne de tetikleyebilir. Aktarımlar yalnızca yapılandırılmış adresi veya düz bir
+  alan adı ya da IP adresi olan bir katılma adresini içerir ve yalnızca oyuncunun kendi istemcisine ulaşır. Bir
+  oyuncunun girişten sonra ileri gönderilmesi, her eklentinin yeniden denetlediği yeni bir bağlantı isteğidir;
+  giriş, izin ve koruma eklentilerinin retleri dikkate alınır. Yeniden bağlanmalar oyuncu başına sınırlıdır.
 
 #### Sorun giderme
 
@@ -1219,6 +1252,7 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
 | Sunucu değişikliğinden sonra "Sunucu bulunamadı" | İstemci aktarım adresine ulaşamadı: günlükteki "has not come back ... after the transfer to <adres>" satırını, `transfer-address`/`transfer-port` değerlerini ve UDP korumasıyla anti-bot eklentilerinin hızlı yeniden bağlanmaya izin verdiğini denetleyin |
 | Paket indirildikten sonra oyuncu yine giriş sunucusunda | Giriş oturumları olmadan beklenir; giriş yaptıktan sonra seçtiği sunucuya gönderilir. İkinci girişi atlamak için giriş eklentisinde oturumları açın |
 | Büyük paketler dakikalar sürüyor | Geyser yaklaşık 1,2 MiB/s gönderir; `pack-host`u açın |
+| "joined X, not the server its pack was chosen for" | Proxy, twilight-proxy'nin beklediğinden başka bir ilk sunucu seçti (son sunucu, zorunlu sunucu): `initial-server` ayarlayın veya BungeeCord'da `force_default_server: true` |
 | Özel biyomlar vanilla gibi görünüyor | 25'ten fazla farklı görünüm veya `world.bedrock-biome-matching: false` |
 | `pack-host` açıkken paketler hâlâ yavaş iniyor | "first download" satırı yok: port kapalı veya erişilemiyor; `http://<adres>:<port>/` dışarıdan boş bir 404 döndürmeli |
 | "... is sent by Geyser: no host for links" | Katılma adresi bir bağlantıda kullanılamıyor: `pack-host.public-address` ayarlayın |

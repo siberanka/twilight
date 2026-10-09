@@ -13,6 +13,7 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
+import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -149,6 +150,12 @@ public final class VelocityPlugin {
     }
 
     @Subscribe
+    public void onConnected(ServerConnectedEvent event) {
+        if (core != null) core.connected(event.getPlayer().getUniqueId(), event.getPlayer().getUsername(),
+                event.getServer().getServerInfo().getName());
+    }
+
+    @Subscribe
     public void onDisconnect(DisconnectEvent event) {
         originals.remove(event.getPlayer().getUniqueId());
         if (core != null) core.disconnect(event.getPlayer().getUniqueId(), event.getPlayer().getUsername());
@@ -156,7 +163,11 @@ public final class VelocityPlugin {
 
     /** Runs a connection request after the current event has finished. */
     private void later(Runnable task) {
-        proxy.getScheduler().buildTask(this, task).delay(100, TimeUnit.MILLISECONDS).schedule();
+        later(task, 100);
+    }
+
+    void later(Runnable task, long millis) {
+        proxy.getScheduler().buildTask(this, task).delay(millis, TimeUnit.MILLISECONDS).schedule();
     }
 
     ProxyServer proxy() { return proxy; }
