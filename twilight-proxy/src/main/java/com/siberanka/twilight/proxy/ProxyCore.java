@@ -58,6 +58,11 @@ public final class ProxyCore implements TwilightProxyApi {
     private volatile ProxyConfig config;
     private volatile GeyserBridge geyser;
     private volatile com.siberanka.twilight.host.PackHost host;
+    private volatile com.siberanka.twilight.update.UpdateCheck updates;
+
+    /** Players told about new versions; holders of {@link #ADMIN_PERMISSION} are told as well. */
+    public static final String UPDATE_PERMISSION = "twilight.proxy.update";
+    public static final String ADMIN_PERMISSION = "twilight.proxy.admin";
 
     public ProxyCore(Platform platform, Object owner) {
         this.platform = platform;
@@ -135,6 +140,8 @@ public final class ProxyCore implements TwilightProxyApi {
 
     public void disable() {
         TwilightProxyApi.Holder.set(null);
+        var check = updates;
+        if (check != null) check.close();
         if (host != null) host.close();
         if (geyser != null) geyser.close();
         transfers.close();
@@ -155,11 +162,43 @@ public final class ProxyCore implements TwilightProxyApi {
                     ? "No secret is shared with the backends (secret, Velocity forwarding or BungeeGuard): 'auto' packs are off."
                     : "Packs from Twilight on the backends are on (" + keys.size() + " shared secret(s)).");
             if (next.urlRefreshMinutes() > 0) store.refreshLinks();
+            configureUpdates(next);
             return true;
         } catch (IOException | IllegalArgumentException failure) {
             platform.warn("Could not load twilight-proxy's configuration: " + failure.getMessage(), null);
             return false;
         }
+    }
+
+    /**
+     * {@code update-check}: looks for newer releases on GitHub (GitLab when GitHub cannot be reached), writes
+     * them to the console and tells players with the update permission.
+     */
+    private void configureUpdates(ProxyConfig next) {
+        var check = updates;
+        if (!next.updateCheck() && check != null) {
+            check.close();
+            updates = null;
+        } else if (next.updateCheck() && check == null) {
+            updates = com.siberanka.twilight.update.UpdateCheck.start("twilight-proxy", platform.version(), platform::info,
+                    release -> {
+                        ProxyConfig current = config;
+                        if (current != null && current.updateNotify()) platform.tellAdmins(updateText(release), release.page());
+                    }).orElse(null);
+        }
+    }
+
+    /** A newer release to tell a joining player with the update permission about, when notices are on. */
+    public Optional<com.siberanka.twilight.update.UpdateCheck.Release> updateNotice() {
+        var check = updates;
+        ProxyConfig current = config;
+        if (check == null || current == null || !current.updateNotify()) return Optional.empty();
+        return check.latest();
+    }
+
+    /** The text before the release link in a player notice. */
+    public String updateText(com.siberanka.twilight.update.UpdateCheck.Release release) {
+        return "[twilight-proxy] Version " + release.version() + " is available (this proxy runs " + platform.version() + "): ";
     }
 
     // --- Plugin messages from backends -------------------------------------------------------
@@ -413,6 +452,8 @@ public final class ProxyCore implements TwilightProxyApi {
         StringBuilder out = new StringBuilder("twilight-proxy: ")
                 .append(transfers.enabled() ? "auto packs on" : "auto packs off (no shared secret)")
                 .append(", Geyser ").append(geyser == null ? "absent" : "present");
+        var check = updates;
+        out.append("\n  ").append(check == null ? "update check disabled" : check.status());
         for (String server : platform.serverNames()) {
             out.append("\n  ").append(server).append(": ").append(store.pack(server)
                     .map(pack -> pack.size() / 1024 + " KiB " + pack.hex().substring(0, 12)).orElse("no pack"));

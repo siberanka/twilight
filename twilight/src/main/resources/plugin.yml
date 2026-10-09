@@ -17,3 +17,6 @@ permissions:
   twilight.admin:
     description: Allows all Twilight administration commands.
     default: op
+  twilight.update:
+    description: Tells the player when a newer Twilight version is available.
+    default: op

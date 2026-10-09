@@ -108,6 +108,8 @@ When `vanilla-override` is disabled, normal Unicode cells from the Java default 
 
 Explicit `minecraft:` texture references absent from the custom pack are resolved from the running server version's Mojang client JAR. Twilight accepts only official HTTPS hosts and verifies version metadata, advertised size, and SHA-1 before caching the archive. `generation.download-vanilla-assets` can disable network retrieval; an existing verified cache remains usable.
 
+Apart from pack links configured in twilight-proxy, the only other outgoing connections are the update check's read-only HTTPS requests for the public release list on `api.github.com` (and `gitlab.com` when GitHub fails), at start and every six hours. They send nothing about the server, download nothing, and are turned off with `update-check.enabled: false`; without internet access the plugins work unchanged.
+
 Layered Java `sounds.json` files are merged with `replace` semantics and converted to `sounds/sound_definitions.json`. File and event references, OGG assets, weight, volume, pitch, streaming, and compatible attenuation distances are preserved. Unqualified Java file references correctly resolve through `minecraft`; emitted paths retain a namespace segment to avoid Bedrock file collisions. Explicit vanilla sound dependencies are fetched through the version's SHA-1-verified Mojang asset index. With `vanilla-override` disabled, definitions identical to vanilla are skipped and changed vanilla events reject strict publication.
 
 Desktop chest screens use a generated Java container layout by default (`ui.java-container-layout`). Titles are unwrapped and unclipped, title and inventory labels use Java's positions and drawing order, and chest, player-inventory and hotbar rows keep Java's spacing for 1 to 6 chest rows. Partial UI definitions are merged into Bedrock's vanilla UI; other containers and touch layouts keep the vanilla Bedrock layout. See the [container layout review](CONTAINER_LAYOUT_2026-10-03.md).
@@ -272,6 +274,11 @@ olmadan bağlama bağlı karakterler katı yayında reddedilir.
 JAR'ından çözülür. Twilight yalnızca resmî HTTPS sunucularını kabul eder ve arşivi önbelleğe almadan önce
 sürüm meta verisini, bildirilen boyutu ve SHA-1'i doğrular. `generation.download-vanilla-assets` ağdan
 indirmeyi kapatabilir; mevcut doğrulanmış önbellek kullanılabilir kalır.
+
+twilight-proxy'de yapılandırılan paket bağlantıları dışında diğer tek giden bağlantılar, güncelleme denetiminin açılışta ve her altı saatte bir `api.github.com` (GitHub
+başarısız olursa `gitlab.com`) üzerindeki herkese açık sürüm listesi için yaptığı salt okunur HTTPS istekleridir.
+Sunucu hakkında hiçbir şey göndermez, hiçbir şey indirmez ve `update-check.enabled: false` ile kapatılır; internet
+erişimi olmadan eklentiler değişmeden çalışır.
 
 Katmanlı Java `sounds.json` dosyaları `replace` anlamıyla birleştirilir ve `sounds/sound_definitions.json`
 dosyasına dönüştürülür. Dosya ve olay referansları, OGG varlıkları, ağırlık, ses düzeyi, perde, akış ve

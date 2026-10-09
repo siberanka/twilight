@@ -53,6 +53,12 @@ class ProxyTest {
         assertTrue(hosted.host().enabled());
         assertEquals(1, hosted.host().trustedProxies().size());
         assertEquals(com.siberanka.twilight.host.HostSettings.DISABLED, ProxyConfig.parse("packs:\n  default: auto\n").host());
+        assertTrue(config.updateCheck());
+        assertTrue(config.updateNotify());
+        var quiet = ProxyConfig.parse("packs:\n  default: auto\nupdate-check:\n  enabled: false\n  notify-players: false\n");
+        assertFalse(quiet.updateCheck());
+        assertFalse(quiet.updateNotify());
+        assertTrue(ProxyConfig.parse("packs:\n  default: auto\n").updateCheck());
     }
 
     @Test
@@ -65,6 +71,7 @@ class ProxyTest {
         assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n\tserver: x\n"));
         assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n  default: auto\nmax-pack-size-mb: 99999\n"));
         assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n  default: auto\npack-host:\n  port: 70000\n"));
+        assertThrows(IllegalArgumentException.class, () -> ProxyConfig.parse("packs:\n  default: auto\nupdate-check:\n  enabled: maybe\n"));
     }
 
     @Test
@@ -340,5 +347,7 @@ class ProxyTest {
         @Override public void later(Runnable task, long millis) { }
         @Override public java.util.Optional<String> currentServer(java.util.UUID player) { return java.util.Optional.empty(); }
         @Override public java.util.Optional<java.net.InetAddress> address(java.util.UUID player) { return java.util.Optional.empty(); }
+        @Override public String version() { return "test"; }
+        @Override public void tellAdmins(String text, String url) { }
     }
 }

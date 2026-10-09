@@ -1,6 +1,30 @@
-# Twilight 1.0.0-pre.13 - prerelease
+# Twilight 1.0.0-pre.14 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+This prerelease adds an update check to Twilight and twilight-proxy.
+
+- About 20 seconds after start and every six hours, each plugin reads the public release list on GitHub,
+  or on the GitLab mirror when GitHub cannot be reached. A newer version is written to the console and
+  shown, with a clickable link, to players with `twilight.update` (operators by default) or
+  `twilight.proxy.update` when they join. `/twilight status` and `/twilightproxy` show the last result.
+- Nothing about the server is sent and nothing is downloaded or installed; only version tags are read
+  from the answer. Servers without internet access log one line and keep running unchanged.
+- On by default; `update-check.enabled: false` turns it off and `update-check.notify-players: false`
+  keeps it to the console, in `plugins/Twilight/config.yml` and `plugins/twilight-proxy/config.yml`.
+  Existing configuration files need no change. See the [wiki](WIKI.md#updates).
+- From this version on, every change is published as a new version; a published JAR is never replaced.
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 221 tests
+across 39 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.13 - prerelease
 
 This prerelease makes twilight-proxy's pack reconnects work with LeaderOS Auth Plus and similar login
 plugins, BungeeGuard, Floodgate and Velocity modern forwarding, and closes a name-spoofing gap on
@@ -23,8 +47,6 @@ across 38 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.12 - prerelease
 
@@ -362,7 +384,31 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.13 - ön sürüm
+### Twilight 1.0.0-pre.14 - ön sürüm
+
+Bu ön sürüm Twilight ve twilight-proxy'ye bir güncelleme denetimi ekler.
+
+- Her eklenti açılıştan yaklaşık 20 saniye sonra ve her altı saatte bir herkese açık sürüm listesini GitHub'da,
+  GitHub'a ulaşılamadığında GitLab yansısında okur. Daha yeni bir sürüm konsola yazılır ve `twilight.update`
+  (varsayılan olarak operatörler) veya `twilight.proxy.update` iznine sahip oyunculara katıldıklarında
+  tıklanabilir bir bağlantıyla gösterilir. `/twilight status` ve `/twilightproxy` son sonucu gösterir.
+- Sunucu hakkında hiçbir şey gönderilmez, hiçbir şey indirilmez veya kurulmaz; yanıttan yalnızca sürüm
+  etiketleri okunur. İnternet erişimi olmayan sunucular tek bir satır yazar ve değişmeden çalışmaya devam eder.
+- Varsayılan olarak açıktır; `plugins/Twilight/config.yml` ve `plugins/twilight-proxy/config.yml` içinde
+  `update-check.enabled: false` kapatır, `update-check.notify-players: false` yalnızca konsola yazar. Mevcut
+  yapılandırma dosyalarında değişiklik gerekmez. [Wiki'ye](WIKI.md#güncellemeler) bakın.
+- Bu sürümden itibaren her değişiklik yeni bir sürüm olarak yayımlanır; yayımlanmış bir JAR asla değiştirilmez.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 39 paketteki 221
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.13 - ön sürüm
 
 Bu ön sürüm twilight-proxy'nin paket yeniden bağlanmalarını LeaderOS Auth Plus ve benzeri giriş eklentileri,
 BungeeGuard, Floodgate ve Velocity modern yönlendirmesiyle çalışır hâle getirir ve çevrimdışı ağlardaki bir ad
@@ -385,8 +431,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.12 - ön sürüm
 

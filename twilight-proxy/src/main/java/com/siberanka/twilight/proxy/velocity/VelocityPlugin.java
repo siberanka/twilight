@@ -12,6 +12,7 @@ import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
+import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
@@ -153,6 +154,28 @@ public final class VelocityPlugin {
     public void onConnected(ServerConnectedEvent event) {
         if (core != null) core.connected(event.getPlayer().getUniqueId(), event.getPlayer().getUsername(),
                 event.getServer().getServerInfo().getName());
+    }
+
+    @Subscribe
+    public void onPostLogin(PostLoginEvent event) {
+        if (core == null) return;
+        Player player = event.getPlayer();
+        core.updateNotice().filter(release -> admin(player)).ifPresent(release -> later(() -> {
+            if (player.isActive()) tell(player, core.updateText(release), release.page());
+        }, 3000));
+    }
+
+    static boolean admin(Player player) {
+        return player.hasPermission(ProxyCore.UPDATE_PERMISSION) || player.hasPermission(ProxyCore.ADMIN_PERMISSION);
+    }
+
+    static void tell(Player player, String text, String url) {
+        player.sendMessage(Component.text(text).append(Component.text(url)
+                .clickEvent(net.kyori.adventure.text.event.ClickEvent.openUrl(url))));
+    }
+
+    String version() {
+        return proxy.getPluginManager().fromInstance(this).flatMap(container -> container.getDescription().getVersion()).orElse("unknown");
     }
 
     @Subscribe

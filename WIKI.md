@@ -24,12 +24,13 @@ are in the [reports](docs/); limits per feature are in [docs/COMPATIBILITY.md](d
 5. [Configuration reference: Twilight](#configuration-reference-twilight)
 6. [twilight-proxy](#twilight-proxy-1)
 7. [Pack hosting](#pack-hosting)
-8. [Files and folders](#files-and-folders)
-9. [Developer API](#developer-api)
-10. [Plugin-message protocol](#plugin-message-protocol)
-11. [Security model](#security-model)
-12. [Troubleshooting](#troubleshooting)
-13. [Building from source](#building-from-source)
+8. [Updates](#updates)
+9. [Files and folders](#files-and-folders)
+10. [Developer API](#developer-api)
+11. [Plugin-message protocol](#plugin-message-protocol)
+12. [Security model](#security-model)
+13. [Troubleshooting](#troubleshooting)
+14. [Building from source](#building-from-source)
 
 ## Requirements
 
@@ -93,7 +94,7 @@ season changes. Unchanged inputs are detected by a fingerprint and skipped.
 
 | Command | Description |
 |---|---|
-| `/twilight status` | Operation state, last scan, input fingerprint, Geyser folder and snapshots |
+| `/twilight status` | Operation state, last scan, input fingerprint, Geyser folder, snapshots and update check |
 | `/twilight scan` | Discover and inspect sources without building |
 | `/twilight convert` (alias `build`) | Scan, build, export and deploy |
 | `/twilight deploy` | Deploy the last build to Geyser again |
@@ -101,16 +102,19 @@ season changes. Unchanged inputs are detected by a fingerprint and skipped.
 | `/twilight reload` | Reload and validate `config.yml` |
 
 Alias: `/tw`. Permission: `twilight.admin` (default: operators). Long operations run off the server
-thread; only one runs at a time.
+thread; only one runs at a time. Players with `twilight.update` (default: operators) are told about
+new versions ([updates](#updates)).
 
 ### twilight-proxy
 
 | Command | Description |
 |---|---|
-| `/twilightproxy` | Shared-secret state, Geyser presence and the pack of every server |
+| `/twilightproxy` | Shared-secret state, Geyser presence, update check and the pack of every server |
 | `/twilightproxy reload` | Reload `config.yml` and every pack |
 
-Alias: `/twproxy`. Permission: `twilight.proxy.admin`.
+Alias: `/twproxy`. Permission: `twilight.proxy.admin`. Players with `twilight.proxy.update` or
+`twilight.proxy.admin` are told about new versions; proxies have no operators, so grant it with a
+permission plugin (LuckPerms) or, on BungeeCord, in the `permissions` section of `config.yml`.
 
 ## Configuration reference: Twilight
 
@@ -186,8 +190,15 @@ The [pack host](#pack-hosting): Bedrock players download Geyser's packs from thi
 runs only when Geyser is installed on this server. The keys are listed in the [pack host](#pack-hosting)
 section; the proxy uses the same section.
 
+### `update-check`
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Look for a newer release shortly after start and every six hours ([updates](#updates)) |
+| `notify-players` | `true` | Tell players with `twilight.update` when they join and when a version is found |
+
 Changes to `ui` and `world` keys need a new build (`/twilight convert`); `proxy` and `pack-host` keys
-and `geyser.send-pack-to-bedrock` take effect on restart.
+and `geyser.send-pack-to-bedrock` take effect on restart; `update-check` on `/twilight reload`.
 
 ## twilight-proxy
 
@@ -223,6 +234,9 @@ url-refresh-minutes: 60  # 0 = only at start and reload
 pack-host:               # see "Pack hosting"
   enabled: false
   port: 8163
+update-check:            # see "Updates"
+  enabled: true
+  notify-players: true
 ```
 
 | Key | Meaning |
@@ -239,6 +253,8 @@ pack-host:               # see "Pack hosting"
 | `download-timeout-seconds` | A link download stops after this long without data, or when it is slower than 64 KiB/s overall (5-600) |
 | `url-refresh-minutes` | How often links are checked for a new version with their ETag (0-10080) |
 | `pack-host.*` | Serve the packs from the proxy over HTTP; see [pack host](#pack-hosting) |
+| `update-check.enabled` | Look for a newer release shortly after start and every six hours ([updates](#updates)) |
+| `update-check.notify-players` | Tell players with `twilight.proxy.update` or `twilight.proxy.admin` when they join and when a version is found |
 
 Every pack is checked before use: it must be a ZIP below the size limit with `manifest.json` at its
 root and no entry that could escape a folder. A pack that fails the check, a failed download or an
@@ -453,6 +469,37 @@ five seconds is closed. Each address may make 60 requests a minute; 20 refused r
 minutes block it for 15 minutes. A download must keep at least 64 KiB/s after a 30-second grace
 period. Connections are limited in total and per address, and nothing is logged per request.
 
+## Updates
+
+Every change to Twilight or twilight-proxy is published as a new version; a published version's JAR
+is never replaced. Releases are published on [GitHub](https://github.com/siberanka/twilight/releases)
+and mirrored on [GitLab](https://gitlab.com/siberanka/twilight/-/releases) with the same files and
+`SHA256SUMS`. Twilight and twilight-proxy share the version number and are released together; update
+both on a network.
+
+With `update-check.enabled` (default), each plugin reads the public release list about 20 seconds
+after start and then every six hours, from GitHub, or from GitLab when GitHub cannot be reached or
+refuses (rate limit). A newer version is written to the console once:
+
+```text
+[Twilight] Twilight 1.0.0-pre.15 is available (this server runs 1.0.0-pre.14): https://github.com/siberanka/twilight/releases/tag/v1.0.0-pre.15
+```
+
+Players with the update permission get the same line with a clickable link when they join and when
+the version is found. A server running a prerelease also hears about newer prereleases; one running a
+release only about releases. `/twilight status` and `/twilightproxy` show the result of the last check.
+
+- Only `GET` requests over HTTPS to `api.github.com` and `gitlab.com`, with a user agent naming the
+  plugin and its version. Nothing about the server, its players or its configuration is sent.
+- Nothing is downloaded or installed: replacing the JAR stays the administrator's decision.
+- Only version tags are read from the answer, and links are built from them, so the answer cannot
+  inject text or links into the console or chat. Answers are limited to 2 MiB, connections to 5 s
+  and requests to 10 s, on one background thread.
+- A server without internet access, or one that blocks outgoing connections, logs one line ("Could
+  not check for Twilight updates (...)") and tries again quietly. Turn the check off with
+  `update-check.enabled: false`. Java honours the usual `https.proxyHost`/`https.proxyPort` system
+  properties for networks that reach the internet through a proxy.
+
 ## Files and folders
 
 ### Backend: `plugins/Twilight/`
@@ -601,6 +648,9 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
   plain host name or IP address, and only ever reach the player's own client. Sending a player on
   after a login is a new connection request that every plugin checks again; refusals by login,
   permission or protection plugins are respected. Reconnects are limited per player.
+- **Update check.** Read-only HTTPS requests to GitHub and GitLab that send nothing about the server;
+  only version tags are used from the answer, nothing is downloaded or installed, and the check can be
+  turned off ([updates](#updates)).
 
 ## Troubleshooting
 
@@ -620,6 +670,8 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 | Packs still download slowly with `pack-host` on | No "first download" line: the port is closed or unreachable; `http://<address>:<port>/` must answer an empty 404 from outside |
 | "... is sent by Geyser: no host for links" | The join address cannot be used in a link: set `pack-host.public-address` |
 | "... is sent by Geyser: it is not a pack file" or "Mixing pack codecs" | Another plugin registers packs that are not files; all packs then use Geyser's transfer |
+| "Could not check for ... updates (... no connection)" | Outgoing HTTPS is blocked: allow `api.github.com` and `gitlab.com`, set Java's `https.proxyHost`, or set `update-check.enabled: false` |
+| "... its certificate is not trusted by this Java (TLS inspection?)" | An antivirus or firewall inspects HTTPS with its own certificate, which Java does not trust: exclude Java, or start it with `-Djavax.net.ssl.trustStoreType=Windows-ROOT` on Windows |
 
 ## Building from source
 
@@ -659,12 +711,13 @@ Bu sayfa yöneticiler ve eklenti geliştiricileri için başvuru kaynağıdır. 
 5. [Yapılandırma başvurusu: Twilight](#yapılandırma-başvurusu-twilight)
 6. [twilight-proxy](#twilight-proxy-4)
 7. [Paket sunucusu](#paket-sunucusu)
-8. [Dosyalar ve klasörler](#dosyalar-ve-klasörler)
-9. [Geliştirici API'si](#geliştirici-apisi)
-10. [Eklenti mesajı protokolü](#eklenti-mesajı-protokolü)
-11. [Güvenlik modeli](#güvenlik-modeli)
-12. [Sorun giderme](#sorun-giderme)
-13. [Kaynaktan derleme](#kaynaktan-derleme)
+8. [Güncellemeler](#güncellemeler)
+9. [Dosyalar ve klasörler](#dosyalar-ve-klasörler)
+10. [Geliştirici API'si](#geliştirici-apisi)
+11. [Eklenti mesajı protokolü](#eklenti-mesajı-protokolü)
+12. [Güvenlik modeli](#güvenlik-modeli)
+13. [Sorun giderme](#sorun-giderme)
+14. [Kaynaktan derleme](#kaynaktan-derleme)
 
 #### Gereksinimler
 
@@ -729,7 +782,7 @@ atlanır.
 
 | Komut | Açıklama |
 |---|---|
-| `/twilight status` | İşlem durumu, son tarama, girdi parmak izi, Geyser klasörü ve anlık görüntüler |
+| `/twilight status` | İşlem durumu, son tarama, girdi parmak izi, Geyser klasörü, anlık görüntüler ve güncelleme denetimi |
 | `/twilight scan` | Derlemeden kaynakları keşfeder ve inceler |
 | `/twilight convert` (takma ad `build`) | Tarar, derler, dışa aktarır ve dağıtır |
 | `/twilight deploy` | Son derlemeyi Geyser'a yeniden dağıtır |
@@ -737,16 +790,19 @@ atlanır.
 | `/twilight reload` | `config.yml` dosyasını yeniden yükler ve doğrular |
 
 Takma ad: `/tw`. İzin: `twilight.admin` (varsayılan: operatörler). Uzun işlemler sunucu iş parçacığı
-dışında çalışır; aynı anda yalnızca biri çalışır.
+dışında çalışır; aynı anda yalnızca biri çalışır. `twilight.update` iznine sahip oyunculara (varsayılan:
+operatörler) yeni sürümler bildirilir ([güncellemeler](#güncellemeler)).
 
 ##### twilight-proxy
 
 | Komut | Açıklama |
 |---|---|
-| `/twilightproxy` | Paylaşılan gizli anahtar durumu, Geyser varlığı ve her sunucunun paketi |
+| `/twilightproxy` | Paylaşılan gizli anahtar durumu, Geyser varlığı, güncelleme denetimi ve her sunucunun paketi |
 | `/twilightproxy reload` | `config.yml` dosyasını ve her paketi yeniden yükler |
 
-Takma ad: `/twproxy`. İzin: `twilight.proxy.admin`.
+Takma ad: `/twproxy`. İzin: `twilight.proxy.admin`. `twilight.proxy.update` veya `twilight.proxy.admin`
+iznine sahip oyunculara yeni sürümler bildirilir; proxy'lerde operatör yoktur, bu yüzden izni bir izin
+eklentisiyle (LuckPerms) veya BungeeCord'da `config.yml` içindeki `permissions` bölümünde verin.
 
 #### Yapılandırma başvurusu: Twilight
 
@@ -822,8 +878,16 @@ değiştirmek için düzenlenmesi gerekir.
 Yalnızca Geyser bu sunucuda kuruluysa çalışır. Anahtarlar [paket sunucusu](#paket-sunucusu) bölümünde
 listelenir; proxy aynı bölümü kullanır.
 
+##### `update-check`
+
+| Anahtar | Varsayılan | Anlamı |
+|---|---|---|
+| `enabled` | `true` | Açılıştan kısa süre sonra ve her altı saatte bir daha yeni bir sürüm arar ([güncellemeler](#güncellemeler)) |
+| `notify-players` | `true` | `twilight.update` iznine sahip oyunculara katıldıklarında ve bir sürüm bulunduğunda bildirir |
+
 `ui` ve `world` anahtarlarındaki değişiklikler yeni bir derleme gerektirir (`/twilight convert`); `proxy` ve
-`pack-host` anahtarları ile `geyser.send-pack-to-bedrock` yeniden başlatmada etkinleşir.
+`pack-host` anahtarları ile `geyser.send-pack-to-bedrock` yeniden başlatmada, `update-check` ise
+`/twilight reload` ile etkinleşir.
 
 #### twilight-proxy
 
@@ -859,6 +923,9 @@ url-refresh-minutes: 60  # 0 = yalnızca açılışta ve yeniden yüklemede
 pack-host:               # "Paket sunucusu" bölümüne bakın
   enabled: false
   port: 8163
+update-check:            # "Güncellemeler" bölümüne bakın
+  enabled: true
+  notify-players: true
 ```
 
 | Anahtar | Anlamı |
@@ -875,6 +942,8 @@ pack-host:               # "Paket sunucusu" bölümüne bakın
 | `download-timeout-seconds` | Bir bağlantı indirmesi bu süre boyunca veri gelmezse veya toplamda 64 KiB/s'den yavaşsa durur (5-600) |
 | `url-refresh-minutes` | Bağlantıların ETag ile yeni sürüm için ne sıklıkla denetlendiği (0-10080) |
 | `pack-host.*` | Paketleri proxy'den HTTP ile sunar; [paket sunucusu](#paket-sunucusu) bölümüne bakın |
+| `update-check.enabled` | Açılıştan kısa süre sonra ve her altı saatte bir daha yeni bir sürüm arar ([güncellemeler](#güncellemeler)) |
+| `update-check.notify-players` | `twilight.proxy.update` veya `twilight.proxy.admin` iznine sahip oyunculara katıldıklarında ve bir sürüm bulunduğunda bildirir |
 
 Her paket kullanılmadan önce denetlenir: boyut sınırının altında, kökünde `manifest.json` bulunan ve hiçbir
 girdisi klasör dışına çıkamayan bir ZIP olmalıdır. Denetimi geçemeyen bir paket, başarısız bir indirme veya
@@ -1090,6 +1159,38 @@ içinde göndermeyen bir bağlantı kapatılır. Her adres dakikada 60 istek yap
 istek adresi 15 dakika engeller. Bir indirme 30 saniyelik bir süreden sonra en az 64 KiB/s hızı korumalıdır.
 Bağlantılar toplamda ve adres başına sınırlıdır ve istek başına hiçbir şey günlüğe yazılmaz.
 
+#### Güncellemeler
+
+Twilight veya twilight-proxy'deki her değişiklik yeni bir sürüm olarak yayımlanır; yayımlanmış bir sürümün
+JAR dosyası asla değiştirilmez. Sürümler [GitHub](https://github.com/siberanka/twilight/releases) üzerinde
+yayımlanır ve aynı dosyalar ile `SHA256SUMS` ile [GitLab](https://gitlab.com/siberanka/twilight/-/releases)
+üzerine yansıtılır. Twilight ve twilight-proxy aynı sürüm numarasını paylaşır ve birlikte yayımlanır; bir ağda
+ikisini birlikte güncelleyin.
+
+`update-check.enabled` açıkken (varsayılan) her eklenti, açılıştan yaklaşık 20 saniye sonra ve ardından her
+altı saatte bir herkese açık sürüm listesini GitHub'dan, GitHub'a ulaşılamadığında veya reddettiğinde (istek
+sınırı) GitLab'dan okur. Daha yeni bir sürüm konsola bir kez yazılır:
+
+```text
+[Twilight] Twilight 1.0.0-pre.15 is available (this server runs 1.0.0-pre.14): https://github.com/siberanka/twilight/releases/tag/v1.0.0-pre.15
+```
+
+Güncelleme iznine sahip oyuncular aynı satırı tıklanabilir bir bağlantıyla, katıldıklarında ve sürüm
+bulunduğunda alır. Ön sürüm çalıştıran bir sunucu daha yeni ön sürümleri de öğrenir; kararlı sürüm çalıştıran
+bir sunucu yalnızca kararlı sürümleri. `/twilight status` ve `/twilightproxy` son denetimin sonucunu gösterir.
+
+- Yalnızca `api.github.com` ve `gitlab.com` adreslerine HTTPS üzerinden, eklentiyi ve sürümünü belirten bir
+  kullanıcı aracısıyla `GET` istekleri yapılır. Sunucu, oyuncuları veya yapılandırması hakkında hiçbir şey
+  gönderilmez.
+- Hiçbir şey indirilmez veya kurulmaz: JAR dosyasını değiştirmek yöneticinin kararı olarak kalır.
+- Yanıttan yalnızca sürüm etiketleri okunur ve bağlantılar bunlardan oluşturulur; böylece yanıt konsola veya
+  sohbete metin ya da bağlantı enjekte edemez. Yanıtlar 2 MiB, bağlantılar 5 sn ve istekler 10 sn ile
+  sınırlıdır ve tek bir arka plan iş parçacığında çalışır.
+- İnternet erişimi olmayan veya giden bağlantıları engelleyen bir sunucu tek bir satır yazar ("Could not check
+  for Twilight updates (...)") ve sessizce yeniden dener. Denetimi `update-check.enabled: false` ile kapatın.
+  Java, internete bir proxy üzerinden çıkan ağlar için bilinen `https.proxyHost`/`https.proxyPort` sistem
+  özelliklerini dikkate alır.
+
 #### Dosyalar ve klasörler
 
 ##### Arka uç: `plugins/Twilight/`
@@ -1238,6 +1339,9 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
   alan adı ya da IP adresi olan bir katılma adresini içerir ve yalnızca oyuncunun kendi istemcisine ulaşır. Bir
   oyuncunun girişten sonra ileri gönderilmesi, her eklentinin yeniden denetlediği yeni bir bağlantı isteğidir;
   giriş, izin ve koruma eklentilerinin retleri dikkate alınır. Yeniden bağlanmalar oyuncu başına sınırlıdır.
+- **Güncelleme denetimi.** GitHub ve GitLab'a, sunucu hakkında hiçbir şey göndermeyen salt okunur HTTPS
+  istekleri; yanıttan yalnızca sürüm etiketleri kullanılır, hiçbir şey indirilmez veya kurulmaz ve denetim
+  kapatılabilir ([güncellemeler](#güncellemeler)).
 
 #### Sorun giderme
 
@@ -1257,6 +1361,8 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
 | `pack-host` açıkken paketler hâlâ yavaş iniyor | "first download" satırı yok: port kapalı veya erişilemiyor; `http://<adres>:<port>/` dışarıdan boş bir 404 döndürmeli |
 | "... is sent by Geyser: no host for links" | Katılma adresi bir bağlantıda kullanılamıyor: `pack-host.public-address` ayarlayın |
 | "... is sent by Geyser: it is not a pack file" veya "Mixing pack codecs" | Başka bir eklenti dosya olmayan paketler kaydediyor; o zaman bütün paketler Geyser'ın aktarımını kullanır |
+| "Could not check for ... updates (... no connection)" | Giden HTTPS engelli: `api.github.com` ve `gitlab.com` adreslerine izin verin, Java'nın `https.proxyHost` özelliğini ayarlayın veya `update-check.enabled: false` yapın |
+| "... its certificate is not trusted by this Java (TLS inspection?)" | Bir antivirüs veya güvenlik duvarı HTTPS'i kendi sertifikasıyla inceliyor ve Java buna güvenmiyor: Java'yı hariç tutun veya Windows'ta `-Djavax.net.ssl.trustStoreType=Windows-ROOT` ile başlatın |
 
 #### Kaynaktan derleme
 

@@ -4,6 +4,22 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.14 - 2026-10-09
+
+- Add an update check to Twilight and twilight-proxy (`update-check`, on by default): about 20 seconds
+  after start and every six hours the public release list is read from GitHub, or from the GitLab mirror
+  when GitHub fails or refuses; a newer version is logged once and shown with a clickable link to players
+  with `twilight.update` (default: operators) or `twilight.proxy.update`/`twilight.proxy.admin` when they
+  join. Prereleases are offered only to servers running a prerelease. Only version tags are read from
+  the answer (at most 2 MiB, 5 s to connect, 10 s per request); nothing about the server is sent and
+  nothing is downloaded. Unreachable hosts are logged once with a short reason (no connection, timeout,
+  untrusted certificate). `/twilight status` and `/twilightproxy` show the last result.
+- Publish every change as a new version instead of rebuilding a released one.
+- Tested live: an operator joining a Paper server running an older version got the notice with a working
+  link, a non-operator did not, `/twilight reload` turned the check off and on; Velocity found the newer
+  release on GitHub, and BungeeCord without a trusted certificate logged one line and kept running.
+  221 tests pass (210 Twilight, 11 proxy).
+
 ## 1.0.0-pre.13 - 2026-10-09
 
 - Count a pack reconnect as arrived only once the player is connected to its server. Login plugins that
@@ -352,6 +368,23 @@ All notable changes in Twilight are documented here.
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-pre.14 - 2026-10-09
+
+- Twilight ve twilight-proxy'ye bir güncelleme denetimi eklendi (`update-check`, varsayılan olarak açık):
+  açılıştan yaklaşık 20 saniye sonra ve her altı saatte bir herkese açık sürüm listesi GitHub'dan, GitHub
+  başarısız olduğunda veya reddettiğinde GitLab yansısından okunur; daha yeni bir sürüm bir kez günlüğe
+  yazılır ve `twilight.update` (varsayılan: operatörler) veya `twilight.proxy.update`/`twilight.proxy.admin`
+  iznine sahip oyunculara katıldıklarında tıklanabilir bir bağlantıyla gösterilir. Ön sürümler yalnızca ön
+  sürüm çalıştıran sunuculara önerilir. Yanıttan yalnızca sürüm etiketleri okunur (en fazla 2 MiB, bağlantı
+  için 5 sn, istek başına 10 sn); sunucu hakkında hiçbir şey gönderilmez ve hiçbir şey indirilmez. Ulaşılamayan
+  sunucular kısa bir nedenle (bağlantı yok, zaman aşımı, güvenilmeyen sertifika) bir kez günlüğe yazılır.
+  `/twilight status` ve `/twilightproxy` son sonucu gösterir.
+- Her değişiklik, yayımlanmış bir sürümü yeniden derlemek yerine yeni bir sürüm olarak yayımlanır.
+- Canlı test edildi: eski bir sürüm çalıştıran Paper sunucusuna katılan bir operatör bildirimi çalışan bir
+  bağlantıyla aldı, operatör olmayan almadı, `/twilight reload` denetimi kapatıp açtı; Velocity daha yeni
+  sürümü GitHub'da buldu, güvenilir sertifikası olmayan BungeeCord tek bir satır yazıp çalışmaya devam etti.
+  221 test geçti (210 Twilight, 11 proxy).
 
 #### 1.0.0-pre.13 - 2026-10-09
 

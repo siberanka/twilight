@@ -47,4 +47,10 @@ final class VelocityPlatform implements Platform {
         return plugin.proxy().getPlayer(player).flatMap(found -> found.getCurrentServer())
                 .map(connection -> connection.getServerInfo().getName());
     }
+
+    @Override public String version() { return plugin.version(); }
+
+    @Override public void tellAdmins(String text, String url) {
+        plugin.proxy().getAllPlayers().stream().filter(VelocityPlugin::admin).forEach(player -> VelocityPlugin.tell(player, text, url));
+    }
 }

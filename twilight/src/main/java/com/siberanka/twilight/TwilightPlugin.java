@@ -70,6 +70,8 @@ public final class TwilightPlugin extends JavaPlugin {
     private com.siberanka.twilight.integration.proxy.ProxyPackChannel proxyChannel;
     private com.siberanka.twilight.integration.text.GeyserLanguageBridge languageBridge;
     private com.siberanka.twilight.integration.pack.GeyserPackHosting packHosting;
+    private volatile com.siberanka.twilight.update.UpdateCheck updates;
+    private volatile boolean notifyUpdatePlayers = true;
 
     @Override
     public void onEnable() {
@@ -143,6 +145,7 @@ public final class TwilightPlugin extends JavaPlugin {
         providerHooks = new ProviderHookManager(this, reason -> scheduleProviderBuild(reason, config.startupDelayTicks()));
         getServer().getPluginManager().registerEvents(new AutomationListener(), this);
         for (org.bukkit.plugin.Plugin installed : getServer().getPluginManager().getPlugins()) providerHooks.register(installed);
+        configureUpdates();
 
         getLogger().info("Twilight server-side content compiler enabled. Vanilla overrides: " + config.vanillaOverride());
         if (!"DEFINITION".toLowerCase(java.util.Locale.getDefault()).equals("definition")) {
@@ -156,6 +159,7 @@ public final class TwilightPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (updates != null) updates.close();
         if (languageBridge != null) {
             try { languageBridge.close(); }
             catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close translations", failure); }
@@ -468,6 +472,7 @@ public final class TwilightPlugin extends JavaPlugin {
         }
         try (OperationLog log = OperationLog.create(getDataFolder().toPath(), "reload")) {
             loadServices();
+            configureUpdates();
             log.info("configuration", "reloaded; vanilla-override=" + config.vanillaOverride());
             send(sender, "Twilight configuration reloaded. Vanilla overrides: " + config.vanillaOverride());
         } catch (Exception failure) {
@@ -486,6 +491,8 @@ public final class TwilightPlugin extends JavaPlugin {
                 report.biomeDefinitions() + " custom biomes.");
         String fingerprint = lastSuccessfulInputFingerprint.get();
         if (fingerprint != null) send(sender, "Last successful input fingerprint: " + fingerprint.substring(0, 16));
+        var check = updates;
+        send(sender, "Updates: " + (check == null ? "check disabled" : check.status()));
         try {
             send(sender, "Geyser=" + deployment.resolveGeyserDirectory() + " | snapshots=" + deployment.snapshots().size() + "/" + config.backupsToKeep());
         } catch (Exception unavailable) {
@@ -495,6 +502,37 @@ public final class TwilightPlugin extends JavaPlugin {
 
     void send(CommandSender sender, String message) {
         scheduler.execute(() -> sender.sendMessage("§5[Twilight] §f" + message));
+    }
+
+    /**
+     * {@code update-check}: looks for newer releases on GitHub (GitLab when GitHub cannot be reached) and
+     * tells the console and players with {@value #UPDATE_PERMISSION}. Applied on start and reload.
+     */
+    private void configureUpdates() {
+        notifyUpdatePlayers = getConfig().getBoolean("update-check.notify-players", true);
+        boolean enabled = getConfig().getBoolean("update-check.enabled", true);
+        if (!enabled && updates != null) {
+            updates.close();
+            updates = null;
+        } else if (enabled && updates == null) {
+            updates = com.siberanka.twilight.update.UpdateCheck.start("Twilight", getPluginMeta().getVersion(),
+                    getLogger()::info, release -> scheduler.execute(() -> {
+                        if (!notifyUpdatePlayers) return;
+                        for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {
+                            if (online.hasPermission(UPDATE_PERMISSION)) tellUpdate(online, release);
+                        }
+                    })).orElse(null);
+        }
+    }
+
+    static final String UPDATE_PERMISSION = "twilight.update";
+
+    private void tellUpdate(CommandSender target, com.siberanka.twilight.update.UpdateCheck.Release release) {
+        target.sendMessage(net.kyori.adventure.text.Component.text("[Twilight] ", net.kyori.adventure.text.format.NamedTextColor.DARK_PURPLE)
+                .append(net.kyori.adventure.text.Component.text("Version " + release.version() + " is available (this server runs "
+                        + getPluginMeta().getVersion() + "): ", net.kyori.adventure.text.format.NamedTextColor.WHITE))
+                .append(net.kyori.adventure.text.Component.text(release.page(), net.kyori.adventure.text.format.NamedTextColor.AQUA)
+                        .clickEvent(net.kyori.adventure.text.event.ClickEvent.openUrl(release.page()))));
     }
 
     private void reloadGeyser(OperationLog operationLog, DeploymentResult deploymentResult) throws Exception {
@@ -566,6 +604,18 @@ public final class TwilightPlugin extends JavaPlugin {
         public void onPluginEnabled(PluginEnableEvent event) {
             int hooks = providerHooks.register(event.getPlugin());
             if (hooks > 0) scheduleProviderBuild(event.getPlugin().getName() + " enabled", config.startupDelayTicks());
+        }
+
+        @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
+        public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+            var check = updates;
+            if (check == null || !notifyUpdatePlayers) return;
+            var release = check.latest();
+            org.bukkit.entity.Player player = event.getPlayer();
+            if (release.isEmpty() || !player.hasPermission(UPDATE_PERMISSION)) return;
+            scheduler.delayed(() -> {
+                if (player.isOnline()) tellUpdate(player, release.get());
+            }, 60L);
         }
 
         @EventHandler(ignoreCancelled = true)

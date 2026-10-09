@@ -38,4 +38,13 @@ public interface Platform {
 
     /** The backend server a player is connected to, if any. */
     java.util.Optional<String> currentServer(java.util.UUID player);
+
+    /** twilight-proxy's version from its plugin description. */
+    String version();
+
+    /**
+     * Sends {@code text} followed by the clickable link {@code url} to every online player with
+     * {@link ProxyCore#UPDATE_PERMISSION} or {@link ProxyCore#ADMIN_PERMISSION}.
+     */
+    void tellAdmins(String text, String url);
 }

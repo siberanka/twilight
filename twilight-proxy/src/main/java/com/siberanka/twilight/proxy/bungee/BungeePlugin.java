@@ -15,6 +15,7 @@ import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.PlayerDisconnectEvent;
 import net.md_5.bungee.api.event.PluginMessageEvent;
+import net.md_5.bungee.api.event.PostLoginEvent;
 import net.md_5.bungee.api.event.ServerConnectEvent;
 import net.md_5.bungee.api.event.ServerConnectedEvent;
 import net.md_5.bungee.api.plugin.Command;
@@ -129,6 +130,27 @@ public final class BungeePlugin extends Plugin implements Listener {
     }
 
     @EventHandler
+    public void onPostLogin(PostLoginEvent event) {
+        if (core == null) return;
+        ProxiedPlayer player = event.getPlayer();
+        core.updateNotice().filter(release -> admin(player)).ifPresent(release -> getProxy().getScheduler().schedule(this, () -> {
+            if (player.isConnected()) tell(player, core.updateText(release), release.page());
+        }, 3, TimeUnit.SECONDS));
+    }
+
+    private static boolean admin(ProxiedPlayer player) {
+        return player.hasPermission(ProxyCore.UPDATE_PERMISSION) || player.hasPermission(ProxyCore.ADMIN_PERMISSION);
+    }
+
+    private static void tell(ProxiedPlayer player, String text, String url) {
+        TextComponent link = new TextComponent(url);
+        link.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.OPEN_URL, url));
+        TextComponent message = new TextComponent(text);
+        message.addExtra(link);
+        player.sendMessage(message);
+    }
+
+    @EventHandler
     public void onDisconnect(PlayerDisconnectEvent event) {
         originals.remove(event.getPlayer().getUniqueId());
         if (core != null) core.disconnect(event.getPlayer().getUniqueId(), event.getPlayer().getName());
@@ -174,6 +196,12 @@ public final class BungeePlugin extends Plugin implements Listener {
         @Override public Optional<String> currentServer(UUID player) {
             ProxiedPlayer online = getProxy().getPlayer(player);
             return online == null || online.getServer() == null ? Optional.empty() : Optional.of(online.getServer().getInfo().getName());
+        }
+
+        @Override public String version() { return getDescription().getVersion(); }
+
+        @Override public void tellAdmins(String text, String url) {
+            getProxy().getPlayers().stream().filter(BungeePlugin::admin).forEach(player -> tell(player, text, url));
         }
     }
 }

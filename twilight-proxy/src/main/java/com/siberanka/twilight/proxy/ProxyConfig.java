@@ -20,7 +20,7 @@ record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, bo
                    String transferAddress, int transferPort, String initialServer, String secret,
                    long maxPackBytes, int downloadTimeoutSeconds, int urlRefreshMinutes,
                    int transferTimeoutSeconds, java.util.Set<String> loginServers,
-                   com.siberanka.twilight.host.HostSettings host) {
+                   com.siberanka.twilight.host.HostSettings host, boolean updateCheck, boolean updateNotify) {
     private static final Pattern FILE_NAME = Pattern.compile("[A-Za-z0-9._-]{1,128}");
     private static final Pattern SERVER_NAME = Pattern.compile("[A-Za-z0-9._-]{1,64}");
     /** With {@code transfer-timeout-seconds: auto}: time for the reconnect and login, plus the pack at this rate. */
@@ -78,7 +78,16 @@ record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, bo
                 integer(root.getOrDefault("url-refresh-minutes", "60"), "url-refresh-minutes", 0, 10_080),
                 transferTimeout(root.getOrDefault("transfer-timeout-seconds", "auto")),
                 serverList(root.getOrDefault("login-servers", java.util.List.of()), "login-servers"),
-                hostSettings(root.get("pack-host")));
+                hostSettings(root.get("pack-host")),
+                updateSetting(root.get("update-check"), "enabled"),
+                updateSetting(root.get("update-check"), "notify-players"));
+    }
+
+    /** A switch in the {@code update-check} section; on when the section or the key is missing. */
+    private static boolean updateSetting(Object section, String key) {
+        if (section == null) return true;
+        Map<String, Object> values = map(section, "update-check");
+        return bool(values.getOrDefault(key, "true"), "update-check." + key);
     }
 
     /**

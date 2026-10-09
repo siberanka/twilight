@@ -138,3 +138,14 @@ pack-host:
   max-connections-per-address: 4
   # Reverse proxies whose X-Forwarded-For header is trusted (IP addresses).
   trusted-proxies: []
+
+update-check:
+  # Look for a newer Twilight release on GitHub (on the GitLab mirror when GitHub
+  # cannot be reached) shortly after start and every six hours. A newer version is
+  # written to the console and shown to players with twilight.update (operators by
+  # default). Only the public release list is read over HTTPS: nothing about this
+  # server is sent and nothing is downloaded or installed. A server running a
+  # prerelease also hears about prereleases. Applied on /twilight reload.
+  enabled: true
+  # Tell players with twilight.update when they join and when a version is found.
+  notify-players: true

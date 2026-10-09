@@ -182,11 +182,20 @@ limited and blocked, and a failed download falls back to Geyser's own transfer, 
 depends on it. Every pack of the session is hosted (Twilight's, Geyser's and other plugins' files).
 Reverse proxies, HTTPS, NAT and DDoS fronts are covered in the [wiki](WIKI.md#pack-hosting).
 
+## Updates
+
+Releases are published on [GitHub](https://github.com/siberanka/twilight/releases) and mirrored on
+[GitLab](https://gitlab.com/siberanka/twilight/-/releases); every change is a new version. Twilight and
+twilight-proxy check for a newer release at start and every six hours (GitHub first, GitLab when GitHub
+cannot be reached) and tell the console and players with `twilight.update` (operators) or
+`twilight.proxy.update`. Nothing about the server is sent and nothing is downloaded; turn it off with
+`update-check.enabled: false` ([wiki](WIKI.md#updates)).
+
 ## Commands
 
 | Command | Purpose |
 |---|---|
-| `/twilight status` | Show operation, scan, Geyser, and backup state. |
+| `/twilight status` | Show operation, scan, Geyser, backup and update check state. |
 | `/twilight scan` | Discover and inspect sources without converting. |
 | `/twilight convert` | Scan, convert, validate, and optionally deploy. `/twilight build` is an alias. |
 | `/twilight deploy` | Deploy the current validated output to Geyser. |
@@ -401,11 +410,20 @@ döner, yani katılmak asla buna bağlı değildir. Oturumun bütün paketleri s
 diğer eklentilerin dosyaları). Ters proxy'ler, HTTPS, NAT ve DDoS önyüzleri [wiki'de](WIKI.md#paket-sunucusu)
 anlatılır.
 
+#### Güncellemeler
+
+Sürümler [GitHub](https://github.com/siberanka/twilight/releases) üzerinde yayımlanır ve
+[GitLab](https://gitlab.com/siberanka/twilight/-/releases) üzerine yansıtılır; her değişiklik yeni bir sürümdür.
+Twilight ve twilight-proxy açılışta ve her altı saatte bir daha yeni bir sürüm arar (önce GitHub, GitHub'a
+ulaşılamadığında GitLab) ve konsola ve `twilight.update` (operatörler) veya `twilight.proxy.update` iznine sahip
+oyunculara bildirir. Sunucu hakkında hiçbir şey gönderilmez ve hiçbir şey indirilmez; `update-check.enabled: false`
+ile kapatın ([wiki](WIKI.md#güncellemeler)).
+
 #### Komutlar
 
 | Komut | Amaç |
 |---|---|
-| `/twilight status` | İşlem, tarama, Geyser ve yedek durumunu gösterir. |
+| `/twilight status` | İşlem, tarama, Geyser, yedek ve güncelleme denetimi durumunu gösterir. |
 | `/twilight scan` | Dönüştürmeden kaynakları keşfeder ve inceler. |
 | `/twilight convert` | Tarar, dönüştürür, doğrular ve isteğe bağlı olarak dağıtır. `/twilight build` bir takma addır. |
 | `/twilight deploy` | Geçerli doğrulanmış çıktıyı Geyser'a dağıtır. |
