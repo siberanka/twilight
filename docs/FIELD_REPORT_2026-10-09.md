@@ -62,6 +62,57 @@ plugin data directory was found" in `/twilight status` was misleading too. It no
 on this server (normal when it runs on the proxy)", says whether the pack is shared with twilight-proxy,
 and is also logged at start.
 
+**Root cause (1.0.0-pre.17).** With pre.16 the network's log named the error:
+
+> loader constraint violation when resolving `EventBus.subscribe(...)` returning
+> `org.geysermc.event.subscribe.OwnedSubscriber`
+
+Floodgate bundles its own unrelocated copy of Geyser's event library (`org.geysermc.event`). When a proxy
+loads Floodgate before Geyser, twilight-proxy's classes resolve that library from Floodgate's jar, while
+Geyser's event bus uses its own copy, and the JVM refuses the call.
+
+Reproduced locally in two setups, both with Floodgate 2.2.5 build 141 loaded before Geyser:
+
+- Waterfall 1.21 build 615 with Geyser-BungeeCord made to load after Floodgate;
+- Velocity 4.2.0, which loads Floodgate first by itself (alphabetical order, no dependency between them).
+
+pre.16 failed with the same message in both. Every earlier version is affected the same way on such
+proxies, and Twilight on a backend could be hit in the same way on a server that loads Floodgate first.
+
+**Fix.** Twilight and twilight-proxy no longer refer to Geyser's event library at all:
+
+- They subscribe through reflection, with the method and `PostOrder` taken from the class loader that
+  defined Geyser's event bus.
+- A test scans every compiled class and fails if any refers to `org.geysermc.event`. The pre.16 classes
+  would fail it.
+- An attach failure is now logged with its full stack trace and with the jar each side took the
+  library from.
+
+**Verified with pre.17.**
+
+| Setup | Result |
+|---|---|
+| Velocity + Floodgate | Attached, wrote 133 item mappings (Geyser registered 134); a Floodgate player (`.SiberAnka`) switched lobby → survival → lobby with one reconnect each (6 s and 5 s) |
+| Waterfall with Floodgate first | Attached; pack host started; the session's pack was served from it; lobby → survival → lobby in 6 s and 5 s |
+| Backend with Floodgate and Geyser-Spigot | All Twilight bridges registered; the biome mapping ran for a Bedrock session |
+
+The pack host answered unknown paths and random tokens with an empty 404 and blocked the address after
+repeated guessing.
+
+**Mapping files from an older sync tool.** A `twilight_network_item_mappings.json` written by a custom
+sync tool (identifiers `twilight:n_<32 hex>`) was still in Geyser's `custom_mappings`. twilight-proxy now:
+
+- names such files;
+- counts the Java selectors they map to other Bedrock items than the servers' packs;
+- shows them in `/twilightproxy` ("remove ...").
+
+Stop that tool (for example its systemd `.path`/`.service` units) and remove its file. twilight-proxy
+writes `twilight-proxy_item_mappings.json` itself.
+
+**Login plugin folders left behind.** A leftover `plugins/AuthMeBungee/config.yml`, without the plugin,
+made `lobi` a login server. twilight-proxy now reads only the folders of plugins the proxy actually
+loaded, and logs "Not reading plugins/AuthMeBungee: that plugin is not installed" for the others.
+
 ## 3. Item registry across backends
 
 **Cause.** Geyser registers custom items once per Geyser. On a proxy network that is the proxy's
@@ -217,6 +268,59 @@ tam hatayla birlikte bildirir ve denemeye devam eder. Arka uçta `/twilight stat
 No local Geyser plugin data directory was found" ifadesi de yanıltıcıydı. Artık "Geyser is not on this server
 (normal when it runs on the proxy)" der, paketin twilight-proxy ile paylaşılıp paylaşılmadığını söyler ve bu
 satır açılışta da günlüğe yazılır.
+
+**Kök neden (1.0.0-pre.17).** pre.16 ile ağın günlüğü hatayı adıyla verdi:
+
+> `org.geysermc.event.subscribe.OwnedSubscriber` döndüren `EventBus.subscribe(...)` çözülürken
+> loader constraint violation
+
+Floodgate, Geyser'ın olay kütüphanesinin (`org.geysermc.event`) yeniden konumlandırılmamış kendi kopyasını
+içerir. Bir proxy Floodgate'i Geyser'dan önce yüklediğinde twilight-proxy'nin sınıfları bu kütüphaneyi
+Floodgate'in JAR'ından çözer. Geyser'ın olay veri yolu ise kendi kopyasını kullanır ve JVM çağrıyı reddeder.
+
+Yerelde iki kurulumda yeniden üretildi; ikisinde de Floodgate 2.2.5 build 141, Geyser'dan önce yüklendi:
+
+- Floodgate'ten sonra yüklenecek şekilde ayarlanan Geyser-BungeeCord ile Waterfall 1.21 build 615;
+- Floodgate'i kendiliğinden önce yükleyen Velocity 4.2.0 (alfabetik sıra, aralarında bağımlılık yok).
+
+pre.16 ikisinde de aynı mesajla başarısız oldu. Önceki bütün sürümler bu tür proxy'lerde aynı şekilde
+etkilenir. Arka uçtaki Twilight da Floodgate'i önce yükleyen bir sunucuda aynı şekilde etkilenebilirdi.
+
+**Düzeltme.** Twilight ve twilight-proxy artık Geyser'ın olay kütüphanesine hiç başvurmaz:
+
+- Olaylara yansıma ile abone olurlar; yöntem ve `PostOrder`, Geyser'ın olay veri yolunu tanımlayan sınıf
+  yükleyicisinden alınır.
+- Bir test derlenen her sınıfı tarar ve herhangi biri `org.geysermc.event` paketine başvurursa başarısız
+  olur. pre.16 sınıfları bu testten geçemezdi.
+- Bir bağlanma hatası artık tam yığın iziyle ve her tarafın kütüphaneyi hangi JAR'dan aldığıyla günlüğe
+  yazılır.
+
+**pre.17 ile doğrulandı.**
+
+| Kurulum | Sonuç |
+|---|---|
+| Velocity + Floodgate | Bağlandı, 133 eşya eşlemesi yazdı (Geyser 134 kaydetti); bir Floodgate oyuncusu (`.SiberAnka`) lobi → survival → lobi geçişlerini her birinde tek yeniden bağlanmayla yaptı (6 sn ve 5 sn) |
+| Floodgate'i önce yükleyen Waterfall | Bağlandı; paket sunucusu başladı; oturumun paketi oradan sunuldu; lobi → survival → lobi 6 sn ve 5 sn |
+| Floodgate ve Geyser-Spigot bulunan arka uç | Bütün Twilight köprüleri kaydoldu; bir Bedrock oturumu için biyom eşlemesi çalıştı |
+
+Paket sunucusu bilinmeyen yollara ve rastgele belirteçlere boş bir 404 ile yanıt verdi ve tekrarlanan
+tahminlerden sonra adresi engelledi.
+
+**Eski bir eşitleme aracının eşleme dosyaları.** Özel bir eşitleme aracının yazdığı
+`twilight_network_item_mappings.json` (kimlikler `twilight:n_<32 onaltılık>`) Geyser'ın `custom_mappings`
+klasöründe hâlâ duruyordu. twilight-proxy artık:
+
+- bu tür dosyaların adını verir;
+- sunucuların paketlerinden farklı Bedrock eşyalarına eşledikleri Java seçicilerini sayar;
+- bunları `/twilightproxy` içinde gösterir ("remove ...").
+
+O aracı durdurun (örneğin systemd `.path`/`.service` birimlerini) ve dosyasını kaldırın.
+twilight-proxy `twilight-proxy_item_mappings.json` dosyasını kendisi yazar.
+
+**Geride kalan giriş eklentisi klasörleri.** Eklentinin kendisi olmadan geride kalan
+`plugins/AuthMeBungee/config.yml`, `lobi` sunucusunu giriş sunucusu yapıyordu. twilight-proxy artık yalnızca
+proxy'nin gerçekten yüklediği eklentilerin klasörlerini okur; diğerleri için "Not reading plugins/AuthMeBungee:
+that plugin is not installed" yazar.
 
 #### 3. Arka uçlar arasında eşya kaydı
 

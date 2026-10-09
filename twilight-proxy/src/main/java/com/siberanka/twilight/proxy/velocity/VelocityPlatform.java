@@ -50,6 +50,11 @@ final class VelocityPlatform implements Platform {
 
     @Override public String version() { return plugin.version(); }
 
+    @Override public java.util.Optional<java.util.Set<String>> pluginFolders() {
+        return java.util.Optional.of(plugin.proxy().getPluginManager().getPlugins().stream()
+                .map(container -> container.getDescription().getId()).collect(java.util.stream.Collectors.toSet()));
+    }
+
     @Override public java.util.Optional<String> geyserPlugin() {
         return plugin.proxy().getPluginManager().getPlugin("geyser").map(container -> container.getDescription().getName().orElse("Geyser")
                 + " " + container.getDescription().getVersion().orElse(""));

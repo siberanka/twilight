@@ -16,6 +16,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ContentReportWriterTest {
     /**
@@ -48,5 +49,23 @@ final class ContentReportWriterTest {
         json = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
         assertEquals("1970-01-01T00:00:00Z", json.get("scannedAt").getAsString());
         assertEquals(0, json.getAsJsonArray("sourcePaths").size());
+    }
+
+    /**
+     * Floodgate bundles its own copy of Geyser's event library; Twilight's classes must not refer to it, or a
+     * server that loads Floodgate first fails with "loader constraint violation" when subscribing to Geyser.
+     */
+    @Test
+    void noClassLinksAgainstGeyserEventLibrary() throws Exception {
+        Path classes = Path.of(ContentReportWriter.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        List<String> offenders = new java.util.ArrayList<>();
+        try (var files = Files.walk(classes)) {
+            for (Path file : files.filter(path -> path.toString().endsWith(".class")).toList()) {
+                String content = new String(Files.readAllBytes(file), StandardCharsets.ISO_8859_1);
+                if (content.contains("org/geysermc/event/")) offenders.add(classes.relativize(file).toString());
+            }
+        }
+        assertTrue(Files.isRegularFile(classes.resolve("com/siberanka/twilight/geyser/GeyserEvents.class")));
+        assertEquals(List.of(), offenders);
     }
 }

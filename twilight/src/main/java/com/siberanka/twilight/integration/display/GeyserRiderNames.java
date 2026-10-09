@@ -63,9 +63,8 @@ public final class GeyserRiderNames implements AutoCloseable {
 
     public static GeyserRiderNames create(Object owner, Logger logger) {
         GeyserRiderNames bridge = new GeyserRiderNames(owner, logger);
-        var events = GeyserApi.api().eventBus();
-        events.subscribe(bridge.registrar, GeyserPostInitializeEvent.class, event -> bridge.attach());
-        events.subscribe(bridge.registrar, GeyserPostReloadEvent.class, event -> bridge.attach());
+        com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostInitializeEvent.class, event -> bridge.attach());
+        com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostReloadEvent.class, event -> bridge.attach());
         if (Registries.JAVA_PACKET_TRANSLATORS.get().get(ClientboundSetPassengersPacket.class) != null) bridge.attach();
         return bridge;
     }

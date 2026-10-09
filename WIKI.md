@@ -251,7 +251,7 @@ update-check:            # see "Updates"
 | `transfer-address`, `transfer-port` | Where transferred players reconnect (useful behind a load balancer) |
 | `initial-server` | Server whose pack a new session loads |
 | `transfer-timeout-seconds` | How long a reconnect may take, from the transfer until the player reaches its server (download and login included). `auto`: three minutes plus the pack at 128 KiB/s, at most an hour (a 150 MiB pack: 23 minutes) |
-| `login-servers` | Servers players pass through before playing (login, captcha, limbo): Bedrock players are never reconnected for them, and a reconnect in progress continues when the player moves on. The login servers in the configuration of LeaderOS Auth, AuthMeVelocity, AuthMeBungee, LibreLogin, JPremium and similar plugins are added automatically (logged at start, shown by `/twilightproxy`), and login plugins that choose such a server are detected at run time as well |
+| `login-servers` | Servers players pass through before playing (login, captcha, limbo): Bedrock players are never reconnected for them, and a reconnect in progress continues when the player moves on. The login servers in the configuration of LeaderOS Auth, AuthMeVelocity, AuthMeBungee, LibreLogin, JPremium and similar plugins are added automatically (only for plugins the proxy loaded; logged at start, shown by `/twilightproxy`), and login plugins that choose such a server are detected at run time as well |
 | `secret` | Shared secret for `auto` packs |
 | `max-pack-size-mb` | Largest accepted pack (1-2048) |
 | `download-timeout-seconds` | A link download stops after this long without data, or when it is slower than 64 KiB/s overall (5-600) |
@@ -276,7 +276,7 @@ seconds for two minutes and then whenever a player joins. The log says which cas
 | "Geyser is installed but not started yet; attaching when it is ready." | Followed by "Attached to Geyser after it started" |
 | "Geyser is not installed on this proxy" | No Geyser plugin on this proxy |
 | "Geyser-BungeeCord ... is installed, but its API is not visible to twilight-proxy" | The proxy (a fork that isolates plugins) hides Geyser's classes; retried like a Geyser that is still loading, and the reason is logged |
-| "Could not attach to Geyser: ..." | Geyser's API refused the listeners; the reason follows. Update Geyser and twilight-proxy |
+| "Could not attach to Geyser: ..." | Geyser's API refused the listeners; the reason, the full stack trace and the jars Geyser's event library came from follow. Update Geyser and twilight-proxy. Before 1.0.0-pre.17, "loader constraint violation" here meant that the proxy loaded Floodgate (which bundles that library) before Geyser |
 
 `/twilightproxy` shows the state ("Geyser attached" or "Geyser not attached (reason)"), whether the
 pack host runs, the item mappings and the login servers.
@@ -298,7 +298,9 @@ when it starts:
   and each server's pack decides how it looks there. When two servers map the same selector to
   different Bedrock items (older Twilight versions, hand-made packs), the first server in name order
   wins and the log lists each conflict.
-- Remove `twilight_*.json` files copied into the proxy's Geyser by hand; the log names them.
+- Remove other `twilight_*.json` files in the proxy's Geyser (copied by hand or written by an older
+  sync tool, and stop that tool); the log and `/twilightproxy` name them and count the items they map
+  differently.
 - Geyser reads mapping types with the Java locale. On a proxy whose locale is Turkish or Azerbaijani
   it skips every item model mapping; the log warns and the fix is `-Duser.language=en
   -Duser.country=US` on the proxy's Java command.
@@ -993,7 +995,7 @@ update-check:            # "Güncellemeler" bölümüne bakın
 | `transfer-address`, `transfer-port` | Aktarılan oyuncuların yeniden bağlandığı yer (yük dengeleyici arkasında yararlı) |
 | `initial-server` | Yeni bir oturumun paketini yüklediği sunucu |
 | `transfer-timeout-seconds` | Bir yeniden bağlanmanın aktarımdan oyuncu sunucusuna ulaşana kadar (indirme ve giriş dahil) ne kadar sürebileceği. `auto`: üç dakika artı paketin 128 KiB/s ile süresi, en fazla bir saat (150 MiB'lik paket: 23 dakika) |
-| `login-servers` | Oyuncuların oynamadan önce geçtiği sunucular (giriş, captcha, limbo): Bedrock oyuncuları bunlar için asla yeniden bağlanmaz ve süren bir yeniden bağlanma oyuncu oradan ayrılınca devam eder. LeaderOS Auth, AuthMeVelocity, AuthMeBungee, LibreLogin, JPremium ve benzeri eklentilerin yapılandırmasındaki giriş sunucuları kendiliğinden eklenir (açılışta günlüğe yazılır, `/twilightproxy` gösterir); böyle bir sunucuyu seçen giriş eklentileri çalışırken de algılanır |
+| `login-servers` | Oyuncuların oynamadan önce geçtiği sunucular (giriş, captcha, limbo): Bedrock oyuncuları bunlar için asla yeniden bağlanmaz ve süren bir yeniden bağlanma oyuncu oradan ayrılınca devam eder. LeaderOS Auth, AuthMeVelocity, AuthMeBungee, LibreLogin, JPremium ve benzeri eklentilerin yapılandırmasındaki giriş sunucuları kendiliğinden eklenir (yalnızca proxy'nin yüklediği eklentiler için; açılışta günlüğe yazılır, `/twilightproxy` gösterir); böyle bir sunucuyu seçen giriş eklentileri çalışırken de algılanır |
 | `secret` | `auto` paketler için paylaşılan gizli anahtar |
 | `max-pack-size-mb` | Kabul edilen en büyük paket (1-2048) |
 | `download-timeout-seconds` | Bir bağlantı indirmesi bu süre boyunca veri gelmezse veya toplamda 64 KiB/s'den yavaşsa durur (5-600) |
@@ -1018,7 +1020,7 @@ oyuncu katıldığında yeniden denenir. Günlük hangi durumun geçerli olduğu
 | "Geyser is installed but not started yet; attaching when it is ready." | Ardından "Attached to Geyser after it started" gelir |
 | "Geyser is not installed on this proxy" | Bu proxy'de Geyser eklentisi yok |
 | "Geyser-BungeeCord ... is installed, but its API is not visible to twilight-proxy" | Proxy (eklentileri birbirinden yalıtan bir türev) Geyser'ın sınıflarını gizliyor; hâlâ yüklenen bir Geyser gibi yeniden denenir ve nedeni günlüğe yazılır |
-| "Could not attach to Geyser: ..." | Geyser'ın API'si dinleyicileri reddetti; nedeni ardından yazılır. Geyser'ı ve twilight-proxy'yi güncelleyin |
+| "Could not attach to Geyser: ..." | Geyser'ın API'si dinleyicileri reddetti; ardından neden, tam yığın izi ve Geyser'ın olay kütüphanesinin hangi JAR'lardan geldiği yazılır. Geyser'ı ve twilight-proxy'yi güncelleyin. 1.0.0-pre.17'den önce buradaki "loader constraint violation", proxy'nin Floodgate'i (bu kütüphaneyi içerir) Geyser'dan önce yüklediği anlamına geliyordu |
 
 `/twilightproxy` durumu ("Geyser attached" veya "Geyser not attached (neden)"), paket sunucusunun çalışıp
 çalışmadığını, eşya eşlemelerini ve giriş sunucularını gösterir.
@@ -1040,7 +1042,9 @@ bir kez okur:
   görüneceğine her sunucunun kendi paketi karar verir. İki sunucu aynı seçiciyi farklı Bedrock eşyalarına
   eşlerse (eski Twilight sürümleri, elle hazırlanmış paketler) ad sırasında ilk sunucu kazanır ve günlük her
   çakışmayı listeler.
-- Proxy'deki Geyser'a elle kopyalanmış `twilight_*.json` dosyalarını kaldırın; günlük bunların adını verir.
+- Proxy'deki Geyser'da bulunan diğer `twilight_*.json` dosyalarını (elle kopyalanmış veya eski bir eşitleme
+  aracının yazdığı; o aracı da durdurun) kaldırın; günlük ve `/twilightproxy` bunların adını verir ve farklı
+  eşledikleri eşyaları sayar.
 - Geyser eşleme türlerini Java'nın diliyle okur. Dili Türkçe veya Azerice olan bir proxy'de her item model
   eşlemesini atlar; günlük uyarır, çözüm proxy'nin Java komutuna `-Duser.language=en -Duser.country=US`
   eklemektir.

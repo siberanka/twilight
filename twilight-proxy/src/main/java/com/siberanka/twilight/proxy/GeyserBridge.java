@@ -4,7 +4,6 @@
  */
 package com.siberanka.twilight.proxy;
 
-import org.geysermc.event.PostOrder;
 import org.geysermc.geyser.api.GeyserApi;
 import org.geysermc.geyser.api.connection.GeyserConnection;
 import org.geysermc.geyser.api.event.EventRegistrar;
@@ -12,6 +11,7 @@ import org.geysermc.geyser.api.event.bedrock.SessionLoadResourcePacksEvent;
 import org.geysermc.geyser.api.pack.PackCodec;
 import org.geysermc.geyser.api.pack.ResourcePack;
 
+import com.siberanka.twilight.geyser.GeyserEvents;
 import com.siberanka.twilight.host.PackHost;
 import com.siberanka.twilight.host.SessionHosting;
 
@@ -46,7 +46,8 @@ final class GeyserBridge implements Sessions {
         if (api == null) return Attach.notReady("Geyser's API is not available yet");
         GeyserBridge bridge = new GeyserBridge(owner);
         try {
-            api.eventBus().subscribe(bridge.registrar, SessionLoadResourcePacksEvent.class, event -> {
+            // Through GeyserEvents: Floodgate's copy of Geyser's event library must never be linked against.
+            GeyserEvents.subscribe(bridge.registrar, SessionLoadResourcePacksEvent.class, event -> {
                 GeyserConnection connection = event.connection();
                 core.packFor(connection.xuid()).ifPresent(pack -> event.register(bridge.loaded(pack)));
             });
@@ -58,16 +59,13 @@ final class GeyserBridge implements Sessions {
                     if (bridge.warned.add(pack + reason)) core.warn("pack-host: " + pack + " is sent by Geyser: " + reason);
                 });
             };
-            try {
-                api.eventBus().subscribe(bridge.registrar, SessionLoadResourcePacksEvent.class, hostAll, PostOrder.LAST);
-            } catch (NoSuchMethodError | NoClassDefFoundError unordered) {
-                api.eventBus().subscribe(bridge.registrar, SessionLoadResourcePacksEvent.class, hostAll);
+            if (!GeyserEvents.subscribeLast(bridge.registrar, SessionLoadResourcePacksEvent.class, hostAll)) {
                 core.warn("This Geyser cannot order event listeners; pack-host links may miss packs that other plugins "
-                        + "register after twilight-proxy (" + Sessions.describe(unordered) + ").");
+                        + "register after twilight-proxy.");
             }
             try {
                 // Geyser fires this right before it reads custom_mappings: the merged file is written first.
-                api.eventBus().subscribe(bridge.registrar,
+                GeyserEvents.subscribe(bridge.registrar,
                         org.geysermc.geyser.api.event.lifecycle.GeyserDefineCustomItemsEvent.class, event -> {
                             core.beforeGeyserItems();
                             bridge.itemsRegistered = true;
@@ -83,7 +81,7 @@ final class GeyserBridge implements Sessions {
             return Attach.attached(bridge);
         } catch (RuntimeException | LinkageError failure) {
             bridge.close();
-            return Attach.failed("Geyser's event API could not be used (" + Sessions.describe(failure) + ")");
+            return Attach.failed("Geyser's event API could not be used (" + Sessions.describe(failure) + ")", failure);
         }
     }
 
@@ -181,6 +179,6 @@ final class GeyserBridge implements Sessions {
 
     @Override
     public void close() {
-        try { GeyserApi.api().eventBus().unregisterAll(registrar); } catch (RuntimeException | LinkageError ignored) { }
+        try { GeyserEvents.unregisterAll(registrar); } catch (RuntimeException | LinkageError ignored) { }
     }
 }

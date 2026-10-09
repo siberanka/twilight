@@ -1,6 +1,33 @@
-# Twilight 1.0.0-pre.16 - prerelease
+# Twilight 1.0.0-pre.17 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+This prerelease makes twilight-proxy work on proxies that also run Floodgate
+([field report](docs/FIELD_REPORT_2026-10-09.md)).
+
+- **Geyser attach with Floodgate.** Floodgate bundles its own copy of Geyser's event library. On a proxy
+  that loaded Floodgate first (FlameCord, Waterfall, and Velocity, which does so by default), every
+  earlier version failed with "loader constraint violation". Bedrock players then got no per-server
+  packs and no pack host. Twilight and twilight-proxy now never link against that library. Tested on
+  Velocity and Waterfall with Floodgate, including server switches of a Floodgate player.
+- **Clearer failures.** An attach failure is logged with its full stack trace and with the jars the
+  library came from.
+- **Leftovers no longer count.** Login servers are read only from plugins the proxy loaded. Mapping
+  files from older sync tools are named, with the items they map differently.
+
+After updating from 1.0.0-pre.14 or older, restart Geyser once (the Bedrock item identifiers changed in
+1.0.0-pre.15).
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 239 tests
+across 41 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.16 - prerelease
 
 This prerelease clarifies two messages from the same field report
 ([field report](docs/FIELD_REPORT_2026-10-09.md)):
@@ -22,8 +49,6 @@ across 41 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.15 - prerelease
 
@@ -437,7 +462,34 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.16 - ön sürüm
+### Twilight 1.0.0-pre.17 - ön sürüm
+
+Bu ön sürüm twilight-proxy'yi Floodgate de çalıştıran proxy'lerde çalışır hâle getirir
+([saha raporu](docs/FIELD_REPORT_2026-10-09.md)).
+
+- **Floodgate ile Geyser'a bağlanma.** Floodgate, Geyser'ın olay kütüphanesinin kendi kopyasını içerir.
+  Floodgate'i önce yükleyen bir proxy'de (FlameCord, Waterfall ve bunu varsayılan olarak yapan Velocity) önceki
+  bütün sürümler "loader constraint violation" ile başarısız oluyordu. Bu durumda Bedrock oyuncuları sunucu
+  başına paket almıyor, paket sunucusu da çalışmıyordu. Twilight ve twilight-proxy artık bu kütüphaneye asla
+  bağlanmaz. Floodgate bulunan Velocity ve Waterfall'da, bir Floodgate oyuncusunun sunucu geçişleri dahil test
+  edildi.
+- **Daha açık hatalar.** Bir bağlanma hatası tam yığın iziyle ve kütüphanenin geldiği JAR'larla günlüğe yazılır.
+- **Kalıntılar artık sayılmaz.** Giriş sunucuları yalnızca proxy'nin yüklediği eklentilerden okunur. Eski
+  eşitleme araçlarının eşleme dosyalarının adı, farklı eşledikleri eşyalarla birlikte verilir.
+
+1.0.0-pre.14 veya daha eski bir sürümden güncelledikten sonra Geyser'ı bir kez yeniden başlatın (Bedrock eşya
+kimlikleri 1.0.0-pre.15'te değişti).
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 41 paketteki 239
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.16 - ön sürüm
 
 Bu ön sürüm aynı saha raporundaki iki mesajı netleştirir ([saha raporu](docs/FIELD_REPORT_2026-10-09.md)):
 
@@ -458,8 +510,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.15 - ön sürüm
 

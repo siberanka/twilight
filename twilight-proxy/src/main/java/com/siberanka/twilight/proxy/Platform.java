@@ -44,6 +44,14 @@ public interface Platform {
         return java.util.Optional.empty();
     }
 
+    /**
+     * The data folder names of the plugins this proxy loaded (Velocity: plugin ids, BungeeCord: plugin names),
+     * or empty when the platform cannot tell. Folders of removed plugins are not among them.
+     */
+    default java.util.Optional<java.util.Set<String>> pluginFolders() {
+        return java.util.Optional.empty();
+    }
+
     /** twilight-proxy's version from its plugin description. */
     String version();
 

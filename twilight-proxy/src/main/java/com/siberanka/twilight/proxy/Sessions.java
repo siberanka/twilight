@@ -33,19 +33,24 @@ interface Sessions {
     void close();
 
     /** The outcome of attaching to Geyser. */
-    record Attach(Sessions sessions, String problem, boolean retry) {
+    record Attach(Sessions sessions, String problem, boolean retry, Throwable cause) {
         static Attach attached(Sessions sessions) {
-            return new Attach(sessions, "", false);
+            return new Attach(sessions, "", false, null);
         }
 
         /** Geyser is there but not started yet: try again shortly. */
         static Attach notReady(String problem) {
-            return new Attach(null, problem, true);
+            return new Attach(null, problem, true, null);
         }
 
         /** Geyser is absent or cannot be used; trying again does not help. */
         static Attach failed(String problem) {
-            return new Attach(null, problem, false);
+            return new Attach(null, problem, false, null);
+        }
+
+        /** As {@link #failed(String)}, with the error logged in full. */
+        static Attach failed(String problem, Throwable cause) {
+            return new Attach(null, problem, false, cause);
         }
     }
 

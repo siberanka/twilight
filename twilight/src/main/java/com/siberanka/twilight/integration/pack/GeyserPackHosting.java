@@ -7,7 +7,6 @@ package com.siberanka.twilight.integration.pack;
 import com.siberanka.twilight.host.HostSettings;
 import com.siberanka.twilight.host.PackHost;
 import com.siberanka.twilight.host.SessionHosting;
-import org.geysermc.event.PostOrder;
 import org.geysermc.geyser.api.GeyserApi;
 import org.geysermc.geyser.api.event.EventRegistrar;
 import org.geysermc.geyser.api.event.bedrock.SessionLoadResourcePacksEvent;
@@ -40,7 +39,7 @@ public final class GeyserPackHosting implements AutoCloseable {
         PackHost host = PackHost.start(settings, cache, logger::info);
         GeyserPackHosting hosting = new GeyserPackHosting(host, owner, logger);
         try {
-            GeyserApi.api().eventBus().subscribe(hosting.registrar, SessionLoadResourcePacksEvent.class, hosting::load, PostOrder.LAST);
+            com.siberanka.twilight.geyser.GeyserEvents.subscribeLast(hosting.registrar, SessionLoadResourcePacksEvent.class, hosting::load);
         } catch (RuntimeException | LinkageError failure) {
             host.close();
             throw new IOException("Geyser's pack event is not available: " + failure, failure);

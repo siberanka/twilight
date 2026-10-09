@@ -200,6 +200,11 @@ public final class BungeePlugin extends Plugin implements Listener {
 
         @Override public String version() { return getDescription().getVersion(); }
 
+        @Override public Optional<java.util.Set<String>> pluginFolders() {
+            return Optional.of(getProxy().getPluginManager().getPlugins().stream()
+                    .map(plugin -> plugin.getDataFolder().getName()).collect(java.util.stream.Collectors.toSet()));
+        }
+
         @Override public Optional<String> geyserPlugin() {
             Plugin geyser = getProxy().getPluginManager().getPlugin("Geyser-BungeeCord");
             return Optional.ofNullable(geyser).map(plugin -> plugin.getDescription().getName() + " " + plugin.getDescription().getVersion());

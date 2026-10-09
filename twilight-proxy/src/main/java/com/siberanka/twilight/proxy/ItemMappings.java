@@ -223,6 +223,57 @@ final class ItemMappings {
         return true;
     }
 
+    /**
+     * How many selectors of another mappings file map to a different Bedrock item than {@code merge} (0 when the
+     * file cannot be read).
+     */
+    static int clashes(Path file, Merge merge) {
+        JsonObject other;
+        try {
+            if (Files.size(file) > MAX_ENTRY_BYTES) return 0;
+            JsonElement root = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8));
+            if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return 0;
+            other = root.getAsJsonObject().getAsJsonObject("items");
+        } catch (IOException | RuntimeException unreadable) {
+            return 0;
+        }
+        Map<String, String> ours = new HashMap<>();
+        for (var item : merge.mappings().getAsJsonObject("items").entrySet()) {
+            for (JsonElement mapping : item.getValue().getAsJsonArray()) {
+                JsonObject entry = mapping.getAsJsonObject();
+                ours.put(selector(item.getKey(), entry), entry.get("bedrock_identifier").getAsString());
+            }
+        }
+        int clashes = 0;
+        for (var item : other.entrySet()) {
+            if (!item.getValue().isJsonArray()) continue;
+            for (JsonElement element : item.getValue().getAsJsonArray()) {
+                JsonObject entry = clean(element);
+                if (entry == null) {
+                    entry = cleanForeign(element);
+                    if (entry == null) continue;
+                }
+                String identifier = ours.get(selector(item.getKey(), entry));
+                if (identifier != null && !identifier.equals(entry.get("bedrock_identifier").getAsString())) clashes++;
+            }
+        }
+        return clashes;
+    }
+
+    /** The selector part of a mapping whose Bedrock identifier is not a Twilight one (an older tool's). */
+    private static JsonObject cleanForeign(JsonElement element) {
+        try {
+            JsonObject source = element.getAsJsonObject();
+            JsonObject copy = source.deepCopy();
+            copy.addProperty("bedrock_identifier", "twilight:foreign");
+            JsonObject cleaned = clean(copy);
+            if (cleaned != null) cleaned.addProperty("bedrock_identifier", source.get("bedrock_identifier").getAsString());
+            return cleaned;
+        } catch (RuntimeException malformed) {
+            return null;
+        }
+    }
+
     /** Twilight mapping files copied into the proxy's Geyser by hand, which would register the items twice. */
     static List<String> copies(Path customMappings) throws IOException {
         if (!Files.isDirectory(customMappings)) return List.of();

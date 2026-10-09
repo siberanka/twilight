@@ -59,9 +59,8 @@ public final class GeyserLanguageBridge implements AutoCloseable {
 
     public static GeyserLanguageBridge create(Object owner, Path servedPack, Logger logger) {
         GeyserLanguageBridge bridge = new GeyserLanguageBridge(owner, servedPack, logger);
-        var events = GeyserApi.api().eventBus();
-        events.subscribe(bridge.registrar, GeyserPostInitializeEvent.class, event -> bridge.attach());
-        events.subscribe(bridge.registrar, GeyserPostReloadEvent.class, event -> bridge.attach());
+        com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostInitializeEvent.class, event -> bridge.attach());
+        com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostReloadEvent.class, event -> bridge.attach());
         if (Registries.JAVA_PACKET_TRANSLATORS.get().get(ClientboundLoginPacket.class) != null) bridge.attach();
         return bridge;
     }

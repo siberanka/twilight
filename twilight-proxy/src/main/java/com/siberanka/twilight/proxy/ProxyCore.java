@@ -73,9 +73,11 @@ public final class ProxyCore implements TwilightProxyApi {
     private volatile String mappingsState = "not written";
     private volatile String reportedConflicts = "";
     private volatile boolean reportedCopies;
+    private volatile List<String> mappingsCopies = List.of();
     private volatile boolean reportedLocale;
     /** Login servers found in login plugins' configuration files (lower case -> file). */
     private volatile Map<String, String> detectedLogin = Map.of();
+    private volatile java.util.Set<String> reportedSkippedLogin = java.util.Set.of();
     private volatile com.siberanka.twilight.host.PackHost host;
     private volatile com.siberanka.twilight.update.UpdateCheck updates;
 
@@ -157,7 +159,7 @@ public final class ProxyCore implements TwilightProxyApi {
         try {
             result = attacher.attach(this);
         } catch (RuntimeException | LinkageError failure) {
-            result = Sessions.Attach.failed("Geyser's API could not be used (" + Sessions.describe(failure) + ")");
+            result = Sessions.Attach.failed("Geyser's API could not be used (" + Sessions.describe(failure) + ")", failure);
         }
         if (result.sessions() != null) {
             attachedLate = attempt > ATTACH_ATTEMPTS;
@@ -173,7 +175,7 @@ public final class ProxyCore implements TwilightProxyApi {
                 if (attempt == 0) platform.info(NOT_INSTALLED + ": packs are prepared but not sent.");
             } else if (changed) {
                 platform.warn("Could not attach to Geyser: " + result.problem() + ". Bedrock players get no per-server packs;"
-                        + " check that Geyser and twilight-proxy are up to date.", null);
+                        + " check that Geyser and twilight-proxy are up to date. " + geyserLibraries(), result.cause());
             }
             return;
         }
@@ -183,6 +185,26 @@ public final class ProxyCore implements TwilightProxyApi {
         } else if (attempt == ATTACH_ATTEMPTS) {
             platform.warn("Geyser did not become ready within " + ATTACH_ATTEMPTS * ATTACH_RETRY_MILLIS / 1000 + " s ("
                     + result.problem() + "); twilight-proxy tries again when a player joins.", null);
+        }
+    }
+
+    /**
+     * Where Geyser's event library comes from, for twilight-proxy and for Geyser: two different files mean another
+     * plugin (Floodgate) bundles its own copy, which is what a "loader constraint violation" points to.
+     */
+    static String geyserLibraries() {
+        return "Geyser's event library for twilight-proxy: " + origin("org.geysermc.event.PostOrder", ProxyCore.class.getClassLoader())
+                + "; Geyser's API: " + origin("org.geysermc.geyser.api.event.EventBus", ProxyCore.class.getClassLoader()) + ".";
+    }
+
+    private static String origin(String name, ClassLoader loader) {
+        try {
+            Class<?> type = Class.forName(name, false, loader);
+            var source = type.getProtectionDomain().getCodeSource();
+            String file = source == null || source.getLocation() == null ? "unknown" : source.getLocation().getPath();
+            return file.substring(file.lastIndexOf('/') + 1);
+        } catch (ClassNotFoundException | LinkageError | SecurityException missing) {
+            return "not found";
         }
     }
 
@@ -265,15 +287,19 @@ public final class ProxyCore implements TwilightProxyApi {
             platform.warn(merge.invalid() + " item mapping(s) in the servers' packs were malformed and left out.", null);
         }
         try {
-            if (!reportedCopies) {
-                List<String> copies = ItemMappings.copies(custom);
-                if (!copies.isEmpty()) {
-                    reportedCopies = true;
-                    platform.warn("Geyser's custom_mappings holds Twilight files copied from a backend " + copies + ": remove them;"
-                            + " twilight-proxy writes " + ItemMappings.FILE + " with every server's items, and copies register"
-                            + " the same items twice.", null);
+            List<String> copies = ItemMappings.copies(custom);
+            if (!copies.isEmpty() && !reportedCopies) {
+                reportedCopies = true;
+                platform.warn("Geyser's custom_mappings holds other Twilight item mappings " + copies + " (copied from a"
+                        + " backend or written by an older sync tool): stop that tool and remove them. twilight-proxy writes "
+                        + ItemMappings.FILE + " with every server's items; Geyser would register both files.", null);
+                for (String copy : copies) {
+                    int clashes = ItemMappings.clashes(custom.resolve(copy), merge);
+                    if (clashes > 0) platform.warn("  " + copy + " maps " + clashes + " Java item selector(s) to other Bedrock"
+                            + " items than the servers' packs: those items would look wrong for Bedrock players.", null);
                 }
             }
+            mappingsCopies = copies;
             if (merge.count() == 0 && !Files.isRegularFile(custom.resolve(ItemMappings.FILE))) {
                 mappingsState = "no Twilight items in the servers' packs yet";
                 return;
@@ -380,7 +406,14 @@ public final class ProxyCore implements TwilightProxyApi {
                     ? "No secret is shared with the backends (secret, Velocity forwarding or BungeeGuard): 'auto' packs are off."
                     : "Packs from Twilight on the backends are on (" + keys.size() + " shared secret(s)).");
             if (next.urlRefreshMinutes() > 0) store.refreshLinks();
-            Map<String, String> login = LoginServers.detect(platform.proxyRoot(), platform.serverNames());
+            java.util.Set<String> skippedLogin = new java.util.TreeSet<>();
+            Map<String, String> login = LoginServers.detect(platform.proxyRoot(), platform.serverNames(),
+                    platform.pluginFolders().orElse(null), skippedLogin::add);
+            if (!skippedLogin.equals(reportedSkippedLogin)) {
+                skippedLogin.forEach(folder -> platform.info("Not reading " + folder + ": that plugin is not installed"
+                        + " (a folder left behind); its login servers are not used."));
+                reportedSkippedLogin = java.util.Set.copyOf(skippedLogin);
+            }
             if (!login.equals(detectedLogin)) {
                 login.forEach((server, file) -> platform.info("Login server " + server + " (found in " + file
                         + "): Bedrock players are never reconnected for it."));
@@ -679,7 +712,8 @@ public final class ProxyCore implements TwilightProxyApi {
                 .append(transfers.enabled() ? "auto packs on" : "auto packs off (no shared secret)")
                 .append(", Geyser ").append(geyser == null ? "not attached (" + geyserProblem + ")" : "attached")
                 .append(", pack host ").append(host == null ? "off" : "on");
-        if (geyser != null) out.append("\n  item mappings: ").append(mappingsState);
+        if (geyser != null) out.append("\n  item mappings: ").append(mappingsState)
+                .append(mappingsCopies.isEmpty() ? "" : " (remove " + String.join(", ", mappingsCopies) + ")");
         java.util.Set<String> login = new java.util.TreeSet<>(detectedLogin.keySet());
         ProxyConfig current = config;
         if (current != null) login.addAll(current.loginServers());

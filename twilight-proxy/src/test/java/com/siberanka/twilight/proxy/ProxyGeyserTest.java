@@ -243,6 +243,42 @@ class ProxyGeyserTest {
         assertTrue(ProxyCore.localeReadsMappings(java.util.Locale.forLanguageTag("de-DE")));
     }
 
+    /**
+     * Floodgate bundles its own copy of Geyser's event library. twilight-proxy's classes must not refer to that
+     * library at all, or a proxy that loads Floodgate first fails with "loader constraint violation" (FlameCord).
+     */
+    @Test
+    void noClassLinksAgainstGeyserEventLibrary() throws Exception {
+        Path classes = Path.of(ProxyCore.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        List<String> offenders = new ArrayList<>();
+        try (var files = Files.walk(classes)) {
+            for (Path file : files.filter(path -> path.toString().endsWith(".class")).toList()) {
+                String content = new String(Files.readAllBytes(file), StandardCharsets.ISO_8859_1);
+                if (content.contains("org/geysermc/event/")) offenders.add(classes.relativize(file).toString());
+            }
+        }
+        assertTrue(Files.isRegularFile(classes.resolve("com/siberanka/twilight/geyser/GeyserEvents.class")));
+        assertEquals(List.of(), offenders);
+    }
+
+    @Test
+    void reportsOlderMappingFilesThatMapTheSameItemsDifferently() throws Exception {
+        Path folder = root.resolve("clash");
+        Files.createDirectories(folder);
+        Path old = folder.resolve("twilight_network_item_mappings.json");
+        JsonObject legacyTool = mappings(legacy("minecraft:paper", 7, "twilight:n_0123456789abcdef0123456789abcdef"),
+                legacy("minecraft:paper", 8, "twilight:minecraft_paper_8_cccccccccccc"),
+                legacy("minecraft:stick", 3, "twilight:n_fedcba9876543210fedcba9876543210"));
+        Files.writeString(old, legacyTool.toString());
+        ItemMappings.Merge merge = ItemMappings.merge(Map.of("lobby", mappings(
+                legacy("minecraft:paper", 7, "twilight:minecraft_paper_7_aaaaaaaaaaaa"),
+                legacy("minecraft:paper", 8, "twilight:minecraft_paper_8_cccccccccccc"))));
+        assertEquals(1, ItemMappings.clashes(old, merge), "paper 7 differs, paper 8 is the same, stick is not ours");
+        Files.writeString(old, "{broken");
+        assertEquals(0, ItemMappings.clashes(old, merge));
+        assertEquals(List.of("twilight_network_item_mappings.json"), ItemMappings.copies(folder));
+    }
+
     // --- Login servers ---------------------------------------------------------------------
 
     @Test
@@ -277,6 +313,22 @@ class ProxyGeyserTest {
         assertEquals("plugins/librelogin/config.conf", found.get("limbo"));
         assertEquals(List.of("auth", "auth2"), LoginServers.servers("auth-servers: [auth, \"auth2\"] # comment\n"));
         assertTrue(LoginServers.detect(root.resolve("no-proxy"), List.of("auth")).isEmpty());
+    }
+
+    @Test
+    void ignoresConfigurationsOfLoginPluginsThatAreNotInstalled() throws Exception {
+        RecordingPlatform platform = platform("leftover", "auth", "lobi");
+        write(platform.proxyRoot().resolve("plugins/LeaderOS-Auth/config.yml"), "settings:\n  auth-server: auth\n");
+        // AuthMeBungee was removed, its folder stayed.
+        write(platform.proxyRoot().resolve("plugins/AuthMeBungee/config.yml"), "authServers:\n- lobi\n");
+        platform.folders = java.util.Set.of("LeaderOS-Auth", "twilight-proxy", "Geyser-BungeeCord");
+        ProxyCore core = new ProxyCore(platform, this, ignored -> Sessions.Attach.failed("Geyser is not installed on this proxy"));
+        core.enable();
+        assertTrue(core.statusText().contains("login servers: auth\n"), core.statusText());
+        assertTrue(platform.infos.contains("Not reading plugins/AuthMeBungee: that plugin is not installed (a folder left"
+                + " behind); its login servers are not used."), platform.infos.toString());
+        assertFalse(platform.infos.stream().anyMatch(line -> line.startsWith("Login server lobi")));
+        core.disable();
     }
 
     @Test
@@ -414,7 +466,9 @@ class ProxyGeyserTest {
         @Override public String version() { return "test"; }
         @Override public void tellAdmins(String text, String url) { }
         @Override public Optional<String> geyserPlugin() { return Optional.ofNullable(geyser); }
+        @Override public Optional<java.util.Set<String>> pluginFolders() { return Optional.ofNullable(folders); }
 
         String geyser;
+        java.util.Set<String> folders;
     }
 }

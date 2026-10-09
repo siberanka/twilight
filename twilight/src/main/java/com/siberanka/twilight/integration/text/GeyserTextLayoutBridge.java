@@ -94,9 +94,8 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
      */
     public static GeyserTextLayoutBridge create(Object owner, Path servedPack, Logger logger, boolean allSurfaces) {
         GeyserTextLayoutBridge bridge = new GeyserTextLayoutBridge(owner, servedPack, logger, allSurfaces);
-        var events = GeyserApi.api().eventBus();
-        events.subscribe(bridge.registrar, GeyserPostInitializeEvent.class, event -> bridge.attach());
-        events.subscribe(bridge.registrar, GeyserPostReloadEvent.class, event -> bridge.attach());
+        com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostInitializeEvent.class, event -> bridge.attach());
+        com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostReloadEvent.class, event -> bridge.attach());
         if (Registries.JAVA_PACKET_TRANSLATORS.get().get(ClientboundOpenScreenPacket.class) != null) bridge.attach();
         return bridge;
     }

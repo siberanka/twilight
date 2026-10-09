@@ -38,6 +38,18 @@ final class LoginServers {
 
     /** Login server (lower case) -> the file it was found in, relative to the proxy folder. */
     static Map<String, String> detect(Path proxyRoot, Collection<String> servers) {
+        return detect(proxyRoot, servers, null, ignored -> { });
+    }
+
+    /**
+     * As {@link #detect(Path, Collection)}, reading only the folders of {@code installed} plugins (case-insensitive;
+     * null reads every login plugin folder). A folder left behind by a removed plugin is reported to
+     * {@code skipped} instead of being read.
+     */
+    static Map<String, String> detect(Path proxyRoot, Collection<String> servers, Set<String> installed,
+                                      java.util.function.Consumer<String> skipped) {
+        Set<String> loaded = installed == null ? null : installed.stream().map(name -> name.toLowerCase(Locale.ROOT))
+                .collect(java.util.stream.Collectors.toSet());
         Map<String, String> known = new TreeMap<>();
         for (String server : servers) known.put(server.toLowerCase(Locale.ROOT), server);
         Map<String, String> found = new TreeMap<>();
@@ -51,6 +63,12 @@ final class LoginServers {
             return found;
         }
         for (Path folder : folders) {
+            if (loaded != null && !loaded.contains(folder.getFileName().toString().toLowerCase(Locale.ROOT))) {
+                if (FILES.stream().anyMatch(name -> Files.isRegularFile(folder.resolve(name)))) {
+                    skipped.accept(proxyRoot.relativize(folder).toString().replace('\\', '/'));
+                }
+                continue;
+            }
             for (String name : FILES) {
                 Path file = folder.resolve(name);
                 try {

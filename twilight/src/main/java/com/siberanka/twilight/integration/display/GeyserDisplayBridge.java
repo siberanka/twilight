@@ -41,7 +41,7 @@ public final class GeyserDisplayBridge implements AutoCloseable {
         variants = readIndex(deployedPack);
         registrar = EventRegistrar.of(owner);
         if (variants.isEmpty()) return;
-        GeyserApi.api().eventBus().subscribe(registrar, GeyserDefineEntitiesEvent.class, event -> {
+        com.siberanka.twilight.geyser.GeyserEvents.subscribe(registrar, GeyserDefineEntitiesEvent.class, event -> {
             if (Registries.JAVA_ENTITY_TYPES.get(GeyserEntityType.ofVanilla(EntityType.ITEM_DISPLAY)) != null) {
                 logger.severe("Item-display bridge cannot start: another translator already owns item_display.");
                 return;
@@ -74,7 +74,7 @@ public final class GeyserDisplayBridge implements AutoCloseable {
             registerCloudAnchors(logger);
             logger.info("Registered live item-display bridge for " + variants.size() + " converted models.");
         });
-        GeyserApi.api().eventBus().subscribe(registrar, GeyserDefineEntityPropertiesEvent.class, event -> {
+        com.siberanka.twilight.geyser.GeyserEvents.subscribe(registrar, GeyserDefineEntityPropertiesEvent.class, event -> {
             if (definition == null) return;
             DisplayPose identity = DisplayPose.identity();
             for (int i = 0; i < 14; i++) {

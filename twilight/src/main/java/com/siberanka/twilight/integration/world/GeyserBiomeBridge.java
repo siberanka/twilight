@@ -75,9 +75,8 @@ public final class GeyserBiomeBridge implements AutoCloseable {
     public static GeyserBiomeBridge create(Object owner, Path servedPack, Logger logger,
                                            java.util.function.BiConsumer<java.util.UUID, List<long[]>> resend) {
         GeyserBiomeBridge bridge = new GeyserBiomeBridge(owner, servedPack, logger, resend);
-        var events = GeyserApi.api().eventBus();
-        events.subscribe(bridge.registrar, GeyserPostInitializeEvent.class, event -> bridge.attach());
-        events.subscribe(bridge.registrar, GeyserPostReloadEvent.class, event -> bridge.attach());
+        com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostInitializeEvent.class, event -> bridge.attach());
+        com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostReloadEvent.class, event -> bridge.attach());
         if (Registries.JAVA_PACKET_TRANSLATORS.get().get(ClientboundRegistryDataPacket.class) != null) bridge.attach();
         return bridge;
     }

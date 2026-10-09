@@ -4,6 +4,22 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.17 - 2026-10-09
+
+- Attach to Geyser on proxies and servers that load Floodgate before Geyser. Floodgate bundles its
+  own copy of Geyser's event library, and linking against it failed with "loader constraint violation"
+  on FlameCord, Waterfall and Velocity with Floodgate (every earlier version). Twilight and
+  twilight-proxy now subscribe to Geyser's events through reflection with Geyser's own class loader,
+  and a test fails if any class refers to that library. Verified on Velocity and Waterfall with
+  Floodgate loaded first: attach, item mappings, pack host and server switches of a Floodgate player.
+- Log an attach failure with its full stack trace and with the jars each side took Geyser's event
+  library from.
+- Read login servers only from plugins the proxy loaded; a folder left behind by a removed login
+  plugin is reported instead of making its server a login server.
+- Name other Twilight mapping files in the proxy's Geyser (copied by hand or written by an older sync
+  tool), count the selectors they map differently, and show them in `/twilightproxy`.
+- 239 tests pass (213 Twilight, 26 proxy).
+
 ## 1.0.0-pre.16 - 2026-10-09
 
 - twilight-proxy: when the proxy lists a Geyser plugin but its classes are not visible to
@@ -407,6 +423,22 @@ Fixes from a field report on a proxy network; each point was reproduced locally 
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-pre.17 - 2026-10-09
+
+- Floodgate'i Geyser'dan önce yükleyen proxy'lerde ve sunucularda Geyser'a bağlanılır. Floodgate, Geyser'ın olay
+  kütüphanesinin kendi kopyasını içerir. Ona bağlanmak FlameCord'da, Waterfall'da ve Floodgate bulunan Velocity'de
+  "loader constraint violation" ile başarısız oluyordu (önceki bütün sürümler). Twilight ve twilight-proxy artık
+  Geyser'ın olaylarına Geyser'ın kendi sınıf yükleyicisiyle yansıma üzerinden abone olur. Herhangi bir sınıf bu
+  kütüphaneye başvurursa bir test başarısız olur. Floodgate'in önce yüklendiği Velocity ve Waterfall'da
+  doğrulandı: bağlanma, eşya eşlemeleri, paket sunucusu ve bir Floodgate oyuncusunun sunucu geçişleri.
+- Bir bağlanma hatası tam yığın iziyle ve her tarafın Geyser'ın olay kütüphanesini hangi JAR'lardan aldığıyla
+  günlüğe yazılır.
+- Giriş sunucuları yalnızca proxy'nin yüklediği eklentilerden okunur. Kaldırılmış bir giriş eklentisinin geride
+  kalan klasörü, sunucusunu giriş sunucusu yapmak yerine bildirilir.
+- Proxy'deki Geyser'da bulunan diğer Twilight eşleme dosyalarının (elle kopyalanmış veya eski bir eşitleme
+  aracının yazdığı) adı verilir, farklı eşledikleri seçiciler sayılır ve bunlar `/twilightproxy` içinde gösterilir.
+- 239 test geçti (213 Twilight, 26 proxy).
 
 #### 1.0.0-pre.16 - 2026-10-09
 
