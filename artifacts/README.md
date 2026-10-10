@@ -1,4 +1,4 @@
-# Twilight 1.0.0-pre.19 prerelease build
+# Twilight 1.0.0-beta.1 build (first beta)
 
 > Türkçe: [aşağıda](#türkçe)
 
@@ -8,7 +8,7 @@
 
 Built locally by siberanka using Java 25.0.2 and Gradle 9.6.0, with
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`.
-247 tests across 42 suites passed. No hosted CI was used.
+248 tests across 42 suites passed. No hosted CI was used.
 
 The corresponding source is in this commit under `twilight/`, `twilight-proxy/` and `protocol/`, with build files
 at the repository root. Licensed under [LGPL-3.0-or-later](../LICENSE.LESSER);
@@ -16,7 +16,10 @@ the accompanying [GPL text](../LICENSE) is also provided.
 
 Read the [release notes](../RELEASE_NOTES.md), the [wiki](../WIKI.md) and the
 [stacked images, nameplates and exact biomes](../docs/LAYERS_BIOMES_2026-10-04.md)
-report before deployment. This prerelease leaves item display models out of packs for servers without
+report before deployment, and the [beta status and compatibility](../README.md#beta-status-and-compatibility)
+summary. 1.0.0-beta.1 is the first beta: it orders release stages correctly in the update check (servers on
+1.0.0-pre.14 to pre.19 do not announce it; replace both JARs by hand once) and adds issue templates, a
+[security policy](../SECURITY.md) and [contribution notes](../CONTRIBUTING.md). 1.0.0-pre.19 left item display models out of packs for servers without
 Geyser (Survival's loading after joining fell from 156 s to under 10 s), keeps Bedrock players connected
 while their client loads the packs, and runs Twilight's text layout and translations in the proxy's Geyser,
 so images such as BoxPVP's ItemsAdder prefix no longer show as Unicode characters on proxy networks
@@ -71,7 +74,7 @@ item, glyph and menu results.
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.19 ön sürüm derlemesi
+### Twilight 1.0.0-beta.1 derlemesi (ilk beta)
 
 [Twilight.jar indir](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256) (arka uç sunucuları)
 
@@ -79,7 +82,7 @@ item, glyph and menu results.
 
 siberanka tarafından Java 25.0.2 ve Gradle 9.6.0 ile yerel olarak
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`
-komutuyla derlendi. 42 paketteki 247 test geçti. Barındırılan CI kullanılmadı.
+komutuyla derlendi. 42 paketteki 248 test geçti. Barındırılan CI kullanılmadı.
 
 İlgili kaynak kod bu commit içinde `twilight/`, `twilight-proxy/` ve `protocol/` altında, derleme
 dosyaları depo kökündedir. [LGPL-3.0-or-later](../LICENSE.LESSER) ile lisanslanmıştır;
@@ -87,7 +90,10 @@ eşlik eden [GPL metni](../LICENSE) de sağlanır.
 
 Dağıtımdan önce [sürüm notlarını](../RELEASE_NOTES.md), [wiki'yi](../WIKI.md) ve
 [üst üste görseller, isim plakaları ve birebir biyomlar](../docs/LAYERS_BIOMES_2026-10-04.md)
-raporunu okuyun. Bu ön sürüm, Geyser'ı olmayan sunucuların paketlerinden eşya görüntüsü modellerini çıkarır
+raporunu ve [beta durumu ve uyumluluk](../README.md#beta-durumu-ve-uyumluluk) özetini okuyun.
+1.0.0-beta.1 ilk betadır: güncelleme denetiminde sürüm aşamalarını doğru sıralar (1.0.0-pre.14 ile pre.19
+arasındaki sunucular onu duyurmaz; iki JAR'ı bir kez elle değiştirin) ve issue şablonları, bir
+[güvenlik politikası](../SECURITY.md#türkçe) ve [katkı notları](../CONTRIBUTING.md#türkçe) ekler. 1.0.0-pre.19, Geyser'ı olmayan sunucuların paketlerinden eşya görüntüsü modellerini çıkarır
 (Survival'ın katıldıktan sonraki yüklemesi 156 saniyeden 10 saniyenin altına indi), istemcileri paketleri
 yüklerken Bedrock oyuncularını bağlı tutar ve Twilight'ın yazı yerleşimiyle çevirilerini proxy'deki Geyser'da
 çalıştırır; böylece BoxPVP'nin ItemsAdder öneki gibi görseller proxy'li ağlarda artık Unicode karakteri olarak

@@ -25,7 +25,9 @@ Java 21 is the minimum bytecode level. Local builds use Java 25.
 |---|---|
 | Velocity 4.2.0 with Geyser 2.11.3 | Tested live: `auto`, file and switching packs, modern forwarding secret |
 | BungeeCord 26.1 with Geyser 2.11.3 | Tested live: `auto`, file and switching packs, explicit secret |
-| Velocity 3.x, Waterfall, older BungeeCord | Uses only long-standing API (`order` subscriptions, `ServerConnectEvent` with a fallback for proxies without `Reason`); not tested live |
+| Waterfall 1.21 (build 615) with Floodgate loaded first | Tested live: Geyser attach, item mappings, stale-file retirement, and the start of the proxy's text runtime (1.0.0-pre.17 to beta.1) |
+| FlameCord | Reported from a production network (Geyser attach and item mappings, 1.0.0-pre.16 and pre.17); not tested locally |
+| Velocity 3.x, older BungeeCord | Uses only long-standing API (`order` subscriptions, `ServerConnectEvent` with a fallback for proxies without `Reason`); not tested live |
 | Download links | Implemented and unit-checked; not tested against a live host |
 | Login plugins (AuthMe with AuthMeVelocity/AuthMeBungee, LibreLogin, nLogin, JPremium) | Tested on Velocity with a stand-in that forces a login server and refuses other servers before the login: the reconnected player logs in once and reaches its server; the real plugins were not installed |
 | LeaderOS Auth Plus 1.1.1 | Tested live on BungeeCord (with BungeeGuard 1.4, with and without Floodgate 2.2.5) and Velocity (LimboAPI 1.1.27 dev build): one reconnect per server change with and without a session; on Velocity with Minecraft 26.2 the LimboAPI login command was not received from Bedrock (session login worked) |
@@ -34,8 +36,11 @@ Java 21 is the minimum bytecode level. Local builds use Java 25.
 | Packs up to 152 MiB and 6,000 entries | Tested live through Geyser (172 s) and through the pack host (123 s) |
 
 Per-server packs need a reconnect when the pack changes, because Bedrock loads packs only when it
-connects. Twilight's runtime text, biome and name bridges need Geyser on the same server as Twilight;
-a proxy-only Geyser gets the packs but not those layers. See the [proxy test](PROXY_2026-10-05.md).
+connects. Since 1.0.0-pre.19, twilight-proxy runs the text layout (custom glyphs, moved characters,
+named fonts, spacing), the packs' translations and the loading protection in the proxy's Geyser, with
+each player's pack ([field report](FIELD_REPORT_2026-10-10.md)). Custom biome colours, the rule that hides
+the name of ridden entities, and item-display models (furniture, model bones) still need Geyser on the
+same server as Twilight. See the [proxy test](PROXY_2026-10-05.md).
 
 ## Pack hosting
 
@@ -166,7 +171,9 @@ En düşük bytecode düzeyi Java 21'dir. Yerel derlemeler Java 25 kullanır.
 |---|---|
 | Geyser 2.11.3 ile Velocity 4.2.0 | Canlı test edildi: `auto`, dosya ve paket geçişi, modern yönlendirme gizli anahtarı |
 | Geyser 2.11.3 ile BungeeCord 26.1 | Canlı test edildi: `auto`, dosya ve paket geçişi, açık gizli anahtar |
-| Velocity 3.x, Waterfall, eski BungeeCord | Yalnızca uzun süredir var olan API'yi kullanır (`order` abonelikleri, `Reason` olmayan proxy'ler için yedekli `ServerConnectEvent`); canlı test edilmedi |
+| Önce Floodgate'i yükleyen Waterfall 1.21 (derleme 615) | Canlı test edildi: Geyser'a bağlanma, eşya eşlemeleri, eski dosyaların taşınması ve proxy'deki yazı çalışma zamanının başlaması (1.0.0-pre.17'den beta.1'e) |
+| FlameCord | Bir üretim ağından bildirildi (Geyser'a bağlanma ve eşya eşlemeleri, 1.0.0-pre.16 ve pre.17); yerelde test edilmedi |
+| Velocity 3.x, eski BungeeCord | Yalnızca uzun süredir var olan API'yi kullanır (`order` abonelikleri, `Reason` olmayan proxy'ler için yedekli `ServerConnectEvent`); canlı test edilmedi |
 | İndirme bağlantıları | Uygulandı ve birim testlerle denetlendi; canlı bir sunucuya karşı test edilmedi |
 | Giriş eklentileri (AuthMeVelocity/AuthMeBungee ile AuthMe, LibreLogin, nLogin, JPremium) | Velocity'de bir giriş sunucusunu zorlayan ve girişten önce diğer sunucuları reddeden bir yerine geçen eklentiyle test edildi: yeniden bağlanan oyuncu bir kez giriş yapar ve sunucusuna ulaşır; gerçek eklentiler kurulmadı |
 | LeaderOS Auth Plus 1.1.1 | BungeeCord'da (BungeeGuard 1.4 ile, Floodgate 2.2.5 ile ve onsuz) ve Velocity'de (LimboAPI 1.1.27 geliştirme derlemesi) canlı test edildi: oturumla ve oturumsuz sunucu değişikliği başına tek yeniden bağlanma; Velocity'de Minecraft 26.2 ile LimboAPI giriş komutu Bedrock'tan alınmadı (oturumlu giriş çalıştı) |
@@ -175,9 +182,11 @@ En düşük bytecode düzeyi Java 21'dir. Yerel derlemeler Java 25 kullanır.
 | 152 MiB'e ve 6.000 girdiye kadar paketler | Geyser üzerinden (172 sn) ve paket sunucusu üzerinden (123 sn) canlı test edildi |
 
 Sunucu başına paketler, paket değiştiğinde yeniden bağlanma gerektirir, çünkü Bedrock paketleri yalnızca
-bağlanırken yükler. Twilight'ın çalışma zamanı yazı, biyom ve ad köprüleri Geyser'ın Twilight ile aynı
-sunucuda olmasını gerektirir; yalnızca proxy'deki bir Geyser paketleri alır ama bu katmanları almaz.
-[Proxy testine](PROXY_2026-10-05.md) bakın.
+bağlanırken yükler. 1.0.0-pre.19'dan beri twilight-proxy yazı yerleşimini (özel glifler, taşınan karakterler,
+adlandırılmış fontlar, boşluklar), paketlerin çevirilerini ve yükleme korumasını proxy'deki Geyser'da, her
+oyuncunun paketiyle çalıştırır ([saha raporu](FIELD_REPORT_2026-10-10.md)). Özel biyom renkleri, binilen
+varlıkların adını gizleyen kural ve eşya görüntüsü modelleri (mobilyalar, model kemikleri) hâlâ Geyser'ın
+Twilight ile aynı sunucuda olmasını gerektirir. [Proxy testine](PROXY_2026-10-05.md) bakın.
 
 #### Paket sunucusu
 

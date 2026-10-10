@@ -591,12 +591,14 @@ after start and then every six hours, from GitHub, or from GitLab when GitHub ca
 refuses (rate limit). A newer version is written to the console once:
 
 ```text
-[Twilight] Twilight 1.0.0-pre.15 is available (this server runs 1.0.0-pre.14): https://github.com/siberanka/twilight/releases/tag/v1.0.0-pre.15
+[Twilight] Twilight 1.0.0-beta.2 is available (this server runs 1.0.0-beta.1): https://github.com/siberanka/twilight/releases/tag/v1.0.0-beta.2
 ```
 
 Players with the update permission get the same line with a clickable link when they join and when
-the version is found. A server running a prerelease also hears about newer prereleases; one running a
-release only about releases. `/twilight status` and `/twilightproxy` show the result of the last check.
+the version is found. A server running a prerelease (a beta, for example) also hears about newer
+prereleases; one running a release only about releases. Stages follow the order alpha, pre, beta, rc,
+release. Versions 1.0.0-pre.14 to pre.19 sorted them alphabetically and do not announce 1.0.0-beta.1: update
+them by hand once. `/twilight status` and `/twilightproxy` show the result of the last check.
 
 - Only `GET` requests over HTTPS to `api.github.com` and `gitlab.com`, with a user agent naming the
   plugin and its version. Nothing about the server, its players or its configuration is sent.
@@ -1405,12 +1407,14 @@ altı saatte bir herkese açık sürüm listesini GitHub'dan, GitHub'a ulaşıla
 sınırı) GitLab'dan okur. Daha yeni bir sürüm konsola bir kez yazılır:
 
 ```text
-[Twilight] Twilight 1.0.0-pre.15 is available (this server runs 1.0.0-pre.14): https://github.com/siberanka/twilight/releases/tag/v1.0.0-pre.15
+[Twilight] Twilight 1.0.0-beta.2 is available (this server runs 1.0.0-beta.1): https://github.com/siberanka/twilight/releases/tag/v1.0.0-beta.2
 ```
 
 Güncelleme iznine sahip oyuncular aynı satırı tıklanabilir bir bağlantıyla, katıldıklarında ve sürüm
-bulunduğunda alır. Ön sürüm çalıştıran bir sunucu daha yeni ön sürümleri de öğrenir; kararlı sürüm çalıştıran
-bir sunucu yalnızca kararlı sürümleri. `/twilight status` ve `/twilightproxy` son denetimin sonucunu gösterir.
+bulunduğunda alır. Ön sürüm (örneğin bir beta) çalıştıran bir sunucu daha yeni ön sürümleri de öğrenir; kararlı
+sürüm çalıştıran bir sunucu yalnızca kararlı sürümleri. Aşamalar alpha, pre, beta, rc, kararlı sürüm sırasını
+izler. 1.0.0-pre.14 ile pre.19 arasındaki sürümler bunları alfabetik sıralıyordu ve 1.0.0-beta.1'i duyurmaz:
+onları bir kez elle güncelleyin. `/twilight status` ve `/twilightproxy` son denetimin sonucunu gösterir.
 
 - Yalnızca `api.github.com` ve `gitlab.com` adreslerine HTTPS üzerinden, eklentiyi ve sürümünü belirten bir
   kullanıcı aracısıyla `GET` istekleri yapılır. Sunucu, oyuncuları veya yapılandırması hakkında hiçbir şey

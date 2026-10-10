@@ -1,6 +1,47 @@
-# Twilight 1.0.0-pre.19 - prerelease
+# Twilight 1.0.0-beta.1 - first beta
 
 > Türkçe: [aşağıda](#türkçe)
+
+The first beta of Twilight and twilight-proxy. The features are complete for single servers and proxy
+networks and run on production networks; behaviour can still change between betas. Read the
+[beta status and compatibility](README.md#beta-status-and-compatibility) summary before installing.
+
+What Twilight does, with no configuration:
+
+- **Builds the Bedrock pack from your server's content.** Items, 3D models, armour, glyphs and menus,
+  sounds, biomes and translations from ItemsAdder, CraftEngine, Nexo, Oraxen, BetterModel, ModelEngine,
+  RealisticSeasons, CustomNameplates, datapacks and resource packs, validated and deployed to Geyser with
+  snapshots for rollback.
+- **Shows Java's layout on Bedrock.** Chest titles, chat, action bar, titles, boss bars, scoreboards and
+  names use Java's font metrics, including stacked images and moved characters.
+- **Serves networks.** twilight-proxy gives each Bedrock player the pack of the server they join, merges
+  every server's custom items into the proxy's Geyser, runs the text layout there, works with login
+  plugins and Floodgate, and can host the packs over HTTP.
+- **Repairs itself after updates.** Stale Twilight files are moved out of Geyser, needed restarts are
+  announced, and new versions are announced from GitHub or GitLab.
+
+Changes since 1.0.0-pre.19: the update check orders stages as alpha, pre, beta, rc and release; the README
+starts with the compatibility summary; issue, merge and pull request templates, a
+[security policy](SECURITY.md) and [contribution notes](CONTRIBUTING.md) were added.
+
+**Updating from 1.0.0-pre.14 to pre.19:** their update check sorts "beta" before "pre" and does not announce
+this version. Replace `Twilight.jar` and `TwilightProxy.jar` by hand once; from now on new versions are
+announced as usual.
+
+Please report problems with the [issue templates](https://github.com/siberanka/twilight/issues/new/choose)
+([GitLab](https://gitlab.com/siberanka/twilight/-/issues)), and vulnerabilities privately
+([security policy](SECURITY.md)).
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 248 tests
+across 42 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.19 - prerelease
 
 This prerelease fixes two reports from a network with Geyser on the proxy
 ([field report](docs/FIELD_REPORT_2026-10-10.md)).
@@ -28,8 +69,6 @@ across 42 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.18 - prerelease
 
@@ -513,7 +552,49 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.19 - ön sürüm
+### Twilight 1.0.0-beta.1 - ilk beta
+
+Twilight ve twilight-proxy'nin ilk betası. Özellikler tek sunucular ve proxy'li ağlar için tamamdır ve üretim
+ağlarında çalışıyor; davranış betalar arasında hâlâ değişebilir. Kurmadan önce
+[beta durumu ve uyumluluk](README.md#beta-durumu-ve-uyumluluk) özetini okuyun.
+
+Twilight'ın hiçbir yapılandırma gerektirmeden yaptıkları:
+
+- **Bedrock paketini sunucunuzun içeriğinden derler.** ItemsAdder, CraftEngine, Nexo, Oraxen, BetterModel,
+  ModelEngine, RealisticSeasons, CustomNameplates, datapack'ler ve kaynak paketlerinden eşyalar, 3B modeller,
+  zırhlar, glifler ve menüler, sesler, biyomlar ve çeviriler; doğrulanır ve geri alma için anlık görüntülerle
+  Geyser'a dağıtılır.
+- **Java'nın yerleşimini Bedrock'ta gösterir.** Sandık başlıkları, sohbet, aksiyon çubuğu, başlıklar, boss
+  çubukları, skor tabloları ve adlar, üst üste görseller ve taşınan karakterler dahil Java'nın font ölçülerini
+  kullanır.
+- **Ağlara hizmet eder.** twilight-proxy her Bedrock oyuncusuna katıldığı sunucunun paketini verir, her
+  sunucunun özel eşyalarını proxy'deki Geyser'da birleştirir, yazı yerleşimini orada çalıştırır, giriş
+  eklentileri ve Floodgate ile çalışır ve paketleri HTTP ile sunabilir.
+- **Güncellemelerden sonra kendini onarır.** Eski Twilight dosyaları Geyser'dan taşınır, gereken yeniden
+  başlatmalar duyurulur ve yeni sürümler GitHub veya GitLab'dan duyurulur.
+
+1.0.0-pre.19'dan bu yana değişenler: güncelleme denetimi aşamaları alpha, pre, beta, rc ve kararlı sürüm olarak
+sıralar; README uyumluluk özetiyle başlar; issue, birleştirme ve çekme isteği şablonları, bir
+[güvenlik politikası](SECURITY.md#türkçe) ve [katkı notları](CONTRIBUTING.md#türkçe) eklendi.
+
+**1.0.0-pre.14 ile pre.19 arasındaki bir sürümden güncelleme:** onların güncelleme denetimi "beta"yı "pre"den
+önce sıralar ve bu sürümü duyurmaz. `Twilight.jar` ve `TwilightProxy.jar` dosyalarını bir kez elle değiştirin;
+bundan sonra yeni sürümler her zamanki gibi duyurulur.
+
+Sorunları [issue şablonlarıyla](https://github.com/siberanka/twilight/issues/new/choose)
+([GitLab](https://gitlab.com/siberanka/twilight/-/issues)), güvenlik açıklarını ise gizli olarak
+([güvenlik politikası](SECURITY.md#türkçe)) bildirin.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 42 paketteki 248
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.19 - ön sürüm
 
 Bu ön sürüm, Geyser'ın proxy'de çalıştığı bir ağdan gelen iki bildirimi düzeltir
 ([saha raporu](docs/FIELD_REPORT_2026-10-10.md)).
@@ -543,8 +624,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.18 - ön sürüm
 

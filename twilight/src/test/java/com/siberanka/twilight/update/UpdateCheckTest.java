@@ -28,7 +28,8 @@ final class UpdateCheckTest {
     @Test
     void ordersVersionsLikeSemanticVersioning() {
         List<String> ordered = List.of("0.9.9", "1.0.0-alpha", "1.0.0-pre.2", "1.0.0-pre.9", "1.0.0-pre.10",
-                "1.0.0-pre.14-SNAPSHOT", "1.0.0-pre.14", "1.0.0-SNAPSHOT", "1.0.0", "1.0.1", "1.10.0", "2.0.0");
+                "1.0.0-pre.14-SNAPSHOT", "1.0.0-pre.14", "1.0.0-pre.19", "1.0.0-beta.1-SNAPSHOT", "1.0.0-beta.1",
+                "1.0.0-beta.2", "1.0.0-beta.10", "1.0.0-rc.1", "1.0.0-SNAPSHOT", "1.0.0", "1.0.1", "1.10.0", "2.0.0");
         for (int index = 1; index < ordered.size(); index++) {
             Version lower = version(ordered.get(index - 1));
             Version higher = version(ordered.get(index));
@@ -56,6 +57,15 @@ final class UpdateCheckTest {
 
         assertInstanceOf(UpdateCheck.Outcome.Current.class, UpdateCheck.check(version("1.0.0-pre.14"), host -> GITHUB_LIST));
         assertInstanceOf(UpdateCheck.Outcome.Current.class, UpdateCheck.check(version("1.0.0-pre.15-SNAPSHOT"), host -> GITHUB_LIST));
+    }
+
+    /** Servers on the last preview hear about the first beta, although "beta" sorts before "pre" alphabetically. */
+    @Test
+    void previewsHearAboutTheFirstBeta() {
+        String list = "[{\"tag_name\":\"v1.0.0-beta.1\",\"prerelease\":true},{\"tag_name\":\"v1.0.0-pre.19\",\"prerelease\":true}]";
+        var outcome = UpdateCheck.check(version("1.0.0-pre.19"), host -> list);
+        assertEquals("1.0.0-beta.1", assertInstanceOf(UpdateCheck.Outcome.Newer.class, outcome).release().version().toString());
+        assertInstanceOf(UpdateCheck.Outcome.Current.class, UpdateCheck.check(version("1.0.0-beta.1"), host -> list));
     }
 
     @Test

@@ -4,6 +4,20 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-beta.1 - 2026-10-10
+
+First beta. It contains everything up to 1.0.0-pre.19 and these changes:
+
+- The update check orders release stages as alpha, pre, beta, rc and release, so servers on a beta hear
+  about newer betas and release candidates. Versions 1.0.0-pre.14 to pre.19 order them alphabetically and do
+  not announce this beta: replace both JARs by hand once.
+- README: beta status and a compatibility summary at the top. The proxy notes in
+  [compatibility](docs/COMPATIBILITY.md) now list what runs on a proxy's Geyser and what still needs Geyser
+  on the backend.
+- Issue templates (bug, compatibility request, question) on GitHub and GitLab, merge and pull request
+  templates, a [security policy](SECURITY.md) and [contribution notes](CONTRIBUTING.md).
+- 248 tests pass (218 Twilight, 30 proxy).
+
 ## 1.0.0-pre.19 - 2026-10-10
 
 Fixes for two reports from a proxy network ([field report](docs/FIELD_REPORT_2026-10-10.md)).
@@ -460,6 +474,20 @@ Fixes from a field report on a proxy network; each point was reproduced locally 
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-beta.1 - 2026-10-10
+
+İlk beta. 1.0.0-pre.19'a kadar olan her şeyi ve şu değişiklikleri içerir:
+
+- Güncelleme denetimi sürüm aşamalarını alpha, pre, beta, rc ve kararlı sürüm olarak sıralar; böylece beta
+  çalıştıran sunucular daha yeni betaları ve sürüm adaylarını duyar. 1.0.0-pre.14 ile pre.19 arasındaki sürümler
+  bunları alfabetik sıralar ve bu betayı duyurmaz: iki JAR'ı bir kez elle değiştirin.
+- README: en üstte beta durumu ve uyumluluk özeti. [Uyumluluk](docs/COMPATIBILITY.md#türkçe) belgesindeki
+  proxy notları artık proxy'deki Geyser'da nelerin çalıştığını ve nelerin hâlâ arka uçta Geyser gerektirdiğini
+  listeler.
+- GitHub ve GitLab'da issue şablonları (hata, uyumluluk isteği, soru), birleştirme isteği şablonları, bir
+  [güvenlik politikası](SECURITY.md#türkçe) ve [katkı notları](CONTRIBUTING.md#türkçe).
+- 248 test geçti (218 Twilight, 30 proxy).
 
 #### 1.0.0-pre.19 - 2026-10-10
 
