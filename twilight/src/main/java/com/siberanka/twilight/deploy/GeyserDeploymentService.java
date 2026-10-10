@@ -174,9 +174,12 @@ public final class GeyserDeploymentService {
         // reload, but changing that table requires rebuilding the runtime registry.
         Path pack = geyser.resolve("packs/twilight.zip");
         if (Files.isRegularFile(pack)) try (ZipFile zip = new ZipFile(pack.toFile())) {
-            var entry = zip.getEntry("twilight/display-index.json");
-            if (entry != null) try (InputStream input = zip.getInputStream(entry)) {
-                hashes.put("packs/twilight.zip!twilight/display-index.json", sha256(input));
+            // Display variants and custom blocks are registered when Geyser starts, like item mappings.
+            for (String registered : java.util.List.of("twilight/display-index.json", "twilight/geyser_blocks.json")) {
+                var entry = zip.getEntry(registered);
+                if (entry != null) try (InputStream input = zip.getInputStream(entry)) {
+                    hashes.put("packs/twilight.zip!" + registered, sha256(input));
+                }
             }
         }
         return Map.copyOf(hashes);

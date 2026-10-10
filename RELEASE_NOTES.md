@@ -1,6 +1,28 @@
-# Twilight 1.0.1-pre.2 - prerelease
+# Twilight 1.0.1-pre.3 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+**Custom blocks on Bedrock.** ItemsAdder's and CraftEngine's ores and blocks showed as vanilla note blocks on
+Bedrock, and their items dropped as flat icons. Every note block, mushroom block and tripwire state a content
+plugin draws with its own model now becomes a Bedrock block with that look: full cubes with a texture per face
+and Java's rotation, other shapes (plants, decorations) with a block geometry. Items drawn like a block show it in
+3D in the inventory and when dropped, as on Java. Breaking, drops and placement stay Java's.
+
+Both Twilight (Geyser on the server) and twilight-proxy (Geyser on the proxy) register the blocks when Geyser
+starts: **restart once after updating**, and again when the log asks for it after content changes. Verified live
+with Survival's ItemsAdder and CraftEngine content (195 blocks, 29 block items). See the
+[wiki](WIKI.md#custom-blocks).
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 257 tests
+across 44 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.1-pre.2 - prerelease
 
 **Menus on phones look like on Java.** Bedrock's pocket UI profile, the default on phones and tablets, shows
 chests as two scrolling columns with the title in a header bar: menu art drawn from the title sat in that bar,
@@ -18,8 +40,6 @@ across 43 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.1-pre.1 - prerelease
 
@@ -589,7 +609,29 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.1-pre.2 - ön sürüm
+### Twilight 1.0.1-pre.3 - ön sürüm
+
+**Bedrock'ta özel bloklar.** ItemsAdder'ın ve CraftEngine'in madenleri ve blokları Bedrock'ta vanilla nota bloğu
+olarak görünüyor, eşyaları düz simgeler olarak düşüyordu. Bir içerik eklentisinin kendi modeliyle çizdiği her nota
+bloğu, mantar bloğu ve tuzak teli durumu artık o görünümde bir Bedrock bloğu olur: tam küpler yüz başına doku ve Java
+döndürmesiyle, diğer şekiller (bitkiler, süslemeler) bir blok geometrisiyle. Bir blok gibi çizilen eşyalar onu
+Java'daki gibi envanterde ve yere düştüğünde 3B gösterir. Kırma, düşen eşyalar ve yerleştirme Java'nın olarak kalır.
+
+Hem Twilight (Geyser sunucudaysa) hem twilight-proxy (Geyser proxy'deyse) blokları Geyser açılırken kaydeder:
+**güncellemeden sonra bir kez yeniden başlatın**; içerik değişikliklerinden sonra günlük istediğinde yine yeniden
+başlatın. Survival'ın ItemsAdder ve CraftEngine içeriğiyle (195 blok, 29 blok eşyası) canlı doğrulandı.
+[Wiki'ye](WIKI.md#özel-bloklar) bakın.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 44 paketteki 257
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.1-pre.2 - ön sürüm
 
 **Telefonlardaki menüler Java'daki gibi görünür.** Telefon ve tabletlerde varsayılan olan Bedrock'un pocket arayüz
 profili, sandıkları başlığı bir başlık çubuğunda duran iki kaydırılabilir sütun olarak gösterir: başlıktan çizilen
@@ -608,8 +650,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.1-pre.1 - ön sürüm
 

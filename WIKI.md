@@ -23,14 +23,15 @@ are in the [reports](docs/); limits per feature are in [docs/COMPATIBILITY.md](d
 4. [Commands and permissions](#commands-and-permissions)
 5. [Configuration reference: Twilight](#configuration-reference-twilight)
 6. [twilight-proxy](#twilight-proxy-1)
-7. [Pack hosting](#pack-hosting)
-8. [Updates](#updates)
-9. [Files and folders](#files-and-folders)
-10. [Developer API](#developer-api)
-11. [Plugin-message protocol](#plugin-message-protocol)
-12. [Security model](#security-model)
-13. [Troubleshooting](#troubleshooting)
-14. [Building from source](#building-from-source)
+7. [Custom blocks](#custom-blocks)
+8. [Pack hosting](#pack-hosting)
+9. [Updates](#updates)
+10. [Files and folders](#files-and-folders)
+11. [Developer API](#developer-api)
+12. [Plugin-message protocol](#plugin-message-protocol)
+13. [Security model](#security-model)
+14. [Troubleshooting](#troubleshooting)
+15. [Building from source](#building-from-source)
 
 ## Requirements
 
@@ -166,6 +167,7 @@ change behaviour.
 | `restart-for-item-changes` | `notify` | Geyser registers custom items only at start. `notify`: tell the console and players with `twilight.admin`; `when-empty`: also restart once nobody is online (`spigot.yml` `settings.restart-script`; without one the server stops) |
 | `loading-protection-seconds` | `300` | Keep a Bedrock player connected while its client is still loading the resource packs after joining: with Geyser's `forward-player-ping: true`, Java keep-alives and pings are answered for it until the client is in game, at most this long (0-1800; 0 only logs loading times). Without ping forwarding Geyser answers them itself and only the loading times are logged. Loads of 10 s or more are logged. Needs Geyser on this server; on a proxy network twilight-proxy does the same |
 | `item-display-models` | `auto` | Bedrock models for custom items in Java item displays (furniture, model bones): a second copy of every 3D item that each client builds while loading. `auto`: only when Geyser runs on this server, where the display bridge uses them; `on`; `off`. Changing it needs a rebuild |
+| `custom-blocks` | `true` | Content plugins' custom blocks (ItemsAdder's and CraftEngine's ores and blocks on note blocks, mushroom blocks and tripwire) get their own Bedrock look instead of the vanilla block, and the items that place them show the block in 3D in the inventory and when dropped. Geyser registers blocks when it starts: a build that changes them needs a restart, like item changes ([custom blocks](#custom-blocks)) |
 
 ### `ui`
 
@@ -251,6 +253,7 @@ bedrock:                 # see "Bedrock runtime on the proxy"
   text-layout: true
   translations: true
   loading-protection-seconds: 300
+  custom-blocks: true
 ```
 
 | Key | Meaning |
@@ -272,6 +275,7 @@ bedrock:                 # see "Bedrock runtime on the proxy"
 | `bedrock.text-layout` | Lay out Java text with each server's fonts in the proxy's Geyser ([Bedrock runtime](#bedrock-runtime-on-the-proxy)) |
 | `bedrock.translations` | Show the server packs' translations to Bedrock players |
 | `bedrock.loading-protection-seconds` | Keep a Bedrock player connected while its client loads the resource packs, at most this long (0-1800, default 300) |
+| `bedrock.custom-blocks` | Register the servers' custom blocks with the proxy's Geyser and show their items in 3D ([custom blocks](#custom-blocks)) |
 
 Every pack is checked before use: it must be a ZIP below the size limit with `manifest.json` at its
 root and no entry that could escape a folder. A pack that fails the check, a failed download or an
@@ -481,6 +485,32 @@ plugins, anti-bot checks, connection limits) sees it, so these settings keep it 
   account is bound to that player's XUID (checked through the Floodgate API, never by name).
 - If the plugin refuses a login while the same name is still online, a reconnect can be refused for a
   moment; the player then lands on the proxy's fallback server.
+
+## Custom blocks
+
+Content plugins draw custom blocks through vanilla block states: ItemsAdder's `REAL_NOTE` blocks and
+CraftEngine's blocks are note block, mushroom block or tripwire states whose model the pack replaces in
+`assets/minecraft/blockstates`. Without conversion Bedrock shows the vanilla note block.
+
+- Every such state with a custom model becomes a Bedrock block. Full cubes use Bedrock's block cube with a
+  texture per face (and Java's x/y rotation); other shapes (plants on tripwire, decorations) get a block
+  geometry. The blocks of every pack that defines states (ItemsAdder and CraftEngine side by side) are merged;
+  where two packs define the same state, the effective pack's look is used, as on Java.
+- The item that places a block (an item drawn with the same shape and art) shows the block in 3D in the
+  inventory and when dropped, as on Java.
+- Breaking, drops and placement stay Java's: the server decides them.
+- Block names follow the Java state, so a proxy network's single Geyser registry gives a state the same Bedrock
+  block on every backend and each server's pack draws it its own way. Where two servers give a state a
+  different shape, the first server's shape is used and the proxy log says so.
+- Geyser registers blocks when it starts. After a build that changes blocks, the log and admins are told to
+  restart (`restart-for-item-changes` and twilight-proxy's `item-mappings.restart` apply).
+- Not converted: multipart blockstates, chorus plants and blocks other than note blocks, mushroom blocks and
+  tripwire; block light from content plugins (they place light blocks themselves); animated block textures
+  show their first frame. Shapes that reach past Bedrock's block bounds (2 pixels less than Java on each side)
+  are pulled in.
+
+The build report counts them (`custom_blocks`, `block_items`); the server or proxy log says
+"Registered N custom block(s) for Bedrock players" and "N custom item(s) show their block in 3D".
 
 ## Pack hosting
 
@@ -780,6 +810,7 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 | Backend: "Geyser is not on this server (normal when it runs on the proxy)" | Expected on a proxy network; it says whether the pack is shared with twilight-proxy. "pack sharing ... is off" means no shared secret was found: set `proxy.secret` (and `secret` on the proxy) or use BungeeGuard / Velocity forwarding |
 | "Geyser not attached" although Geyser runs | Read the reason in `/twilightproxy` and the log ([attaching to Geyser](#attaching-to-geyser)); versions before 1.0.0-pre.15 gave up when Geyser was still loading |
 | Broken custom item icons after updating | Old Twilight mapping files or packs in Geyser (an older version or a sync tool) and a Geyser that has not restarted since the items changed. From 1.0.0-pre.18 the stale files are moved out automatically; restart once when the log or the admin message asks for it |
+| Custom ores and blocks show as note blocks (or mushroom blocks) on Bedrock; their drops are flat | Update to 1.0.1-pre.3 and restart once, so Geyser registers the blocks; the log says "Registered N custom block(s)" ([custom blocks](#custom-blocks)) |
 | Custom items show as their base item on a proxy network | Restart the proxy after the log line "Item mappings for Geyser changed"; check the locale warning and listed selector conflicts ([item mappings on a proxy](#item-mappings-on-a-proxy)) |
 | "Twilight content scan failed ... java.time.Instant#seconds" | Fixed in 1.0.0-pre.15 (servers whose Gson cannot reflect into Java 17+ classes) |
 | Bedrock players reconnect on every server switch | Expected when servers use different packs; same packs never reconnect |
@@ -836,14 +867,15 @@ Bu sayfa yöneticiler ve eklenti geliştiricileri için başvuru kaynağıdır. 
 4. [Komutlar ve izinler](#komutlar-ve-izinler)
 5. [Yapılandırma başvurusu: Twilight](#yapılandırma-başvurusu-twilight)
 6. [twilight-proxy](#twilight-proxy-4)
-7. [Paket sunucusu](#paket-sunucusu)
-8. [Güncellemeler](#güncellemeler)
-9. [Dosyalar ve klasörler](#dosyalar-ve-klasörler)
-10. [Geliştirici API'si](#geliştirici-apisi)
-11. [Eklenti mesajı protokolü](#eklenti-mesajı-protokolü)
-12. [Güvenlik modeli](#güvenlik-modeli)
-13. [Sorun giderme](#sorun-giderme)
-14. [Kaynaktan derleme](#kaynaktan-derleme)
+7. [Özel bloklar](#özel-bloklar)
+8. [Paket sunucusu](#paket-sunucusu)
+9. [Güncellemeler](#güncellemeler)
+10. [Dosyalar ve klasörler](#dosyalar-ve-klasörler)
+11. [Geliştirici API'si](#geliştirici-apisi)
+12. [Eklenti mesajı protokolü](#eklenti-mesajı-protokolü)
+13. [Güvenlik modeli](#güvenlik-modeli)
+14. [Sorun giderme](#sorun-giderme)
+15. [Kaynaktan derleme](#kaynaktan-derleme)
 
 #### Gereksinimler
 
@@ -980,6 +1012,7 @@ değiştirmek için düzenlenmesi gerekir.
 | `restart-for-item-changes` | `notify` | Geyser özel eşyaları yalnızca açılışta kaydeder. `notify`: konsola ve `twilight.admin` iznine sahip oyunculara bildirir; `when-empty`: ayrıca kimse çevrimiçi değilken yeniden başlatır (`spigot.yml` `settings.restart-script`; yoksa sunucu durur) |
 | `loading-protection-seconds` | `300` | Bir Bedrock oyuncusunu, istemcisi katıldıktan sonra kaynak paketlerini yüklerken bağlı tutar: Geyser'da `forward-player-ping: true` ise istemci oyuna girene kadar, en fazla bu süre boyunca Java keep-alive'ları ve ping'leri onun yerine yanıtlanır (0-1800; 0 yalnızca yükleme sürelerini günlüğe yazar). Ping yönlendirmesi olmadan Geyser bunları kendisi yanıtlar ve yalnızca yükleme süreleri günlüğe yazılır. 10 saniye veya daha uzun yüklemeler günlüğe yazılır. Bu sunucuda Geyser gerekir; proxy'li ağda aynı işi twilight-proxy yapar |
 | `item-display-models` | `auto` | Java eşya görüntülerindeki (mobilyalar, model kemikleri) özel eşyalar için Bedrock modelleri: her istemcinin yüklerken kurduğu, her 3B eşyanın ikinci bir kopyası. `auto`: yalnızca Geyser bu sunucuda çalışıyorsa, görüntü köprüsü onları orada kullanır; `on`; `off`. Değiştirmek yeniden derleme gerektirir |
+| `custom-blocks` | `true` | İçerik eklentilerinin özel blokları (ItemsAdder'ın ve CraftEngine'in nota blokları, mantar blokları ve tuzak teli üzerindeki madenleri ve blokları) vanilla blok yerine kendi Bedrock görünümlerini alır; onları yerleştiren eşyalar bloğu envanterde ve yere düştüğünde 3B gösterir. Geyser blokları açılışta kaydeder: blokları değiştiren bir derleme, eşya değişiklikleri gibi yeniden başlatma gerektirir ([özel bloklar](#özel-bloklar)) |
 
 ##### `ui`
 
@@ -1066,6 +1099,7 @@ bedrock:                 # "Proxy'de Bedrock çalışma zamanı" bölümüne bak
   text-layout: true
   translations: true
   loading-protection-seconds: 300
+  custom-blocks: true
 ```
 
 | Anahtar | Anlamı |
@@ -1087,6 +1121,7 @@ bedrock:                 # "Proxy'de Bedrock çalışma zamanı" bölümüne bak
 | `bedrock.text-layout` | Java yazısını proxy'deki Geyser'da her sunucunun fontlarıyla yerleştirir ([Bedrock çalışma zamanı](#proxyde-bedrock-çalışma-zamanı)) |
 | `bedrock.translations` | Sunucu paketlerinin çevirilerini Bedrock oyuncularına gösterir |
 | `bedrock.loading-protection-seconds` | Bir Bedrock oyuncusunu istemcisi kaynak paketlerini yüklerken en fazla bu süre bağlı tutar (0-1800, varsayılan 300) |
+| `bedrock.custom-blocks` | Sunucuların özel bloklarını proxy'deki Geyser'a kaydeder ve eşyalarını 3B gösterir ([özel bloklar](#özel-bloklar)) |
 
 Her paket kullanılmadan önce denetlenir: boyut sınırının altında, kökünde `manifest.json` bulunan ve hiçbir
 girdisi klasör dışına çıkamayan bir ZIP olmalıdır. Denetimi geçemeyen bir paket, başarısız bir indirme veya
@@ -1299,6 +1334,32 @@ eklentileri, anti-bot denetimleri, bağlantı sınırları) onu görür; bu ayar
   XUID'sine bağlıysa güvenlidir (Floodgate API'siyle denetlenir, asla adla değil).
 - Eklenti aynı ad hâlâ çevrimiçiyken bir girişi reddediyorsa, bir yeniden bağlanma bir anlığına reddedilebilir;
   oyuncu o zaman proxy'nin yedek sunucusuna düşer.
+
+#### Özel bloklar
+
+İçerik eklentileri özel blokları vanilla blok durumlarıyla çizer: ItemsAdder'ın `REAL_NOTE` blokları ve
+CraftEngine'in blokları, modelini paketin `assets/minecraft/blockstates` içinde değiştirdiği nota bloğu, mantar
+bloğu veya tuzak teli durumlarıdır. Dönüştürülmezlerse Bedrock vanilla nota bloğunu gösterir.
+
+- Özel modeli olan her böyle durum bir Bedrock bloğu olur. Tam küpler, yüz başına bir doku ile (ve Java'nın x/y
+  döndürmesiyle) Bedrock'un blok küpünü kullanır; diğer şekiller (tuzak teli üzerindeki bitkiler, süslemeler) bir
+  blok geometrisi alır. Durum tanımlayan her paketin blokları (ItemsAdder ve CraftEngine yan yana) birleştirilir;
+  iki paket aynı durumu tanımladığında, Java'daki gibi etkin paketin görünümü kullanılır.
+- Bir bloğu yerleştiren eşya (aynı şekil ve görselle çizilen eşya), Java'daki gibi bloğu envanterde ve yere
+  düştüğünde 3B gösterir.
+- Kırma, düşen eşyalar ve yerleştirme Java'nın olarak kalır: bunlara sunucu karar verir.
+- Blok adları Java durumunu izler; böylece proxy'li bir ağın tek Geyser kaydı bir duruma her arka uçta aynı Bedrock
+  bloğunu verir ve her sunucunun paketi onu kendi şekilde çizer. İki sunucu bir duruma farklı şekil verdiğinde ilk
+  sunucunun şekli kullanılır ve proxy günlüğü bunu söyler.
+- Geyser blokları açılışta kaydeder. Blokları değiştiren bir derlemeden sonra günlük ve yöneticiler yeniden
+  başlatmaları için bilgilendirilir (`restart-for-item-changes` ve twilight-proxy'nin `item-mappings.restart`
+  ayarı geçerlidir).
+- Dönüştürülmeyenler: multipart blok durumları, chorus bitkileri ve nota bloğu, mantar bloğu ve tuzak teli dışındaki
+  bloklar; içerik eklentilerinin blok ışığı (ışık bloklarını kendileri yerleştirir); animasyonlu blok dokuları ilk
+  karelerini gösterir. Bedrock'un blok sınırlarını aşan şekiller (Java'dan her yanda 2 piksel daha az) içeri çekilir.
+
+Derleme raporu bunları sayar (`custom_blocks`, `block_items`); sunucu veya proxy günlüğü "Registered N
+custom block(s) for Bedrock players" ve "N custom item(s) show their block in 3D" yazar.
 
 #### Paket sunucusu
 
@@ -1599,6 +1660,7 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
 | Arka uç: "Geyser is not on this server (normal when it runs on the proxy)" | Proxy'li ağda beklenir; paketin twilight-proxy ile paylaşılıp paylaşılmadığını söyler. "pack sharing ... is off" paylaşılan bir gizli anahtar bulunmadığı anlamına gelir: `proxy.secret` (ve proxy'de `secret`) ayarlayın veya BungeeGuard / Velocity yönlendirmesi kullanın |
 | Geyser çalıştığı hâlde "Geyser not attached" | Nedeni `/twilightproxy` ve günlükte okuyun ([Geyser'a bağlanma](#geysera-bağlanma)); 1.0.0-pre.15'ten önceki sürümler Geyser hâlâ yüklenirken vazgeçiyordu |
 | Güncellemeden sonra bozuk özel eşya simgeleri | Geyser'da eski Twilight eşleme dosyaları veya paketleri (eski bir sürüm ya da eşitleme aracı) ve eşyalar değiştiğinden beri yeniden başlamamış bir Geyser. 1.0.0-pre.18'den beri eski dosyalar kendiliğinden taşınır; günlük veya yönetici mesajı istediğinde bir kez yeniden başlatın |
+| Özel madenler ve bloklar Bedrock'ta nota bloğu (veya mantar bloğu) olarak görünüyor; düşen eşyaları düz | 1.0.1-pre.3'e güncelleyin ve Geyser'ın blokları kaydetmesi için bir kez yeniden başlatın; günlük "Registered N custom block(s)" yazar ([özel bloklar](#özel-bloklar)) |
 | Proxy'li ağda özel eşyalar temel eşya olarak görünüyor | "Item mappings for Geyser changed" satırından sonra proxy'yi yeniden başlatın; dil uyarısını ve listelenen seçici çakışmalarını denetleyin ([proxy'de eşya eşlemeleri](#proxyde-eşya-eşlemeleri)) |
 | "Twilight content scan failed ... java.time.Instant#seconds" | 1.0.0-pre.15'te düzeltildi (Gson'u Java 17+ sınıflarına yansıma ile erişemeyen sunucular) |
 | Bedrock oyuncuları her sunucu geçişinde yeniden bağlanıyor | Sunucular farklı paketler kullandığında beklenir; aynı paketler asla yeniden bağlanmaz |

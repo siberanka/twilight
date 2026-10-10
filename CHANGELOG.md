@@ -4,6 +4,21 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.1-pre.3 - 2026-10-10
+
+- Custom blocks. ItemsAdder's and CraftEngine's blocks (ores, decorations, plants) are note block, mushroom
+  block or tripwire states whose model the pack replaces; Bedrock showed the vanilla note block. Every such
+  state with a custom model now becomes a Bedrock block: full cubes use Bedrock's block cube with a texture per
+  face and Java's rotation, other shapes a block geometry. The packs of all content plugins are merged, the
+  effective pack wins where two define a state, as on Java. Twilight and twilight-proxy register the blocks with
+  Geyser when it starts (`geyser.custom-blocks`, `bedrock.custom-blocks`); a build that changes them asks for a
+  restart like item changes.
+- Items drawn like a custom block (ores, placeable blocks) show the block in 3D in the inventory and when
+  dropped, as on Java, instead of a flat icon.
+- Verified live on Paper 26.2 with Geyser-Spigot and Survival's content (195 blocks, 29 block items): ores,
+  rotated CraftEngine drawers, mushroom-block decorations and tripwire plants render, and ore items drop in 3D.
+- 257 tests pass (227 Twilight, 30 proxy).
+
 ## 1.0.1-pre.2 - 2026-10-10
 
 - Phones and tablets get Java's chest layout. Bedrock's pocket UI profile (the default there) shows chests as
@@ -495,6 +510,22 @@ Fixes from a field report on a proxy network; each point was reproduced locally 
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.1-pre.3 - 2026-10-10
+
+- Özel bloklar. ItemsAdder'ın ve CraftEngine'in blokları (madenler, süslemeler, bitkiler), modelini paketin
+  değiştirdiği nota bloğu, mantar bloğu veya tuzak teli durumlarıdır; Bedrock vanilla nota bloğunu gösteriyordu.
+  Özel modeli olan her böyle durum artık bir Bedrock bloğu olur: tam küpler yüz başına doku ve Java'nın döndürmesiyle
+  Bedrock'un blok küpünü, diğer şekiller bir blok geometrisini kullanır. Tüm içerik eklentilerinin paketleri
+  birleştirilir; iki paket bir durumu tanımladığında Java'daki gibi etkin paket kazanır. Twilight ve twilight-proxy
+  blokları Geyser açılırken kaydeder (`geyser.custom-blocks`, `bedrock.custom-blocks`); blokları değiştiren bir
+  derleme, eşya değişiklikleri gibi yeniden başlatma ister.
+- Özel bir blok gibi çizilen eşyalar (madenler, yerleştirilebilir bloklar) bloğu düz bir simge yerine Java'daki gibi
+  envanterde ve yere düştüğünde 3B gösterir.
+- Paper 26.2 ve Geyser-Spigot üzerinde Survival'ın içeriğiyle (195 blok, 29 blok eşyası) canlı doğrulandı: madenler,
+  döndürülmüş CraftEngine çekmeceleri, mantar bloğu süslemeleri ve tuzak teli bitkileri çizilir, maden eşyaları 3B
+  düşer.
+- 257 test geçti (227 Twilight, 30 proxy).
 
 #### 1.0.1-pre.2 - 2026-10-10
 

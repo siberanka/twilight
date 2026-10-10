@@ -66,6 +66,11 @@ geyser:
   # 3D item in one entity that the client builds while loading. auto: only when Geyser runs on this server
   # (Twilight's display bridge uses them; a proxy's Geyser does not); on; off. Changing it needs a rebuild.
   item-display-models: auto
+  # Custom blocks of content plugins (ItemsAdder's and CraftEngine's ores and blocks on note blocks, mushroom
+  # blocks and tripwire): Bedrock shows them with their own look instead of the vanilla block, and the items
+  # that place them show the block in 3D (inventory and dropped), as on Java. Geyser registers blocks when
+  # it starts, so a build that changes them needs a restart, like item changes.
+  custom-blocks: true
 
 ui:
   # Desktop chest screens use Java's container layout: the title is unwrapped,

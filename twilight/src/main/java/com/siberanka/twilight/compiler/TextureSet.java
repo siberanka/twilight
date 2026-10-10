@@ -92,6 +92,11 @@ final class TextureSet {
         return resources.atlasSprites().texture(identifier).orElse(identifier);
     }
 
+    /** The first frame of a sprite as Java samples it (atlas renames, animation strips, missing texture). */
+    static BufferedImage frame(ResourceIndex resources, String sprite, VanillaAssetCache vanillaAssets) throws IOException {
+        return loadFrame(resources, sprite, vanillaAssets);
+    }
+
     private static BufferedImage loadFrame(ResourceIndex resources, String sprite, VanillaAssetCache vanillaAssets) throws IOException {
         if (sprite.equals(MISSING)) return missingTexture();
         String identifier = spriteTexture(resources, sprite);

@@ -92,6 +92,13 @@ public final class BedrockPackCompiler {
 
     private boolean itemDisplays = true;
     private boolean pocketJavaLayout = true;
+    private boolean customBlocks = true;
+
+    /** {@code geyser.custom-blocks}: convert content plugins' custom blocks (note blocks, mushroom blocks, tripwire). */
+    public BedrockPackCompiler withCustomBlocks(boolean value) {
+        this.customBlocks = value;
+        return this;
+    }
 
     /**
      * {@code ui.pocket-container-layout}: true gives chest screens of Bedrock's pocket UI profile (phones) the
@@ -136,6 +143,8 @@ public final class BedrockPackCompiler {
         List<String> notices = new ArrayList<>();
         DisplayEntityResources displays = new DisplayEntityResources();
         int converted = 0, threeDimensional = 0;
+        // Java item model -> Bedrock item: an item drawn with a custom block's model places that block.
+        Map<String, String> itemModels = new LinkedHashMap<>();
 
         Set<String> emitted = new HashSet<>();
         for (ItemCandidate candidate : candidates) {
@@ -230,6 +239,11 @@ public final class BedrockPackCompiler {
                         ? "textures/twilight/" + safe + "_icon" : texturePath);
                 textureData.add(iconKey, iconEntry);
                 addMapping(mappedItems, candidate, identifier, iconKey, model.handheld());
+                if (model.isThreeDimensional() && candidate.visualModels().size() == 1) {
+                    itemModels.putIfAbsent(JavaModelResolver.qualified(candidate.visualModels().getFirst(), "minecraft"), identifier);
+                    // Providers often give the item another model file than the block, with the same shape and art.
+                    itemModels.putIfAbsent(CustomBlockCompiler.signature(resources, model), identifier);
+                }
                 converted++;
                 if (!TextureSet.MISSING_FILES.get().isEmpty()) {
                     notices.add(candidate.baseItem() + " -> " + candidate.visualModels() + ": textures that exist in no pack "
@@ -246,6 +260,15 @@ public final class BedrockPackCompiler {
         TextureSet.MISSING_FILES.remove();
 
         displays.finish(packFiles);
+        CustomBlockCompiler.Result blocks = new CustomBlockCompiler.Result(0, 0, null);
+        if (customBlocks) {
+            try {
+                blocks = new CustomBlockCompiler(resources, resolver, vanillaAssets, config.vanillaOverride(), packFiles, notices)
+                        .compile(itemModels);
+            } catch (IOException | RuntimeException failure) {
+                problems.add("custom blocks: " + failure.getMessage());
+            }
+        }
         BitmapFontCompiler.Result fonts;
         // Text layout metrics serve every text surface; only chest titles also need the container layout.
         boolean textLayout = config.javaTextLayout();
@@ -355,6 +378,8 @@ public final class BedrockPackCompiler {
         report.addProperty("candidates", candidates.size());
         report.addProperty("converted", converted);
         report.addProperty("three_dimensional", threeDimensional);
+        report.addProperty("custom_blocks", blocks.blocks());
+        report.addProperty("block_items", blocks.items());
         report.addProperty("glyphs", fonts.glyphs());
         report.addProperty("font_pages", fonts.pages());
         report.addProperty("vanilla_fallback_textures", fonts.vanillaFallbackTextures());
@@ -987,8 +1012,8 @@ public final class BedrockPackCompiler {
     private static double[] scale(double[] value, double factor) { return new double[]{value[0] * factor, value[1] * factor, value[2] * factor}; }
     private static double[] vector(JsonArray value, double x, double y, double z) { if (value == null || value.size() < 3) return new double[]{x,y,z}; return new double[]{value.get(0).getAsDouble(),value.get(1).getAsDouble(),value.get(2).getAsDouble()}; }
     private static double[] vector4(JsonArray value) throws IOException { if (value == null || value.size() < 4) throw new IOException("Face UV must contain four numbers"); return new double[]{value.get(0).getAsDouble(),value.get(1).getAsDouble(),value.get(2).getAsDouble(),value.get(3).getAsDouble()}; }
-    private static JsonArray numberArray(double... values) { JsonArray array = new JsonArray(); for (double value : values) array.add(value); return array; }
-    private static JsonArray intArray(int... values) { JsonArray array = new JsonArray(); for (int value : values) array.add(value); return array; }
+    static JsonArray numberArray(double... values) { JsonArray array = new JsonArray(); for (double value : values) array.add(value); return array; }
+    static JsonArray intArray(int... values) { JsonArray array = new JsonArray(); for (int value : values) array.add(value); return array; }
     private static final Gson COMPACT = new GsonBuilder().disableHtmlEscaping().create();
 
     /**

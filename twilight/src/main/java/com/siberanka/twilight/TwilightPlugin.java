@@ -71,6 +71,7 @@ public final class TwilightPlugin extends JavaPlugin {
     private com.siberanka.twilight.integration.text.GeyserLanguageBridge languageBridge;
     private com.siberanka.twilight.integration.pack.GeyserPackHosting packHosting;
     private com.siberanka.twilight.geyser.LoadingGuard loadingGuard;
+    private com.siberanka.twilight.geyser.CustomBlocks customBlocks;
     private volatile com.siberanka.twilight.update.UpdateCheck updates;
     private volatile boolean notifyUpdatePlayers = true;
 
@@ -84,6 +85,7 @@ public final class TwilightPlugin extends JavaPlugin {
         try {
             saveDefaultConfig();
             reloadConfig();
+            startCustomBlocks();
             if (!getConfig().getBoolean("geyser.retire-stale-files", true)) return;
             Path root = getServer().getWorldContainer().toPath().toAbsolutePath().normalize();
             var service = new GeyserDeploymentService(root, getDataFolder().toPath(), TwilightConfig.read(getConfig(), root));
@@ -97,6 +99,32 @@ public final class TwilightPlugin extends JavaPlugin {
             // Geyser is not on this server (the usual proxy layout): nothing to clean up.
         } catch (RuntimeException failure) {
             getLogger().log(Level.WARNING, "Could not check Geyser for stale Twilight files", failure);
+        }
+    }
+
+    /**
+     * Geyser-Spigot registers custom blocks and items when it enables, right after this load phase: the blocks of
+     * the deployed pack are handed to it then (a build that changes them needs a restart, like items).
+     */
+    private void startCustomBlocks() {
+        if (!getConfig().getBoolean("geyser.custom-blocks", true)) return;
+        if (getServer().getPluginManager().getPlugin("Geyser-Spigot") == null) return;
+        try {
+            Path root = getServer().getWorldContainer().toPath().toAbsolutePath().normalize();
+            TwilightConfig settings = TwilightConfig.read(getConfig(), root);
+            var service = new GeyserDeploymentService(root, getDataFolder().toPath(), settings);
+            Path pack;
+            try {
+                pack = settings.sendPackToBedrock() ? service.resolveGeyserDirectory().resolve("packs/twilight.zip")
+                        : getDataFolder().toPath().resolve(com.siberanka.twilight.deploy.PackExport.PACK);
+            } catch (java.io.IOException noFolder) {
+                pack = getDataFolder().toPath().resolve(com.siberanka.twilight.deploy.PackExport.PACK);
+            }
+            Path served = pack;
+            customBlocks = com.siberanka.twilight.geyser.CustomBlocks.start(this, () -> java.util.List.of(served),
+                    getLogger()::info, (message, failure) -> getLogger().log(Level.WARNING, message, failure));
+        } catch (RuntimeException | LinkageError failure) {
+            getLogger().log(Level.WARNING, "Custom blocks are unavailable for this Geyser build; they keep the vanilla look on Bedrock.", failure);
         }
     }
 
@@ -200,6 +228,7 @@ public final class TwilightPlugin extends JavaPlugin {
         }
         if (proxyChannel != null) proxyChannel.close();
         if (loadingGuard != null) loadingGuard.close();
+        if (customBlocks != null) customBlocks.close();
         if (packHosting != null) packHosting.close();
         if (riderNames != null) {
             try { riderNames.close(); }
@@ -294,6 +323,7 @@ public final class TwilightPlugin extends JavaPlugin {
                                 .withNameplatePlugin(world.nameplates()).withItemDisplays(itemDisplayModels())
                                 .withMaxGlyphCell(getConfig().getInt("ui.max-glyph-cell", 512))
                                 .withPocketContainerLayout(pocketContainerLayout())
+                                .withCustomBlocks(getConfig().getBoolean("geyser.custom-blocks", true))
                                 .build(sources, liveItems);
                     } catch (ConversionException rejected) {
                         if (!firstPack) throw rejected;
@@ -306,6 +336,7 @@ public final class TwilightPlugin extends JavaPlugin {
                                 .withNameplatePlugin(world.nameplates()).withItemDisplays(itemDisplayModels())
                                 .withMaxGlyphCell(getConfig().getInt("ui.max-glyph-cell", 512))
                                 .withPocketContainerLayout(pocketContainerLayout())
+                                .withCustomBlocks(getConfig().getBoolean("geyser.custom-blocks", true))
                                 .build(sources, liveItems);
                     }
                 }

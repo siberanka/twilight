@@ -77,6 +77,8 @@ public final class ServerBuildAuditMain {
                         .getAsJsonObject();
                 result.add("text_layout_entries", report.get("text_layout_entries"));
                 result.add("aliased_glyphs", report.get("aliased_glyphs"));
+                result.add("custom_blocks", report.get("custom_blocks"));
+                result.add("block_items", report.get("block_items"));
                 result.add("problems", GSON.toJsonTree(build.problems()));
                 result.add("notices", report.get("notices"));
                 failed |= !build.problems().isEmpty();

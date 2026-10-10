@@ -1,4 +1,4 @@
-# Twilight 1.0.1-pre.2 prerelease build
+# Twilight 1.0.1-pre.3 prerelease build
 
 > Türkçe: [aşağıda](#türkçe)
 
@@ -8,7 +8,7 @@
 
 Built locally by siberanka using Java 25.0.2 and Gradle 9.6.0, with
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`.
-252 tests across 43 suites passed. No hosted CI was used.
+257 tests across 44 suites passed. No hosted CI was used.
 
 The corresponding source is in this commit under `twilight/`, `twilight-proxy/` and `protocol/`, with build files
 at the repository root. Licensed under [LGPL-3.0-or-later](../LICENSE.LESSER);
@@ -17,7 +17,8 @@ the accompanying [GPL text](../LICENSE) is also provided.
 Read the [release notes](../RELEASE_NOTES.md), the [wiki](../WIKI.md) and the
 [stacked images, nameplates and exact biomes](../docs/LAYERS_BIOMES_2026-10-04.md)
 report before deployment, and the [beta status and compatibility](../README.md#beta-status-and-compatibility)
-summary. 1.0.1-pre.2 gives phones and tablets (Bedrock's pocket UI profile) Java's chest layout, so menu art
+summary. 1.0.1-pre.3 converts content plugins' custom blocks (ores and blocks on note blocks, mushroom blocks and
+tripwire) and shows their items in 3D; restart once after updating. 1.0.1-pre.2 gives phones and tablets (Bedrock's pocket UI profile) Java's chest layout, so menu art
 no longer sits behind the slots there. 1.0.1-pre.1 fixes the loading protection of 1.0.0-pre.19 and 1.0.0-beta.1, which made Paper drop
 Bedrock players right after joining on servers with Geyser when `forward-player-ping` is off; update from
 those versions. 1.0.0-beta.1 is the first beta: it orders release stages correctly in the update check (servers on
@@ -77,7 +78,7 @@ item, glyph and menu results.
 
 ## Türkçe
 
-### Twilight 1.0.1-pre.2 ön sürüm derlemesi
+### Twilight 1.0.1-pre.3 ön sürüm derlemesi
 
 [Twilight.jar indir](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256) (arka uç sunucuları)
 
@@ -85,7 +86,7 @@ item, glyph and menu results.
 
 siberanka tarafından Java 25.0.2 ve Gradle 9.6.0 ile yerel olarak
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`
-komutuyla derlendi. 43 paketteki 252 test geçti. Barındırılan CI kullanılmadı.
+komutuyla derlendi. 44 paketteki 257 test geçti. Barındırılan CI kullanılmadı.
 
 İlgili kaynak kod bu commit içinde `twilight/`, `twilight-proxy/` ve `protocol/` altında, derleme
 dosyaları depo kökündedir. [LGPL-3.0-or-later](../LICENSE.LESSER) ile lisanslanmıştır;
@@ -94,7 +95,8 @@ eşlik eden [GPL metni](../LICENSE) de sağlanır.
 Dağıtımdan önce [sürüm notlarını](../RELEASE_NOTES.md), [wiki'yi](../WIKI.md) ve
 [üst üste görseller, isim plakaları ve birebir biyomlar](../docs/LAYERS_BIOMES_2026-10-04.md)
 raporunu ve [beta durumu ve uyumluluk](../README.md#beta-durumu-ve-uyumluluk) özetini okuyun.
-1.0.1-pre.2 telefon ve tabletlere (Bedrock'un pocket arayüz profili) Java'nın sandık yerleşimini verir; menü
+1.0.1-pre.3 içerik eklentilerinin özel bloklarını (nota bloğu, mantar bloğu ve tuzak teli üzerindeki madenler ve
+bloklar) dönüştürür ve eşyalarını 3B gösterir; güncellemeden sonra bir kez yeniden başlatın. 1.0.1-pre.2 telefon ve tabletlere (Bedrock'un pocket arayüz profili) Java'nın sandık yerleşimini verir; menü
 görselleri orada artık yuvaların arkasında kalmaz. 1.0.1-pre.1, `forward-player-ping` kapalıyken Geyser'lı sunucularda Paper'ın Bedrock oyuncularını katıldıktan hemen
 sonra atmasına yol açan 1.0.0-pre.19 ve 1.0.0-beta.1 yükleme korumasını düzeltir; bu sürümlerden güncelleyin.
 1.0.0-beta.1 ilk betadır: güncelleme denetiminde sürüm aşamalarını doğru sıralar (1.0.0-pre.14 ile pre.19

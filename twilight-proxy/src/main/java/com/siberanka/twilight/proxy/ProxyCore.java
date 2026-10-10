@@ -115,7 +115,13 @@ public final class ProxyCore implements TwilightProxyApi {
             prewarm(pack);
             queueItemMappings();
             ProxyRuntime running = runtime;
-            if (running != null) running.packsChanged();
+            String blocks = running == null ? null : running.packsChanged();
+            if (blocks != null && !blocks.equals(reportedBlocks)) {
+                reportedBlocks = blocks;
+                platform.warn("Custom blocks for Geyser changed (" + blocks + "). Geyser registers custom blocks when it starts:"
+                        + " restart the proxy; until then Bedrock players see new or changed blocks as before.", null);
+                pendRestart(blocks);
+            }
         });
     }
 
@@ -244,6 +250,8 @@ public final class ProxyCore implements TwilightProxyApi {
     }
 
     /** Twilight's runtime on the proxy's Geyser; settings in {@code bedrock} take effect on restart. */
+    private volatile String reportedBlocks;
+
     private void startRuntime() {
         ProxyConfig current = config;
         if (!realGeyser || runtime != null || current == null) return;

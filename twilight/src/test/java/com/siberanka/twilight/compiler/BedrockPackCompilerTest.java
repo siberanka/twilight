@@ -223,6 +223,95 @@ class BedrockPackCompilerTest {
         }
     }
 
+    /**
+     * Content plugins draw custom blocks through vanilla block states (ItemsAdder's and CraftEngine's note blocks).
+     * Every state with a custom model becomes a Bedrock block named after the Java state; full cubes use the unit
+     * cube with a texture per face, other shapes a block geometry; vanilla looks and invalid states are left alone,
+     * and the item drawn like the block is linked to it (3D icon and drop).
+     */
+    @Test
+    void convertsCustomBlockStatesAndLinksTheirItems() throws Exception {
+        Path source = root.resolve("block-source");
+        write(source, "assets/minecraft/blockstates/note_block.json", """
+                {"variants":{
+                  "instrument=harp":{"model":"block/note_block"},
+                  "instrument=basedrum,note=3,powered=false":{"model":"demo:block/ruby_ore"},
+                  "instrument=basedrum,note=4,powered=false":{"model":"demo:block/ruby_ore","y":90},
+                  "instrument=snare,note=1,powered=false":{"model":"demo:block/plant"},
+                  "instrument=bogus,note=1,powered=false":{"model":"demo:block/ruby_ore"}}}
+                """);
+        String cube = """
+                {"textures":{"all":"demo:block/ruby_ore"},"elements":[{"from":[0,0,0],"to":[16,16,16],"faces":{
+                  "north":{"texture":"#all","cullface":"north"},"south":{"texture":"#all"},"east":{"texture":"#all"},
+                  "west":{"texture":"#all"},"up":{"texture":"#all"},"down":{"texture":"#all"}}}]}
+                """;
+        write(source, "assets/demo/models/block/ruby_ore.json", cube);
+        // The item uses its own model file with the same shape and art, as ItemsAdder's do.
+        write(source, "assets/demo/models/item/ruby_ore.json", cube.replace(",\"cullface\":\"north\"", ""));
+        write(source, "assets/demo/models/block/plant.json", """
+                {"textures":{"cross":"demo:block/plant"},"elements":[
+                  {"from":[0.8,0,8],"to":[15.2,16,8],"rotation":{"origin":[8,8,8],"axis":"y","angle":45},
+                   "faces":{"north":{"texture":"#cross"},"south":{"texture":"#cross"}}}]}
+                """);
+        write(source, "assets/minecraft/models/item/paper.json", """
+                {"parent":"minecraft:item/generated","overrides":[
+                  {"predicate":{"custom_model_data":5},"model":"demo:item/ruby_ore"}]}
+                """);
+        png(source.resolve("assets/demo/textures/block/ruby_ore.png"), Color.RED);
+        png(source.resolve("assets/demo/textures/block/plant.png"), new Color(0, 255, 0, 0));
+        ContentSource pack = new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1);
+        BuildResult result = new BedrockPackCompiler(root.resolve("data-blocks"), config()).build(List.of(pack), List.of());
+        try (ZipFile zip = new ZipFile(result.outputDirectory().resolve("pack.zip").toFile())) {
+            JsonObject file = JsonParser.parseString(new String(zip.getInputStream(zip.getEntry("twilight/geyser_blocks.json"))
+                    .readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+            java.util.Map<String, JsonObject> blocks = new java.util.LinkedHashMap<>();
+            for (var block : file.getAsJsonArray("blocks")) blocks.put(block.getAsJsonObject().get("state").getAsString(), block.getAsJsonObject());
+            assertEquals(java.util.Set.of(
+                    "minecraft:note_block[instrument=basedrum,note=3,powered=false]",
+                    "minecraft:note_block[instrument=basedrum,note=4,powered=false]",
+                    "minecraft:note_block[instrument=snare,note=1,powered=false]"), blocks.keySet(),
+                    "vanilla looks and states the block does not have stay vanilla");
+            JsonObject ruby = blocks.get("minecraft:note_block[instrument=basedrum,note=3,powered=false]");
+            assertEquals("minecraft:geometry.full_block", ruby.get("geometry").getAsString());
+            assertEquals(6, ruby.getAsJsonObject("materials").size());
+            assertEquals("opaque", ruby.getAsJsonObject("materials").getAsJsonObject("up").get("render_method").getAsString());
+            assertEquals("[-8,0,-8,16,16,16]", ruby.get("selection").toString().replace(".0", ""));
+            assertFalse(ruby.has("rotation"));
+            assertEquals("[0,90]", blocks.get("minecraft:note_block[instrument=basedrum,note=4,powered=false]").get("rotation").toString());
+            JsonObject plant = blocks.get("minecraft:note_block[instrument=snare,note=1,powered=false]");
+            assertTrue(plant.get("geometry").getAsString().startsWith("geometry.twilight_b_"));
+            assertEquals("alpha_test", plant.getAsJsonObject("materials").getAsJsonObject("*").get("render_method").getAsString());
+            String geometries = new String(zip.getInputStream(zip.getEntry("models/blocks/twilight_blocks.geo.json")).readAllBytes(), StandardCharsets.UTF_8);
+            assertTrue(geometries.contains(plant.get("geometry").getAsString()));
+            JsonObject terrain = JsonParser.parseString(new String(zip.getInputStream(zip.getEntry("textures/terrain_texture.json"))
+                    .readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("texture_data");
+            String upKey = ruby.getAsJsonObject("materials").getAsJsonObject("up").get("texture").getAsString();
+            assertNotNull(zip.getEntry(terrain.getAsJsonObject(upKey).get("textures").getAsString() + ".png"));
+            // Block names depend only on the Java state, so every backend names a state alike.
+            assertEquals(CustomBlockCompiler.name("note_block", "minecraft:note_block[instrument=basedrum,note=3,powered=false]"),
+                    ruby.get("name").getAsString());
+            String paper = mappings(result).getAsJsonObject("items").getAsJsonArray("minecraft:paper").get(0).getAsJsonObject()
+                    .get("bedrock_identifier").getAsString();
+            assertEquals(ruby.get("name").getAsString(), file.getAsJsonObject("items").get(paper).getAsString());
+        }
+        BuildResult without = new BedrockPackCompiler(root.resolve("data-noblocks"), config()).withCustomBlocks(false)
+                .build(List.of(pack), List.of());
+        try (ZipFile zip = new ZipFile(without.outputDirectory().resolve("pack.zip").toFile())) {
+            assertNull(zip.getEntry("twilight/geyser_blocks.json"));
+        }
+    }
+
+    @Test
+    void expandsPartialBlockStatesInJavaOrder() {
+        var domain = CustomBlockCompiler.BLOCKS.get("note_block");
+        assertEquals(List.of("instrument=basedrum,note=3,powered=false"),
+                CustomBlockCompiler.expand(domain, "powered=false,note=3,instrument=basedrum"));
+        assertEquals(23 * 2, CustomBlockCompiler.expand(domain, "note=3").size());
+        assertEquals(23 * 25 * 2, CustomBlockCompiler.expand(domain, "").size());
+        assertNull(CustomBlockCompiler.expand(domain, "instrument=bogus"));
+        assertNull(CustomBlockCompiler.expand(domain, "color=red"));
+    }
+
     private static JsonObject mappings(BuildResult result) throws Exception {
         return JsonParser.parseString(Files.readString(result.outputDirectory()
                 .resolve("custom_mappings/geyser_item_mappings.json"))).getAsJsonObject();

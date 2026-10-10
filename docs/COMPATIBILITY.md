@@ -123,10 +123,19 @@ Text is laid out for Bedrock players with Java font metrics by default (`ui.java
 
 Compiler diagnostics reject supplementary-plane code points without the layout, out-of-cell baseline controls and corrupt source PNG data. Protected packs whose PNG chunk or zlib checksums are broken are decoded like Java. Content Java rejects or shows broken (malformed font files, unreadable TrueType fonts, sound files, textures or models present in no pack, screen-sized overlay glyphs, vanilla sound events changed without `vanilla-override`) is converted the way Java shows it and reported as a notice in `build-report.json`; it does not stop a strict build. Complete builds of seven production servers passed strict publication with the default configuration. Runtime font limitations are separate: Bedrock does not tint bitmap glyphs with the text colour (titles without a colour use darkened copies; other explicit colours keep the image undarkened), and high-resolution or fractionally scaled glyph textures are reduced to GUI units. Item names and lore keep their raw characters. The latest paired tests cover six metric probes, 36 real glyphs and six additional UI/HUD images. Large images rendering in chat do not establish interactive menu or dynamic HUD parity. Atlas pages can reach 8192 square (256 MiB raw RGBA per page); constrained-device acceptance remains unverified.
 
+Custom blocks on note blocks, mushroom blocks and tripwire (ItemsAdder's `REAL_NOTE` blocks, CraftEngine's
+blocks) are converted since 1.0.1-pre.3: each Java state with a custom model becomes a Bedrock block (full cubes
+with a texture per face and Java's rotation, other shapes with a block geometry), registered with Geyser at
+start, and the items drawn like a block show it in 3D in the inventory and when dropped. Tested live on Paper
+26.2 with Geyser-Spigot and Survival's ItemsAdder and CraftEngine content: ores, rotated CraftEngine drawers,
+mushroom-block decorations and tripwire plants render, and an ore item drops as a 3D block on both clients. See
+the [wiki](../WIKI.md#custom-blocks).
+
 Discovery counters also cover sounds, blockstates, `.bbmodel` files, and datapack biome definitions. Production conversion remains gated until each remaining subsystem has structural tests and real Java/Bedrock acceptance evidence:
 
 - shader menus and dynamic HUD state;
-- custom blocks, furniture, mobs, bones, animations, hitboxes, and equipment;
+- furniture, mobs, bones, animations, hitboxes, and equipment;
+- custom blocks beyond note blocks, mushroom blocks and tripwire (multipart and chorus states);
 - live Bedrock playback acceptance for provider-triggered custom sound events;
 - more than 25 distinct custom biome looks at once (the rest share the closest look);
 - custom skulls and waypoint icons.
@@ -347,12 +356,21 @@ görselini kapsar. Sohbette çizilen büyük görseller etkileşimli menü veya 
 kanıtlamaz. Atlas sayfaları 8192 kareye (sayfa başına 256 MiB ham RGBA) ulaşabilir; kısıtlı cihaz kabulü
 doğrulanmadı.
 
+Nota bloğu, mantar bloğu ve tuzak teli üzerindeki özel bloklar (ItemsAdder'ın `REAL_NOTE` blokları, CraftEngine'in
+blokları) 1.0.1-pre.3'ten beri dönüştürülür: özel modeli olan her Java durumu bir Bedrock bloğu olur (yüz başına
+doku ve Java döndürmesiyle tam küpler, diğer şekiller blok geometrisiyle), açılışta Geyser'a kaydedilir ve bir blok
+gibi çizilen eşyalar onu envanterde ve yere düştüğünde 3B gösterir. Paper 26.2 ve Geyser-Spigot üzerinde Survival'ın
+ItemsAdder ve CraftEngine içeriğiyle canlı test edildi: madenler, döndürülmüş CraftEngine çekmeceleri, mantar bloğu
+süslemeleri ve tuzak teli bitkileri çizilir; bir maden eşyası iki istemcide de 3B blok olarak düşer.
+[Wiki'ye](../WIKI.md#özel-bloklar) bakın.
+
 Keşif sayaçları sesleri, blok durumlarını, `.bbmodel` dosyalarını ve datapack biyom tanımlarını da kapsar.
 Üretim dönüşümü, kalan her alt sistem yapısal testlere ve gerçek Java/Bedrock kabul kanıtına sahip olana
 kadar kapılı kalır:
 
 - shader menüleri ve dinamik HUD durumu;
-- özel bloklar, mobilya, moblar, kemikler, animasyonlar, çarpışma kutuları ve ekipman;
+- mobilya, moblar, kemikler, animasyonlar, çarpışma kutuları ve ekipman;
+- nota bloğu, mantar bloğu ve tuzak teli dışındaki özel bloklar (multipart ve chorus durumları);
 - sağlayıcının tetiklediği özel ses olayları için canlı Bedrock oynatım kabulü;
 - aynı anda 25'ten fazla farklı özel biyom görünümü (geri kalanlar en yakın görünümü paylaşır);
 - özel kafatasları ve yol noktası simgeleri.

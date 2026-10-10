@@ -22,7 +22,7 @@ record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, bo
                    int transferTimeoutSeconds, java.util.Set<String> loginServers,
                    com.siberanka.twilight.host.HostSettings host, boolean updateCheck, boolean updateNotify,
                    LocalSettings local, boolean retireStaleFiles, boolean restartWhenEmpty,
-                   boolean textLayout, boolean translations, int loadingProtectionSeconds) {
+                   boolean textLayout, boolean translations, int loadingProtectionSeconds, boolean customBlocks) {
     /** {@code local-backends}: read the exports of backends on this machine from their folders. */
     record LocalSettings(boolean enabled, java.util.List<Path> search, Map<String, Path> servers) {
         static final LocalSettings OFF = new LocalSettings(false, java.util.List.of(), Map.of());
@@ -94,7 +94,8 @@ record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, bo
                 bedrockSwitch(root.get("bedrock"), "text-layout"),
                 bedrockSwitch(root.get("bedrock"), "translations"),
                 root.get("bedrock") == null ? 300 : integer(map(root.get("bedrock"), "bedrock")
-                        .getOrDefault("loading-protection-seconds", "300"), "bedrock.loading-protection-seconds", 0, 1800));
+                        .getOrDefault("loading-protection-seconds", "300"), "bedrock.loading-protection-seconds", 0, 1800),
+                bedrockSwitch(root.get("bedrock"), "custom-blocks"));
     }
 
     /** A switch in the {@code bedrock} section; on when missing. */

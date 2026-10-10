@@ -4,6 +4,7 @@
  */
 package com.siberanka.twilight.proxy;
 
+import com.siberanka.twilight.geyser.CustomBlocks;
 import com.siberanka.twilight.geyser.LoadingGuard;
 import com.siberanka.twilight.integration.text.GeyserLanguageBridge;
 import com.siberanka.twilight.integration.text.GeyserTextLayoutBridge;
@@ -66,17 +67,35 @@ final class ProxyRuntime implements AutoCloseable {
         } catch (RuntimeException | LinkageError failure) {
             platform.warn("Loading protection is unavailable for this Geyser build.", failure);
         }
-        return new ProxyRuntime(text, language, guard);
+        ProxyRuntime runtime = new ProxyRuntime(text, language, guard);
+        try {
+            if (config.customBlocks()) runtime.blocks = CustomBlocks.start(owner, packs, platform::info, platform::warn);
+        } catch (RuntimeException | LinkageError failure) {
+            platform.warn("Custom blocks are unavailable for this Geyser build; they keep the vanilla look on Bedrock.", failure);
+        }
+        return runtime;
     }
 
-    /** The servers' packs changed: their translations are read again. */
-    void packsChanged() {
+    private volatile CustomBlocks blocks;
+
+    /**
+     * The servers' packs changed: their translations are read again.
+     *
+     * @return a description of the custom blocks when they differ from what Geyser registered at start (Geyser
+     *         registers blocks only then), otherwise null
+     */
+    String packsChanged() {
         if (language != null) language.refresh();
+        CustomBlocks custom = blocks;
+        CustomBlocks.Merged registered = custom == null ? null : custom.registered();
+        if (registered == null) return null;
+        CustomBlocks.Merged now = custom.current();
+        return now.hash().equals(registered.hash()) ? null : now.blocks().size() + " custom block(s)";
     }
 
     @Override
     public void close() {
-        for (AutoCloseable part : new AutoCloseable[]{text, language, guard}) {
+        for (AutoCloseable part : new AutoCloseable[]{text, language, guard, blocks}) {
             if (part == null) continue;
             try {
                 part.close();
