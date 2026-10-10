@@ -4,6 +4,16 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.1-pre.1 - 2026-10-10
+
+- Fix: on a server with Geyser-Spigot (or Geyser on a proxy) without `forward-player-ping`, the loading
+  protection of 1.0.0-pre.19 and 1.0.0-beta.1 answered Java keep-alives a second time while the client was
+  loading its packs. Paper dropped every Bedrock player right after joining ("keepalive response without
+  matching challenge", shown as "Timed out"). The protection now answers only when Geyser forwards pings to
+  the client; otherwise Geyser already answers and only loading times are logged. Verified live on Paper
+  26.2 with Geyser-Spigot.
+- 250 tests pass (220 Twilight, 30 proxy).
+
 ## 1.0.0-beta.1 - 2026-10-10
 
 First beta. It contains everything up to 1.0.0-pre.19 and these changes:
@@ -474,6 +484,16 @@ Fixes from a field report on a proxy network; each point was reproduced locally 
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.1-pre.1 - 2026-10-10
+
+- Düzeltme: Geyser-Spigot'lu (veya Geyser'ı proxy'de olan) ve `forward-player-ping` kapalı bir sunucuda,
+  1.0.0-pre.19 ve 1.0.0-beta.1'in yükleme koruması istemci paketlerini yüklerken Java keep-alive'larını ikinci
+  kez yanıtlıyordu. Paper her Bedrock oyuncusunu katıldıktan hemen sonra atıyordu ("keepalive response without
+  matching challenge", "Zaman aşımı" olarak görünür). Koruma artık yalnızca Geyser ping'leri istemciye
+  yönlendirdiğinde yanıtlar; aksi hâlde Geyser zaten yanıtlar ve yalnızca yükleme süreleri günlüğe yazılır.
+  Paper 26.2 ve Geyser-Spigot üzerinde canlı doğrulandı.
+- 250 test geçti (220 Twilight, 30 proxy).
 
 #### 1.0.0-beta.1 - 2026-10-10
 

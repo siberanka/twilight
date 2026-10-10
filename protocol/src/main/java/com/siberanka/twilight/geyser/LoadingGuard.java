@@ -33,6 +33,10 @@ import java.util.function.LongSupplier;
  * in game, for at most {@code limit}, this answers them at once, as Geyser does without ping forwarding. It
  * also logs how long each client took and why one left while still loading, so a pack that is too heavy for
  * the players' devices shows in the console.
+ *
+ * <p>Without ping forwarding nothing is answered here: Geyser's protocol library already answers keep-alives
+ * and Geyser answers pings itself, and a second answer makes Paper drop the player ("keepalive response
+ * without matching challenge").
  */
 public final class LoadingGuard implements AutoCloseable {
     private final long limitMillis;
@@ -78,9 +82,18 @@ public final class LoadingGuard implements AutoCloseable {
         translators.put(type, wrapper);
     }
 
+    /**
+     * Whether a keep-alive or ping is answered for a client that is still loading: only when Geyser forwards them
+     * to the client (otherwise they are answered already), and only within the limit since loading began.
+     */
+    static boolean answers(boolean forwarding, long loadingSince, long now, long limitMillis) {
+        return forwarding && limitMillis > 0 && now - loadingSince <= limitMillis;
+    }
+
     /** True when the packet was answered here because the client is still loading. */
     private boolean answerWhileLoading(GeyserSession session) {
         long now = clock.getAsLong();
+        boolean forwarding = forwardsPing(session);
         synchronized (loading) {
             if (loaded(session)) {
                 long[] state = loading.remove(session);
@@ -91,7 +104,7 @@ public final class LoadingGuard implements AutoCloseable {
                 return false;
             }
             long[] state = loading.computeIfAbsent(session, ignored -> new long[]{now, 0});
-            if (limitMillis <= 0 || now - state[0] > limitMillis) return false;
+            if (!answers(forwarding, state[0], now, limitMillis)) return false;
             state[1]++;
             return true;
         }
@@ -118,6 +131,16 @@ public final class LoadingGuard implements AutoCloseable {
     private static boolean loaded(GeyserSession session) {
         var upstream = session.getUpstream();
         return upstream != null && upstream.isInitialized();
+    }
+
+    /** Geyser's {@code forward-player-ping}: keep-alives and pings wait for the Bedrock client. */
+    private static boolean forwardsPing(GeyserSession session) {
+        try {
+            return session.getGeyser().config().gameplay().forwardPlayerPing();
+        } catch (RuntimeException | LinkageError unknown) {
+            // Unknown config layout: never risk a second answer.
+            return false;
+        }
     }
 
     private static String name(GeyserSession session) {

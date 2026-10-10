@@ -164,7 +164,7 @@ change behaviour.
 | `send-pack-to-bedrock` | `true` | Let Geyser send the pack; `false` when a proxy or another plugin sends `export/Twilight.mcpack` |
 | `retire-stale-files` | `true` | Move Twilight files this server does not own (older versions, copies, sync tools) out of the local Geyser to `plugins/Twilight/retired/`, at start before Geyser loads them and after every deployment |
 | `restart-for-item-changes` | `notify` | Geyser registers custom items only at start. `notify`: tell the console and players with `twilight.admin`; `when-empty`: also restart once nobody is online (`spigot.yml` `settings.restart-script`; without one the server stops) |
-| `loading-protection-seconds` | `300` | Keep a Bedrock player connected while its client is still loading the resource packs after joining: Java keep-alives and pings are answered for it until the client is in game, at most this long (0-1800; 0 only logs loading times). Loads of 10 s or more are logged. Needs Geyser on this server; on a proxy network twilight-proxy does the same |
+| `loading-protection-seconds` | `300` | Keep a Bedrock player connected while its client is still loading the resource packs after joining: with Geyser's `forward-player-ping: true`, Java keep-alives and pings are answered for it until the client is in game, at most this long (0-1800; 0 only logs loading times). Without ping forwarding Geyser answers them itself and only the loading times are logged. Loads of 10 s or more are logged. Needs Geyser on this server; on a proxy network twilight-proxy does the same |
 | `item-display-models` | `auto` | Bedrock models for custom items in Java item displays (furniture, model bones): a second copy of every 3D item that each client builds while loading. `auto`: only when Geyser runs on this server, where the display bridge uses them; `on`; `off`. Changing it needs a rebuild |
 
 ### `ui`
@@ -356,9 +356,9 @@ Geyser runs on the proxy, so twilight-proxy does the same there, with the pack e
   runtime, such a prefix shows as a plain Unicode character.
 - **Translations** (`bedrock.translations`): item and menu names from datapacks and plugins.
 - **Loading protection** (`bedrock.loading-protection-seconds`): until the client reports that it is in
-  game, the proxy answers Java keep-alives and pings for it. Large packs take minutes on phones, and with
-  Geyser's `forward-player-ping: true` the proxy would otherwise drop the player ("read timed out").
-  Loads of 10 s or more are logged:
+  game, the proxy answers Java keep-alives and pings for it when Geyser's `forward-player-ping` is `true`.
+  Large packs take minutes on phones, and the proxy would otherwise drop the player ("read timed out").
+  Without ping forwarding Geyser answers them itself. Loads of 10 s or more are logged:
   - "&lt;player&gt; finished loading its resource packs after N s; the connection was kept alive for it
     meanwhile."
   - "&lt;player&gt; left while its client was still loading the resource packs, after N s: &lt;reason&gt;"
@@ -976,7 +976,7 @@ değiştirmek için düzenlenmesi gerekir.
 | `send-pack-to-bedrock` | `true` | Paketi Geyser'ın göndermesine izin verir; bir proxy veya başka bir eklenti `export/Twilight.mcpack` dosyasını gönderiyorsa `false` |
 | `retire-stale-files` | `true` | Bu sunucunun sahip olmadığı Twilight dosyalarını (eski sürümler, kopyalar, eşitleme araçları) açılışta Geyser onları yüklemeden önce ve her dağıtımdan sonra yerel Geyser'dan `plugins/Twilight/retired/` klasörüne taşır |
 | `restart-for-item-changes` | `notify` | Geyser özel eşyaları yalnızca açılışta kaydeder. `notify`: konsola ve `twilight.admin` iznine sahip oyunculara bildirir; `when-empty`: ayrıca kimse çevrimiçi değilken yeniden başlatır (`spigot.yml` `settings.restart-script`; yoksa sunucu durur) |
-| `loading-protection-seconds` | `300` | Bir Bedrock oyuncusunu, istemcisi katıldıktan sonra kaynak paketlerini yüklerken bağlı tutar: istemci oyuna girene kadar, en fazla bu süre boyunca Java keep-alive'ları ve ping'leri onun yerine yanıtlanır (0-1800; 0 yalnızca yükleme sürelerini günlüğe yazar). 10 saniye veya daha uzun yüklemeler günlüğe yazılır. Bu sunucuda Geyser gerekir; proxy'li ağda aynı işi twilight-proxy yapar |
+| `loading-protection-seconds` | `300` | Bir Bedrock oyuncusunu, istemcisi katıldıktan sonra kaynak paketlerini yüklerken bağlı tutar: Geyser'da `forward-player-ping: true` ise istemci oyuna girene kadar, en fazla bu süre boyunca Java keep-alive'ları ve ping'leri onun yerine yanıtlanır (0-1800; 0 yalnızca yükleme sürelerini günlüğe yazar). Ping yönlendirmesi olmadan Geyser bunları kendisi yanıtlar ve yalnızca yükleme süreleri günlüğe yazılır. 10 saniye veya daha uzun yüklemeler günlüğe yazılır. Bu sunucuda Geyser gerekir; proxy'li ağda aynı işi twilight-proxy yapar |
 | `item-display-models` | `auto` | Java eşya görüntülerindeki (mobilyalar, model kemikleri) özel eşyalar için Bedrock modelleri: her istemcinin yüklerken kurduğu, her 3B eşyanın ikinci bir kopyası. `auto`: yalnızca Geyser bu sunucuda çalışıyorsa, görüntü köprüsü onları orada kullanır; `on`; `off`. Değiştirmek yeniden derleme gerektirir |
 
 ##### `ui`
@@ -1171,9 +1171,9 @@ Geyser proxy'de çalıştığı için twilight-proxy aynı işi orada, her oyunc
   karakteri olarak görünür.
 - **Çeviriler** (`bedrock.translations`): veri paketlerinden ve eklentilerden gelen eşya ve menü adları.
 - **Yükleme koruması** (`bedrock.loading-protection-seconds`): istemci oyunda olduğunu bildirene kadar proxy
-  Java keep-alive'larını ve ping'lerini onun yerine yanıtlar. Büyük paketler telefonlarda dakikalar sürer ve
-  Geyser'da `forward-player-ping: true` ile proxy aksi hâlde oyuncuyu atar ("read timed out"). 10 saniye veya
-  daha uzun yüklemeler günlüğe yazılır:
+  Geyser'da `forward-player-ping` `true` olduğunda Java keep-alive'larını ve ping'lerini onun yerine yanıtlar.
+  Büyük paketler telefonlarda dakikalar sürer ve proxy aksi hâlde oyuncuyu atar ("read timed out"). Ping
+  yönlendirmesi olmadan Geyser bunları kendisi yanıtlar. 10 saniye veya daha uzun yüklemeler günlüğe yazılır:
   - "&lt;oyuncu&gt; finished loading its resource packs after N s; the connection was kept alive for it
     meanwhile."
   - "&lt;oyuncu&gt; left while its client was still loading the resource packs, after N s: &lt;neden&gt;"

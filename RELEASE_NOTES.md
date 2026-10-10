@@ -1,6 +1,26 @@
-# Twilight 1.0.0-beta.1 - first beta
+# Twilight 1.0.1-pre.1 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+**Update from 1.0.0-beta.1 or 1.0.0-pre.19 if Geyser runs on your server.** Their loading protection answered
+Java keep-alives a second time when Geyser's `forward-player-ping` is off (the default). Paper then dropped
+every Bedrock player right after joining with "Timed out" ("keepalive response without matching challenge"
+in the console). The protection now answers only when Geyser forwards pings to the client, which is the only
+case where a loading client could miss them. Verified live on Paper 26.2 with Geyser-Spigot.
+
+Networks with Geyser only on the proxy were not dropped (Velocity and BungeeCord ignore the second answer),
+but should update as well.
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 250 tests
+across 43 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-beta.1 - first beta
 
 The first beta of Twilight and twilight-proxy. The features are complete for single servers and proxy
 networks and run on production networks; behaviour can still change between betas. Read the
@@ -38,8 +58,6 @@ across 42 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.19 - prerelease
 
@@ -552,7 +570,27 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-beta.1 - ilk beta
+### Twilight 1.0.1-pre.1 - ön sürüm
+
+**Geyser sunucunuzda çalışıyorsa 1.0.0-beta.1 veya 1.0.0-pre.19'dan güncelleyin.** Bu sürümlerin yükleme koruması,
+Geyser'ın `forward-player-ping` ayarı kapalıyken (varsayılan) Java keep-alive'larını ikinci kez yanıtlıyordu. Paper
+da her Bedrock oyuncusunu katıldıktan hemen sonra "Zaman aşımı" ile atıyordu (konsolda "keepalive response without
+matching challenge"). Koruma artık yalnızca Geyser ping'leri istemciye yönlendirdiğinde yanıtlar; yükleyen bir
+istemcinin bunları kaçırabileceği tek durum budur. Paper 26.2 ve Geyser-Spigot üzerinde canlı doğrulandı.
+
+Geyser'ı yalnızca proxy'de olan ağlarda oyuncular atılmadı (Velocity ve BungeeCord ikinci yanıtı yok sayar), ama
+onlar da güncellemelidir.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 43 paketteki 250
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-beta.1 - ilk beta
 
 Twilight ve twilight-proxy'nin ilk betası. Özellikler tek sunucular ve proxy'li ağlar için tamamdır ve üretim
 ağlarında çalışıyor; davranış betalar arasında hâlâ değişebilir. Kurmadan önce
@@ -591,8 +629,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.19 - ön sürüm
 
