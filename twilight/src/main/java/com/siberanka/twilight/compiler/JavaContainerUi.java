@@ -24,8 +24,13 @@ import com.siberanka.twilight.text.TextLayoutTable;
  * <p>This partial definition is merged with the vanilla {@code chest} namespace.
  * It changes only the title label's size, position, layer and default colour,
  * the top-half panel offsets, the hotbar gap and the inventory label's position
- * and layer; text bindings, grids, other screens and the pocket layout keep
- * vanilla values through variable defaults.
+ * and layer; text bindings, grids and other screens keep vanilla values through
+ * variable defaults.
+ *
+ * <p>Bedrock's pocket UI profile (the default on phones and tablets) shows chests as
+ * two scrolling columns with the title in a header bar above them: a Java menu image
+ * drawn from the title lands in that bar and behind the slot panel. With
+ * {@code pocketJava}, pocket screens use the same Java layout as desktop screens.
  */
 final class JavaContainerUi {
     static final String PATH = "ui/chest_screen.json";
@@ -89,6 +94,21 @@ final class JavaContainerUi {
      *               layer, see {@link LayerLabels}
      */
     static JsonObject chestScreen(boolean textLayout, boolean layers) {
+        return chestScreen(textLayout, layers, false);
+    }
+
+    /** Chest screens with their vanilla panel per UI profile: small, large and the screens that reuse them. */
+    static final String[][] SCREENS = {
+            {"small_chest_screen", "chest.small_chest_panel"},
+            {"large_chest_screen", "chest.large_chest_panel"},
+            {"ender_chest_screen", "chest.ender_chest_panel"},
+            {"shulker_box_screen", "chest.shulker_box_panel"},
+            {"barrel_screen", "chest.barrel_panel"}};
+
+    /**
+     * @param pocketJava pocket UI screens use the Java (desktop) chest layout instead of Bedrock's columns
+     */
+    static JsonObject chestScreen(boolean textLayout, boolean layers, boolean pocketJava) {
         int origin = textLayout ? TextLayoutTable.ORIGIN : 0;
         JsonObject root = new JsonObject();
         root.addProperty("namespace", "chest");
@@ -147,7 +167,31 @@ final class JavaContainerUi {
             screen.addProperty(LABEL_LAYER_VARIABLE, JAVA_INVENTORY_LABEL_LAYER);
             root.add(panel, screen);
         }
+        if (pocketJava) {
+            for (String[] screen : SCREENS) root.add(screen[0], desktopOnPocket(screen[1]));
+        }
         return root;
+    }
+
+    /**
+     * The screen's profile variables with the desktop panel for both profiles. Vanilla picks
+     * {@code pocket_containers.*} for {@code $pocket_screen}; touch input works on the desktop panels
+     * as it does with Bedrock's Classic UI profile.
+     */
+    static JsonObject desktopOnPocket(String panel) {
+        JsonArray variables = new JsonArray();
+        for (String profile : new String[]{"$desktop_screen", "$pocket_screen"}) {
+            JsonObject entry = new JsonObject();
+            entry.addProperty("requires", profile);
+            entry.addProperty("$use_custom_pocket_toast", false);
+            entry.addProperty("$screen_content", panel);
+            entry.addProperty("$screen_bg_content", "common.screen_background");
+            entry.addProperty("$screen_background_alpha", 0.4);
+            variables.add(entry);
+        }
+        JsonObject screen = new JsonObject();
+        screen.add("variables", variables);
+        return screen;
     }
 
     /**

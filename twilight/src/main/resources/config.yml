@@ -112,6 +112,11 @@ ui:
   # at all; the build lists such pages. With 256, glyphs Java draws far above or below the line are
   # moved vertically to fit instead. Changing it requires a rebuild.
   max-glyph-cell: 512
+  # Chest screens on Bedrock's pocket UI profile (the default on phones and tablets). Bedrock shows them
+  # as two scrolling columns with the title in a header bar, where a Java menu image ends up behind the
+  # slots. java: the same Java layout as on desktop, so menu art fits its slots on phones too;
+  # bedrock: Bedrock's own pocket screens. Needs ui.java-container-layout; changing it needs a rebuild.
+  pocket-container-layout: java
 
 world:
   # Geyser shows biomes it does not know (datapack biomes such as Terralith or

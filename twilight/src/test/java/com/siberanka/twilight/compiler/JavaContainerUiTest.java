@@ -150,12 +150,27 @@ class JavaContainerUiTest {
             assertNotNull(entry);
             JsonObject parsed = JsonParser.parseString(new String(zip.getInputStream(entry).readAllBytes(),
                     StandardCharsets.UTF_8)).getAsJsonObject();
-            // A custom font enables the title layout, which moves the label origin left and adds layer labels.
-            assertEquals(JavaContainerUi.chestScreen(true, true), parsed);
+            // A custom font enables the title layout, which moves the label origin left and adds layer labels;
+            // pocket (phone) screens use the same Java layout by default.
+            assertEquals(JavaContainerUi.chestScreen(true, true, true), parsed);
+            JsonObject table = JsonParser.parseString(new String(zip.getInputStream(zip.getEntry("twilight/text-layout.json"))
+                    .readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+            assertEquals("java", table.get("pocket_layout").getAsString(), "the runtime lays pocket titles out too");
             assertNotNull(zip.getEntry(JavaHudUi.PATH), "layered action bar and boss bar labels");
             assertNotNull(zip.getEntry("twilight/text-layout.json"));
             assertNotNull(zip.getEntry(JavaContainerUi.COMMON_PATH));
             assertNotNull(zip.getEntry("font/glyph_EC.png"));
+        }
+        Path bedrockPocket = new BedrockPackCompiler(root.resolve("pocket"), config(true)).withPocketContainerLayout(false)
+                .build(List.of(pack), List.of()).outputDirectory();
+        try (ZipFile zip = new ZipFile(bedrockPocket.resolve("pack.zip").toFile())) {
+            JsonObject parsed = JsonParser.parseString(new String(zip.getInputStream(zip.getEntry(JavaContainerUi.PATH))
+                    .readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+            assertEquals(JavaContainerUi.chestScreen(true, true), parsed);
+            assertFalse(parsed.has("small_chest_screen"), "Bedrock's pocket screens stay");
+            JsonObject table = JsonParser.parseString(new String(zip.getInputStream(zip.getEntry("twilight/text-layout.json"))
+                    .readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+            assertFalse(table.has("pocket_layout"));
         }
         Path disabled = new BedrockPackCompiler(root.resolve("disabled"), config(false)).build(List.of(pack), List.of()).outputDirectory();
         try (ZipFile zip = new ZipFile(disabled.resolve("pack.zip").toFile())) {
@@ -163,6 +178,43 @@ class JavaContainerUiTest {
             assertNull(zip.getEntry(JavaContainerUi.COMMON_PATH));
             assertNotNull(zip.getEntry("font/glyph_EC.png"));
         }
+    }
+
+    /**
+     * Bedrock's pocket profile (phones) shows chests in two columns with the title in a header bar, so a Java menu
+     * image lands behind the slot panel. The pocket variables pick the desktop panel instead, keeping every
+     * desktop value, so phones get the same Java layout.
+     */
+    @Test
+    void pocketScreensUseTheDesktopJavaLayout() {
+        JsonObject screen = JavaContainerUi.chestScreen(true, true, true);
+        for (String[] entry : JavaContainerUi.SCREENS) {
+            JsonArray variables = screen.getAsJsonObject(entry[0]).getAsJsonArray("variables");
+            assertEquals(2, variables.size(), entry[0]);
+            for (var variable : variables) {
+                JsonObject profile = variable.getAsJsonObject();
+                assertEquals(entry[1], profile.get("$screen_content").getAsString(), entry[0]);
+                assertEquals("common.screen_background", profile.get("$screen_bg_content").getAsString());
+                assertFalse(profile.get("$use_custom_pocket_toast").getAsBoolean());
+            }
+            assertEquals("$desktop_screen", variables.get(0).getAsJsonObject().get("requires").getAsString());
+            assertEquals("$pocket_screen", variables.get(1).getAsJsonObject().get("requires").getAsString());
+        }
+        JsonObject desktopOnly = JavaContainerUi.chestScreen(true, true, false);
+        for (String[] entry : JavaContainerUi.SCREENS) assertFalse(desktopOnly.has(entry[0]));
+        assertEquals(desktopOnly.getAsJsonObject("chest_label"), screen.getAsJsonObject("chest_label"));
+    }
+
+    @Test
+    void layoutTableCarriesThePocketLayout() {
+        var table = new com.siberanka.twilight.text.TextLayoutTable(java.util.Map.of(), 0xF900, 32);
+        assertFalse(table.pocketJavaLayout());
+        var pocket = table.withPocketJavaLayout(true);
+        var read = com.siberanka.twilight.text.TextLayoutTable.fromJson(pocket.toJson());
+        assertTrue(read.pocketJavaLayout());
+        assertTrue(read.withContainerOrigin(com.siberanka.twilight.text.TextLayoutTable.ORIGIN).pocketJavaLayout(), "copies keep it");
+        assertTrue(read.withLayers(java.util.Set.of()).withHiddenBossBars(java.util.Set.of()).pocketJavaLayout());
+        assertFalse(com.siberanka.twilight.text.TextLayoutTable.fromJson(table.toJson()).pocketJavaLayout());
     }
 
     private static TwilightConfig config(boolean titles) {

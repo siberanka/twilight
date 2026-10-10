@@ -91,6 +91,16 @@ public final class BedrockPackCompiler {
     }
 
     private boolean itemDisplays = true;
+    private boolean pocketJavaLayout = true;
+
+    /**
+     * {@code ui.pocket-container-layout}: true gives chest screens of Bedrock's pocket UI profile (phones) the
+     * Java layout of desktop screens; false keeps Bedrock's two-column pocket screens.
+     */
+    public BedrockPackCompiler withPocketContainerLayout(boolean java) {
+        this.pocketJavaLayout = java;
+        return this;
+    }
     private int maxGlyphCell = 512;
 
     /** {@code ui.max-glyph-cell}: the largest glyph cell (512, 256, 128 or 64 pixels). */
@@ -291,6 +301,7 @@ public final class BedrockPackCompiler {
             TextLayoutTable table = fonts.layout();
             // Bedrock's own chest UI keeps its title label at the left edge: no origin to reach.
             if (!config.javaContainerLayout()) table = table.withContainerOrigin(0);
+            else if (pocketJavaLayout) table = table.withPocketJavaLayout(true);
             if (layerSurfaces.contains(TextLayoutTable.BOSS_LAYERS)) {
                 table = table.withHiddenBossBars(BossBars.hidden(resources)).withStyledBossBars(styledBars);
             }
@@ -299,7 +310,7 @@ public final class BedrockPackCompiler {
         }
         if (config.javaContainerLayout()) {
             packFiles.put(JavaContainerUi.PATH, jsonBytes(JavaContainerUi.chestScreen(fonts.layout() != null,
-                    layerSurfaces.contains(TextLayoutTable.CHEST_LAYERS))));
+                    layerSurfaces.contains(TextLayoutTable.CHEST_LAYERS), pocketJavaLayout)));
             packFiles.put(JavaContainerUi.COMMON_PATH, jsonBytes(JavaContainerUi.commonScreen()));
         }
         if (layerSurfaces.contains(TextLayoutTable.BOSS_LAYERS)) {

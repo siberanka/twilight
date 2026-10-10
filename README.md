@@ -257,7 +257,7 @@ Each operation writes a dedicated UTF-8 log under `plugins/Twilight/logs`, for e
 - Text is laid out for Bedrock players with Java font metrics (`ui.java-text-layout: true`): fonts from all packs are combined like Java, spacing and negative-shift characters become invisible spacers, and characters Java remaps or named fonts use receive private-use aliases. Chest titles, chat, action bar, titles, boss bars, scoreboards, entity names and text displays are covered (`ui.java-text-surfaces: true`); item names and lore are not. Titles without a colour show their images darkened like Java (`ui.java-glyph-tint: true`), and the packs' translations reach Bedrock players (`ui.java-translations: true`). Text and images moved back over earlier ones (stacked menu art, CustomNameplates backgrounds) get one Bedrock label per layer in chest titles, the action bar and boss bars (`ui.java-text-layers: true`). A glyph directly after text without a space can still differ by a unit.
 - Datapack and plugin biomes keep their exact grass, foliage, water, fog and sky colours and their climate on Bedrock: the pack redefines 25 Bedrock biomes that only old worlds use. With more custom looks, the current RealisticSeasons season goes first and the rest show as the closest vanilla biome or slot; biome changes (`/fillbiome`, seasons) reach Bedrock players without a rejoin (`world.bedrock-biome-matching: true`).
 - Ridden players and mobs hide their Bedrock name like Java, so nameplate plugins show only their plate, and Bedrock's dark name tag box is hidden when CustomNameplates draws its own backgrounds (`ui.nametag-background: auto`).
-- Desktop chest screens receive Java's container layout (`ui.java-container-layout: true`): unwrapped titles, Java label positions and drawing order, and Java slot spacing for 1 to 6 rows. Twilight merges partial UI definitions instead of replacing Bedrock UI files; other containers and touch layouts stay vanilla.
+- Chest screens receive Java's container layout (`ui.java-container-layout: true`): unwrapped titles, Java label positions and drawing order, and Java slot spacing for 1 to 6 rows. Phones and tablets (Bedrock's pocket UI profile) get the same layout instead of Bedrock's two-column screens, so menu art stays over its slots (`ui.pocket-container-layout: java`). Twilight merges partial UI definitions instead of replacing Bedrock UI files; other containers stay vanilla.
 - With `vanilla-override: false`, normal Unicode cells in the Java default font never replace Bedrock's vanilla glyphs; the text layout gives them private-use aliases instead. Characters drawn from Java's own font sheets stay ordinary Bedrock text.
 - Texture atlas sprite renames (for example ItemsAdder's `ia:<number>` sprites) and protected PNGs with broken checksums are resolved like Java. Faces whose texture variable no model defines use Java's missing texture. Content Java rejects or shows broken is converted the way Java shows it (missing textures and models, screen-sized overlay glyphs, vanilla sounds changed without `vanilla-override`) and reported as a notice in `build-report.json` instead of stopping a strict build.
 - Explicit `minecraft:` texture references missing from a custom pack can be resolved from a version-matched Mojang client JAR cached under `plugins/Twilight/cache`. Manifest metadata, size, and SHA-1 are verified before use; this never registers vanilla models as custom content.
@@ -559,10 +559,11 @@ dönüşüm sorunlarını, çalışan iş parçacığını ve tam yığın izler
 - Binilen oyuncular ve moblar Bedrock adlarını Java gibi gizler; böylece ad etiketi eklentileri yalnızca
   kendi etiketlerini gösterir ve CustomNameplates kendi arka planlarını çizdiğinde Bedrock'un koyu ad etiketi
   kutusu gizlenir (`ui.nametag-background: auto`).
-- Masaüstü sandık ekranları Java'nın konteyner yerleşimini alır (`ui.java-container-layout: true`):
-  kaydırılmamış başlıklar, Java etiket konumları ve çizim sırası, 1 ile 6 satır için Java yuva aralığı.
-  Twilight Bedrock arayüz dosyalarını değiştirmek yerine kısmi arayüz tanımlarını birleştirir; diğer
-  konteynerler ve dokunmatik yerleşimler vanilla kalır.
+- Sandık ekranları Java'nın konteyner yerleşimini alır (`ui.java-container-layout: true`): kaydırılmamış
+  başlıklar, Java etiket konumları ve çizim sırası, 1 ile 6 satır için Java yuva aralığı. Telefonlar ve tabletler
+  (Bedrock'un pocket arayüz profili) Bedrock'un iki sütunlu ekranları yerine aynı yerleşimi alır; böylece menü
+  görselleri yuvalarının üzerinde kalır (`ui.pocket-container-layout: java`). Twilight Bedrock arayüz dosyalarını
+  değiştirmek yerine kısmi arayüz tanımlarını birleştirir; diğer konteynerler vanilla kalır.
 - `vanilla-override: false` ile Java varsayılan fontundaki olağan Unicode hücreleri Bedrock'un vanilla
   gliflerinin yerini asla almaz; yazı yerleşimi onlara özel kullanım takma adları verir. Java'nın kendi font
   sayfalarından çizilen karakterler olağan Bedrock yazısı kalır.

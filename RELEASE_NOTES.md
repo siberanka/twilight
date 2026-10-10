@@ -1,6 +1,27 @@
-# Twilight 1.0.1-pre.1 - prerelease
+# Twilight 1.0.1-pre.2 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+**Menus on phones look like on Java.** Bedrock's pocket UI profile, the default on phones and tablets, shows
+chests as two scrolling columns with the title in a header bar: menu art drawn from the title sat in that bar,
+behind the slot panel. Chest screens (chest, large chest, ender chest, shulker box, barrel) now use Twilight's
+Java layout on phones too, exactly as on desktop. Measured live with the pocket profile: two real Survival menus
+land on Java's position, and chat, action bar, boss bars, sidebar, titles and nameplates match as on desktop.
+`ui.pocket-container-layout: bedrock` keeps Bedrock's own pocket screens.
+
+Nothing has to be configured: the first build after the update makes the new pack, and Bedrock players load it
+on their next join.
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 252 tests
+across 43 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.1-pre.1 - prerelease
 
 **Update from 1.0.0-beta.1 or 1.0.0-pre.19 if Geyser runs on your server.** Their loading protection answered
 Java keep-alives a second time when Geyser's `forward-player-ping` is off (the default). Paper then dropped
@@ -17,8 +38,6 @@ across 43 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-beta.1 - first beta
 
@@ -570,7 +589,29 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.1-pre.1 - ön sürüm
+### Twilight 1.0.1-pre.2 - ön sürüm
+
+**Telefonlardaki menüler Java'daki gibi görünür.** Telefon ve tabletlerde varsayılan olan Bedrock'un pocket arayüz
+profili, sandıkları başlığı bir başlık çubuğunda duran iki kaydırılabilir sütun olarak gösterir: başlıktan çizilen
+menü görselleri o çubukta, yuva panelinin arkasında kalıyordu. Sandık ekranları (sandık, büyük sandık, ender sandığı,
+shulker kutusu, fıçı) artık telefonlarda da tam masaüstündeki gibi Twilight'ın Java yerleşimini kullanır. Pocket
+profiliyle canlı ölçüldü: iki gerçek Survival menüsü Java'nın konumuna oturur; sohbet, aksiyon çubuğu, boss
+çubukları, yan panel, başlıklar ve isim plakaları masaüstündeki gibi eşleşir. `ui.pocket-container-layout: bedrock`
+Bedrock'un kendi pocket ekranlarını korur.
+
+Hiçbir ayar gerekmez: güncellemeden sonraki ilk derleme yeni paketi üretir ve Bedrock oyuncuları onu bir sonraki
+girişlerinde yükler.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 43 paketteki 252
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.1-pre.1 - ön sürüm
 
 **Geyser sunucunuzda çalışıyorsa 1.0.0-beta.1 veya 1.0.0-pre.19'dan güncelleyin.** Bu sürümlerin yükleme koruması,
 Geyser'ın `forward-player-ping` ayarı kapalıyken (varsayılan) Java keep-alive'larını ikinci kez yanıtlıyordu. Paper
@@ -587,8 +628,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-beta.1 - ilk beta
 

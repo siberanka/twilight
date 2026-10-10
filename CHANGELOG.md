@@ -4,6 +4,17 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.1-pre.2 - 2026-10-10
+
+- Phones and tablets get Java's chest layout. Bedrock's pocket UI profile (the default there) shows chests as
+  two scrolling columns with the title in a header bar, so menu art drawn from the title sat in that bar and
+  behind the slot panel. Chest, large chest, ender chest, shulker box and barrel screens now use the same Java
+  layout as on desktop for both profiles, and the runtime lays their titles out like desktop ones
+  (`ui.pocket-container-layout: java`, `bedrock` keeps Bedrock's screens). Measured live with the pocket
+  profile on Windows: two real Survival menus land on Java's position (shift 0, 0), and chat, action bar, boss
+  bars, sidebar, titles and nameplates pass the same checks as on desktop.
+- 252 tests pass (222 Twilight, 30 proxy).
+
 ## 1.0.1-pre.1 - 2026-10-10
 
 - Fix: on a server with Geyser-Spigot (or Geyser on a proxy) without `forward-player-ping`, the loading
@@ -484,6 +495,18 @@ Fixes from a field report on a proxy network; each point was reproduced locally 
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.1-pre.2 - 2026-10-10
+
+- Telefonlar ve tabletler Java'nın sandık yerleşimini alır. Bedrock'un pocket arayüz profili (orada varsayılan)
+  sandıkları başlığı bir başlık çubuğunda duran iki kaydırılabilir sütun olarak gösterir; bu yüzden başlıktan
+  çizilen menü görselleri o çubukta ve yuva panelinin arkasında kalıyordu. Sandık, büyük sandık, ender sandığı,
+  shulker kutusu ve fıçı ekranları artık iki profilde de masaüstündekiyle aynı Java yerleşimini kullanır ve çalışma
+  zamanı başlıklarını masaüstündeki gibi yerleştirir (`ui.pocket-container-layout: java`; `bedrock` Bedrock'un
+  ekranlarını korur). Windows'ta pocket profiliyle canlı ölçüldü: iki gerçek Survival menüsü Java'nın konumuna oturur
+  (kayma 0, 0); sohbet, aksiyon çubuğu, boss çubukları, yan panel, başlıklar ve isim plakaları masaüstündeki aynı
+  denetimleri geçer.
+- 252 test geçti (222 Twilight, 30 proxy).
 
 #### 1.0.1-pre.1 - 2026-10-10
 

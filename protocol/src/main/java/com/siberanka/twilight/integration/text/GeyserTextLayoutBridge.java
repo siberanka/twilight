@@ -332,9 +332,10 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
 
     private ClientboundOpenScreenPacket openScreen(GeyserSession session, ClientboundOpenScreenPacket packet,
                                                    TextLayoutTable table) throws ReflectiveOperationException {
-        // The touch layout keeps its centred native title; only glyph substitution applies there.
+        // Bedrock's own pocket layout keeps its centred native title; only glyph substitution applies there.
+        // A pack whose pocket chest screens use the Java layout lays their titles out like desktop ones.
         var profile = session.getClientData() == null ? null : session.getClientData().getUiProfile();
-        boolean pocket = profile != null && "POCKET".equals(profile.toString());
+        boolean pocket = profile != null && "POCKET".equals(profile.toString()) && !table.pocketJavaLayout();
         return TextSurfaces.openScreen(packet, table, pocket, translations(session),
                 layers(session, table, TextLayoutTable.CHEST_LAYERS, ""));
     }

@@ -293,6 +293,7 @@ public final class TwilightPlugin extends JavaPlugin {
                                 .withServerBiomes(world.biomes(), world.current())
                                 .withNameplatePlugin(world.nameplates()).withItemDisplays(itemDisplayModels())
                                 .withMaxGlyphCell(getConfig().getInt("ui.max-glyph-cell", 512))
+                                .withPocketContainerLayout(pocketContainerLayout())
                                 .build(sources, liveItems);
                     } catch (ConversionException rejected) {
                         if (!firstPack) throw rejected;
@@ -304,6 +305,7 @@ public final class TwilightPlugin extends JavaPlugin {
                                 .withServerBiomes(world.biomes(), world.current())
                                 .withNameplatePlugin(world.nameplates()).withItemDisplays(itemDisplayModels())
                                 .withMaxGlyphCell(getConfig().getInt("ui.max-glyph-cell", 512))
+                                .withPocketContainerLayout(pocketContainerLayout())
                                 .build(sources, liveItems);
                     }
                 }
@@ -414,6 +416,18 @@ public final class TwilightPlugin extends JavaPlugin {
      * {@code geyser.item-display-models}: auto puts them in the pack only when Geyser runs on this server, where
      * Twilight's display bridge uses them; a proxy's Geyser does not.
      */
+    /**
+     * {@code ui.pocket-container-layout}: {@code java} (default) gives chest screens on Bedrock's pocket UI profile
+     * (phones, tablets) the Java layout of desktop screens; {@code bedrock} keeps Bedrock's two-column screens.
+     */
+    private boolean pocketContainerLayout() {
+        String setting = getConfig().getString("ui.pocket-container-layout", "java").strip().toLowerCase(java.util.Locale.ROOT);
+        if (!setting.equals("java") && !setting.equals("bedrock")) {
+            getLogger().warning("ui.pocket-container-layout must be java or bedrock, not '" + setting + "'; using java.");
+        }
+        return !setting.equals("bedrock");
+    }
+
     private boolean itemDisplayModels() {
         String setting = getConfig().getString("geyser.item-display-models", "auto").strip().toLowerCase(java.util.Locale.ROOT);
         if (setting.equals("on") || setting.equals("true")) return true;

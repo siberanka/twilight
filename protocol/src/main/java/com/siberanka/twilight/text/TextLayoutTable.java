@@ -52,6 +52,7 @@ public final class TextLayoutTable {
     private Map<String, Integer> nativeFonts = Map.of();
     private java.util.Set<String> hiddenBossBars = java.util.Set.of();
     private java.util.Set<String> styledBossBars = java.util.Set.of();
+    private boolean pocketJavaLayout;
 
     public TextLayoutTable(Map<String, Map<Integer, Entry>> fonts, int spacerFirst, int spacerCount) {
         this(fonts, spacerFirst, spacerCount, ORIGIN);
@@ -104,14 +105,27 @@ public final class TextLayoutTable {
     public TextLayoutTable withContainerOrigin(int origin) {
         return new TextLayoutTable(fonts, spacerFirst, spacerCount, origin, textAdvances, shades, layerSurfaces)
                 .withNativeFonts(nativeFonts).withHiddenBossBars(hiddenBossBars)
-                .withStyledBossBars(styledBossBars);
+                .withStyledBossBars(styledBossBars).withPocketJavaLayout(pocketJavaLayout);
     }
+
+    /**
+     * Same metrics for a pack whose chest screens use the Java layout on Bedrock's pocket UI profile too
+     * (phones), so titles there are laid out like on desktop instead of only substituting glyphs.
+     */
+    public TextLayoutTable withPocketJavaLayout(boolean value) {
+        TextLayoutTable copy = withNativeFonts(nativeFonts);
+        copy.pocketJavaLayout = value;
+        return copy;
+    }
+
+    /** Whether pocket (phone) chest screens use the Java layout of desktop screens. */
+    public boolean pocketJavaLayout() { return pocketJavaLayout; }
 
     /** Same metrics for a pack whose UI shows layered text on these surfaces. */
     public TextLayoutTable withLayers(java.util.Set<String> surfaces) {
         return new TextLayoutTable(fonts, spacerFirst, spacerCount, containerOrigin, textAdvances, shades, surfaces)
                 .withNativeFonts(nativeFonts).withHiddenBossBars(hiddenBossBars)
-                .withStyledBossBars(styledBossBars);
+                .withStyledBossBars(styledBossBars).withPocketJavaLayout(pocketJavaLayout);
     }
 
     /**
@@ -126,6 +140,7 @@ public final class TextLayoutTable {
         copy.nativeFonts = Collections.unmodifiableMap(new TreeMap<>(fonts));
         copy.hiddenBossBars = hiddenBossBars;
         copy.styledBossBars = styledBossBars;
+        copy.pocketJavaLayout = pocketJavaLayout;
         return copy;
     }
 
@@ -269,6 +284,7 @@ public final class TextLayoutTable {
             root.add("layers", layers);
             root.addProperty("layer_format", LAYER_FORMAT);
         }
+        if (pocketJavaLayout) root.addProperty("pocket_layout", "java");
         if (!shades.isEmpty()) {
             JsonObject shaded = new JsonObject();
             shades.forEach((glyph, copy) ->
@@ -327,7 +343,8 @@ public final class TextLayoutTable {
         }
         return new TextLayoutTable(fonts, root.get("spacer_first").getAsInt(), root.get("spacer_count").getAsInt(),
                 origin, text, shades, layerSurfaces).withNativeFonts(nativeFonts)
-                .withHiddenBossBars(colours(root, "hidden_boss_bars")).withStyledBossBars(colours(root, "styled_boss_bars"));
+                .withHiddenBossBars(colours(root, "hidden_boss_bars")).withStyledBossBars(colours(root, "styled_boss_bars"))
+                .withPocketJavaLayout(root.has("pocket_layout") && "java".equals(root.get("pocket_layout").getAsString()));
     }
 
     private static java.util.Set<String> colours(JsonObject root, String key) {

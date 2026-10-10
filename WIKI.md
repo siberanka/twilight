@@ -178,6 +178,7 @@ change behaviour.
 | `java-text-layers` | `true` | Text and images drawn back over earlier ones get one label per layer (chest titles, action bar, boss bars) |
 | `nametag-background` | `auto` | Bedrock's name tag box: `auto` (hidden when CustomNameplates' name tags are on), `hidden`, `bedrock` |
 | `java-translations` | `true` | Use the resource packs' translations for Bedrock players |
+| `pocket-container-layout` | `java` | Chest screens on Bedrock's pocket UI profile (the default on phones and tablets). `java`: the same Java layout as on desktop, so menu art fits its slots; `bedrock`: Bedrock's two-column pocket screens, where the title sits in a header bar and menu art ends up behind the slots. Needs `java-container-layout` and a rebuild |
 | `max-glyph-cell` | `512` | Largest glyph cell in pixels (512, 256, 128, 64). A page is 16 cells wide: one glyph that needs 512 makes its page 8192x8192 (256 MiB in the client), which the build names. With 256, glyphs Java draws far above or below the line are moved vertically to fit. Needs a rebuild |
 
 ### `world`
@@ -787,6 +788,7 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 | After the pack download the player is on the login server again | Expected without login sessions; after logging in it is sent on to the server it chose. Enable sessions in the login plugin to skip the second login |
 | Large packs take minutes | Geyser sends about 1.2 MiB/s; enable `pack-host` |
 | Bedrock players are dropped while the packs load ("read timed out", "Timed out") | Update to 1.0.0-pre.19: the next build leaves out item display models where Geyser is not on the server, and the loading protection keeps the player for up to 5 minutes (`loading-protection-seconds`). The log says how long each load took |
+| Menu art sits behind the slots or in a header bar on phones | Bedrock's pocket screens. Update to 1.0.1-pre.2 and keep `ui.pocket-container-layout: java`; Bedrock players load the new pack on their next join |
 | Images in chat or menus show as Unicode characters on a proxy network | Before 1.0.0-pre.19, the text runtime ran only in a backend's Geyser. Update twilight-proxy and keep `bedrock.text-layout: true` |
 | "glyph pages of 8192x8192 pixels ..." notice | One glyph needs a 512-pixel cell. Phones load such pages slowly; `ui.max-glyph-cell: 256` |
 | "joined X, not the server its pack was chosen for" | The proxy picked another first server than twilight-proxy expected (last server, forced host): set `initial-server`, or BungeeCord `force_default_server: true` |
@@ -990,6 +992,7 @@ değiştirmek için düzenlenmesi gerekir.
 | `java-text-layers` | `true` | Öncekilerin üzerine geri çizilen yazı ve görseller katman başına bir etiket alır (sandık başlıkları, aksiyon çubuğu, boss çubukları) |
 | `nametag-background` | `auto` | Bedrock'un ad etiketi kutusu: `auto` (CustomNameplates'in ad etiketleri açıkken gizli), `hidden`, `bedrock` |
 | `java-translations` | `true` | Bedrock oyuncuları için kaynak paketlerinin çevirilerini kullanır |
+| `pocket-container-layout` | `java` | Bedrock'un pocket arayüz profilindeki (telefon ve tabletlerde varsayılan) sandık ekranları. `java`: masaüstündekiyle aynı Java yerleşimi, menü görselleri yuvalarına oturur; `bedrock`: Bedrock'un iki sütunlu pocket ekranları, başlık bir başlık çubuğunda durur ve menü görselleri yuvaların arkasında kalır. `java-container-layout` ve yeniden derleme gerektirir |
 | `max-glyph-cell` | `512` | Piksel olarak en büyük glif hücresi (512, 256, 128, 64). Bir sayfa 16 hücre genişliğindedir: 512 gerektiren tek bir glif sayfasını 8192x8192 yapar (istemcide 256 MiB); derleme bu sayfaları adlarıyla bildirir. 256 ile Java'nın satırın çok üstüne veya altına çizdiği glifler sığmaları için dikeyde kaydırılır. Yeniden derleme gerektirir |
 
 ##### `world`
@@ -1604,6 +1607,7 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
 | Paket indirildikten sonra oyuncu yine giriş sunucusunda | Giriş oturumları olmadan beklenir; giriş yaptıktan sonra seçtiği sunucuya gönderilir. İkinci girişi atlamak için giriş eklentisinde oturumları açın |
 | Büyük paketler dakikalar sürüyor | Geyser yaklaşık 1,2 MiB/s gönderir; `pack-host`u açın |
 | Bedrock oyuncuları paketler yüklenirken atılıyor ("read timed out", "Timed out") | 1.0.0-pre.19'a güncelleyin: sonraki derleme, Geyser'ın sunucuda olmadığı yerlerde eşya görüntüsü modellerini çıkarır ve yükleme koruması oyuncuyu 5 dakikaya kadar tutar (`loading-protection-seconds`). Günlük her yüklemenin ne kadar sürdüğünü yazar |
+| Telefonlarda menü görselleri yuvaların arkasında veya bir başlık çubuğunda | Bedrock'un pocket ekranları. 1.0.1-pre.2'ye güncelleyin ve `ui.pocket-container-layout: java` bırakın; Bedrock oyuncuları yeni paketi bir sonraki girişlerinde yükler |
 | Proxy'li ağda sohbetteki veya menülerdeki görseller Unicode karakteri olarak görünüyor | 1.0.0-pre.19'dan önce yazı çalışma zamanı yalnızca arka ucun Geyser'ında çalışıyordu. twilight-proxy'yi güncelleyin ve `bedrock.text-layout: true` bırakın |
 | "glyph pages of 8192x8192 pixels ..." bildirimi | Bir glif 512 piksellik hücre gerektiriyor. Telefonlar bu sayfaları yavaş yükler; `ui.max-glyph-cell: 256` |
 | "joined X, not the server its pack was chosen for" | Proxy, twilight-proxy'nin beklediğinden başka bir ilk sunucu seçti (son sunucu, zorunlu sunucu): `initial-server` ayarlayın veya BungeeCord'da `force_default_server: true` |
