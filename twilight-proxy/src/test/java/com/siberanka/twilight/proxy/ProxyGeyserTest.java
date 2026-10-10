@@ -159,6 +159,23 @@ class ProxyGeyserTest {
         assertEquals(2, merge.mappings().get("format_version").getAsInt());
     }
 
+    /**
+     * FlameCord starts Geyser before twilight-proxy enables: the custom blocks are read in the load phase from the
+     * packs the last run cached and the pack files, never from the version store or other files.
+     */
+    @Test
+    void earlyBlocksReadTheCachedServerPacks() throws Exception {
+        java.nio.file.Files.createDirectories(root.resolve("cache/versions"));
+        java.nio.file.Files.createDirectories(root.resolve("packs"));
+        java.nio.file.Files.writeString(root.resolve("cache/survival.mcpack"), "x");
+        java.nio.file.Files.writeString(root.resolve("cache/versions/ab.mcpack"), "x");
+        java.nio.file.Files.writeString(root.resolve("cache/notes.txt"), "x");
+        java.nio.file.Files.writeString(root.resolve("packs/lobby.zip"), "x");
+        assertEquals(List.of(root.resolve("cache/survival.mcpack"), root.resolve("packs/lobby.zip")),
+                ProxyCore.cachedPacks(root));
+        assertEquals(List.of(), ProxyCore.cachedPacks(root.resolve("missing")));
+    }
+
     @Test
     void sameBedrockItemWithOtherOptionsIsNotAConflict() {
         JsonObject lobby = mappings(legacy("minecraft:paper", 7, "twilight:minecraft_paper_7_aaaaaaaaaaaa"));

@@ -38,6 +38,16 @@ import java.util.logging.Level;
 public final class BungeePlugin extends Plugin implements Listener {
     private ProxyCore core;
 
+    /**
+     * BungeeCord loads every plugin before enabling any; Geyser (a soft dependency) defines its custom blocks when
+     * it enables, which can be before this plugin enables (FlameCord). The blocks are subscribed here.
+     */
+    @Override
+    public void onLoad() {
+        ProxyCore.registerBlocksEarly(this, getDataFolder().toPath(), getLogger()::info,
+                (message, failure) -> getLogger().log(Level.WARNING, message, failure));
+    }
+
     @Override
     public void onEnable() {
         getProxy().registerChannel(PackChannel.CHANNEL);

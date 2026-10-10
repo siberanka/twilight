@@ -4,6 +4,18 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.1-pre.4 - 2026-10-10
+
+- twilight-proxy on FlameCord and other BungeeCord forks: Geyser defined its custom blocks before the plugin
+  enabled, so no custom block was registered and ores stayed note blocks (and their items flat). The blocks are
+  now subscribed in the proxy's plugin load phase, before Geyser starts, from the packs the last run cached;
+  once the plugin runs they follow the servers' current packs. Verified on Waterfall: 195 blocks and 29 block
+  items registered from the load phase.
+- twilight-proxy: a server pack without a text layout table made every text of the players on that server
+  fail the layout once ("Java text layout failed for LayoutSource"); such packs are now remembered as having
+  no layout.
+- 258 tests pass (227 Twilight, 31 proxy).
+
 ## 1.0.1-pre.3 - 2026-10-10
 
 - Custom blocks. ItemsAdder's and CraftEngine's blocks (ores, decorations, plants) are note block, mushroom
@@ -510,6 +522,18 @@ Fixes from a field report on a proxy network; each point was reproduced locally 
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.1-pre.4 - 2026-10-10
+
+- FlameCord ve diğer BungeeCord türevlerinde twilight-proxy: Geyser özel blokları eklenti etkinleşmeden önce
+  tanımlıyordu; bu yüzden hiçbir özel blok kaydedilmiyor, madenler nota bloğu (eşyaları düz) kalıyordu. Bloklar
+  artık proxy'nin eklenti yükleme aşamasında, Geyser başlamadan önce, son çalışmanın önbelleğe aldığı paketlerden
+  abone edilir; eklenti çalışınca sunucuların güncel paketlerini izler. Waterfall'da doğrulandı: yükleme
+  aşamasından 195 blok ve 29 blok eşyası kaydedildi.
+- twilight-proxy: yazı yerleşim tablosu olmayan bir sunucu paketi, o sunucudaki oyuncuların her yazısında
+  yerleşimin bir kez başarısız olmasına yol açıyordu ("Java text layout failed for LayoutSource"); böyle paketler
+  artık yerleşimi olmayan paket olarak hatırlanır.
+- 258 test geçti (227 Twilight, 31 proxy).
 
 #### 1.0.1-pre.3 - 2026-10-10
 

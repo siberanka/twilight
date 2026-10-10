@@ -48,6 +48,12 @@ final class ProxyRuntime implements AutoCloseable {
      */
     static ProxyRuntime start(Object owner, ProxyConfig config, Platform platform, Function<String, Optional<Path>> packOf,
                               Supplier<Collection<Path>> packs) {
+        return start(owner, config, platform, packOf, packs, null);
+    }
+
+    /** @param registered custom blocks already subscribed in the proxy's load phase, or null */
+    static ProxyRuntime start(Object owner, ProxyConfig config, Platform platform, Function<String, Optional<Path>> packOf,
+                              Supplier<Collection<Path>> packs, CustomBlocks registered) {
         Logger logger = logger(platform);
         GeyserTextLayoutBridge text = null;
         GeyserLanguageBridge language = null;
@@ -69,7 +75,8 @@ final class ProxyRuntime implements AutoCloseable {
         }
         ProxyRuntime runtime = new ProxyRuntime(text, language, guard);
         try {
-            if (config.customBlocks()) runtime.blocks = CustomBlocks.start(owner, packs, platform::info, platform::warn);
+            if (registered != null) runtime.blocks = registered;
+            else if (config.customBlocks()) runtime.blocks = CustomBlocks.start(owner, packs, platform::info, platform::warn);
         } catch (RuntimeException | LinkageError failure) {
             platform.warn("Custom blocks are unavailable for this Geyser build; they keep the vanilla look on Bedrock.", failure);
         }
@@ -132,7 +139,9 @@ final class ProxyRuntime implements AutoCloseable {
                     layout = null;
                 }
                 if (layouts.size() >= MAX_CACHED) layouts.clear();
-                layouts.put(pack.get(), layout == null ? NONE : layout);
+                // A pack without a layout table (a server without custom fonts) is remembered as NONE.
+                if (layout == null) layout = NONE;
+                layouts.put(pack.get(), layout);
             }
             return layout == NONE || layout.table() == null ? null : layout;
         }

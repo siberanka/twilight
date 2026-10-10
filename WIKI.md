@@ -502,7 +502,8 @@ CraftEngine's blocks are note block, mushroom block or tripwire states whose mod
 - Block names follow the Java state, so a proxy network's single Geyser registry gives a state the same Bedrock
   block on every backend and each server's pack draws it its own way. Where two servers give a state a
   different shape, the first server's shape is used and the proxy log says so.
-- Geyser registers blocks when it starts. After a build that changes blocks, the log and admins are told to
+- Geyser registers blocks when it starts. twilight-proxy subscribes in the proxy's plugin load phase, so this
+  also works on BungeeCord forks that start Geyser before enabling other plugins (FlameCord). After a build that changes blocks, the log and admins are told to
   restart (`restart-for-item-changes` and twilight-proxy's `item-mappings.restart` apply).
 - Not converted: multipart blockstates, chorus plants and blocks other than note blocks, mushroom blocks and
   tripwire; block light from content plugins (they place light blocks themselves); animated block textures
@@ -1351,7 +1352,8 @@ bloğu veya tuzak teli durumlarıdır. Dönüştürülmezlerse Bedrock vanilla n
 - Blok adları Java durumunu izler; böylece proxy'li bir ağın tek Geyser kaydı bir duruma her arka uçta aynı Bedrock
   bloğunu verir ve her sunucunun paketi onu kendi şekilde çizer. İki sunucu bir duruma farklı şekil verdiğinde ilk
   sunucunun şekli kullanılır ve proxy günlüğü bunu söyler.
-- Geyser blokları açılışta kaydeder. Blokları değiştiren bir derlemeden sonra günlük ve yöneticiler yeniden
+- Geyser blokları açılışta kaydeder. twilight-proxy proxy'nin eklenti yükleme aşamasında abone olur; böylece
+  Geyser'ı diğer eklentileri etkinleştirmeden önce başlatan BungeeCord türevlerinde (FlameCord) de çalışır. Blokları değiştiren bir derlemeden sonra günlük ve yöneticiler yeniden
   başlatmaları için bilgilendirilir (`restart-for-item-changes` ve twilight-proxy'nin `item-mappings.restart`
   ayarı geçerlidir).
 - Dönüştürülmeyenler: multipart blok durumları, chorus bitkileri ve nota bloğu, mantar bloğu ve tuzak teli dışındaki

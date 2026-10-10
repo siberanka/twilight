@@ -252,11 +252,56 @@ public final class ProxyCore implements TwilightProxyApi {
     /** Twilight's runtime on the proxy's Geyser; settings in {@code bedrock} take effect on restart. */
     private volatile String reportedBlocks;
 
+    /**
+     * Custom blocks registered before the proxy enabled this plugin: BungeeCord forks such as FlameCord enable
+     * Geyser, and Geyser defines its blocks, before twilight-proxy's own start. Their pack list follows the
+     * servers' packs once this core runs.
+     */
+    private static volatile com.siberanka.twilight.geyser.CustomBlocks earlyBlocks;
+    private static volatile java.util.function.Supplier<java.util.Collection<Path>> earlyPacks;
+
+    /**
+     * Subscribes to Geyser's custom block and item definition from the proxy's plugin load phase, when Geyser is
+     * loaded but not started. Until the core runs, the packs are the ones the last run cached and the files in
+     * {@code packs/}. Does nothing when Geyser's API is not available yet or {@code bedrock.custom-blocks} is off.
+     */
+    public static void registerBlocksEarly(Object owner, Path dataDirectory, java.util.function.Consumer<String> info,
+                                           java.util.function.BiConsumer<String, Throwable> warn) {
+        try {
+            Path configFile = dataDirectory.resolve("config.yml");
+            if (Files.isRegularFile(configFile) && !ProxyConfig.load(configFile).customBlocks()) return;
+            if (org.geysermc.geyser.api.GeyserApi.api() == null) return;
+            earlyPacks = () -> cachedPacks(dataDirectory);
+            earlyBlocks = com.siberanka.twilight.geyser.CustomBlocks.start(owner, () -> earlyPacks.get(), info, warn);
+        } catch (IOException | RuntimeException | LinkageError unavailable) {
+            // Geyser is not loaded yet (or is hidden): the core subscribes when it attaches, as on Velocity.
+        }
+    }
+
+    /** The packs a previous run cached for each server, and the pack files in {@code packs/}. */
+    static java.util.List<Path> cachedPacks(Path dataDirectory) {
+        java.util.List<Path> packs = new java.util.ArrayList<>();
+        for (Path folder : java.util.List.of(dataDirectory.resolve("cache"), dataDirectory.resolve("packs"))) {
+            if (!Files.isDirectory(folder)) continue;
+            try (var files = Files.list(folder)) {
+                files.filter(Files::isRegularFile).filter(file -> {
+                    String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
+                    return name.endsWith(".mcpack") || name.endsWith(".zip");
+                }).sorted().forEach(packs::add);
+            } catch (IOException unreadable) {
+                // Skipped: the core's own pack store reports unreadable folders.
+            }
+        }
+        return packs;
+    }
+
     private void startRuntime() {
         ProxyConfig current = config;
         if (!realGeyser || runtime != null || current == null) return;
         try {
-            runtime = ProxyRuntime.start(owner, current, platform, this::sessionPack, store::currentPacks);
+            com.siberanka.twilight.geyser.CustomBlocks early = earlyBlocks;
+            if (early != null) earlyPacks = store::currentPacks;
+            runtime = ProxyRuntime.start(owner, current, platform, this::sessionPack, store::currentPacks, early);
         } catch (RuntimeException | LinkageError failure) {
             platform.warn("Twilight's text layout and loading protection are unavailable for this Geyser build: "
                     + Sessions.describe(failure), failure);

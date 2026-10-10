@@ -1,6 +1,26 @@
-# Twilight 1.0.1-pre.3 - prerelease
+# Twilight 1.0.1-pre.4 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+**Custom blocks on FlameCord.** On FlameCord (and other BungeeCord forks that start Geyser early), Geyser defined
+its custom blocks before twilight-proxy enabled, so 1.0.1-pre.3's blocks were never registered: ores stayed note
+blocks and their items flat. twilight-proxy now subscribes in the proxy's plugin load phase, before Geyser
+starts, using the packs the last run cached. Update twilight-proxy and restart the proxy; the log then shows
+"Registered N custom block(s) for Bedrock players".
+
+Also fixed: a server pack without a text layout table made the proxy's text layout fail once per text for that
+server's players ("Java text layout failed for LayoutSource").
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 258 tests
+across 44 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.1-pre.3 - prerelease
 
 **Custom blocks on Bedrock.** ItemsAdder's and CraftEngine's ores and blocks showed as vanilla note blocks on
 Bedrock, and their items dropped as flat icons. Every note block, mushroom block and tripwire state a content
@@ -19,8 +39,6 @@ across 44 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.1-pre.2 - prerelease
 
@@ -609,7 +627,27 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.1-pre.3 - ön sürüm
+### Twilight 1.0.1-pre.4 - ön sürüm
+
+**FlameCord'da özel bloklar.** FlameCord'da (ve Geyser'ı erken başlatan diğer BungeeCord türevlerinde) Geyser özel
+blokları twilight-proxy etkinleşmeden önce tanımlıyordu; bu yüzden 1.0.1-pre.3'ün blokları hiç kaydedilmedi:
+madenler nota bloğu, eşyaları düz kaldı. twilight-proxy artık proxy'nin eklenti yükleme aşamasında, Geyser
+başlamadan önce, son çalışmanın önbelleğe aldığı paketlerle abone olur. twilight-proxy'yi güncelleyip proxy'yi
+yeniden başlatın; günlük "Registered N custom block(s) for Bedrock players" yazar.
+
+Ayrıca düzeltildi: yazı yerleşim tablosu olmayan bir sunucu paketi, o sunucudaki oyuncular için proxy'nin yazı
+yerleşiminin her yazıda bir kez başarısız olmasına yol açıyordu ("Java text layout failed for LayoutSource").
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 44 paketteki 258
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.1-pre.3 - ön sürüm
 
 **Bedrock'ta özel bloklar.** ItemsAdder'ın ve CraftEngine'in madenleri ve blokları Bedrock'ta vanilla nota bloğu
 olarak görünüyor, eşyaları düz simgeler olarak düşüyordu. Bir içerik eklentisinin kendi modeliyle çizdiği her nota
@@ -628,8 +666,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.1-pre.2 - ön sürüm
 
