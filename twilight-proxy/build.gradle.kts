@@ -14,6 +14,12 @@ dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.3.0-SNAPSHOT")
     compileOnly("net.md-5:bungeecord-api:1.21-R0.1")
     compileOnly("org.geysermc.geyser:api:2.11.2-SNAPSHOT")
+    // Twilight's text layout and loading protection run on the proxy's Geyser through its core classes,
+    // like on a backend's own Geyser. Pinned to the reviewed core build; never bundled.
+    compileOnly("org.geysermc.geyser:core:2.11.3-20260925.135253-13") {
+        // The proxies bring their own Adventure; the bridges reach Geyser's copy by name.
+        exclude(group = "net.kyori")
+    }
 
     testImplementation(platform("org.junit:junit-bom:5.14.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")

@@ -58,6 +58,10 @@ public final class ProxyCore implements TwilightProxyApi {
     private final Map<String, Deque<Long>> recentTransfers = new ConcurrentHashMap<>();
     private volatile ProxyConfig config;
     private volatile Sessions geyser;
+    /** Twilight's runtime on the proxy's Geyser (text layout, translations, loading protection), or null. */
+    private volatile ProxyRuntime runtime;
+    /** True with the proxy's real Geyser (not a test attacher): the runtime may start. */
+    private final boolean realGeyser;
     /** Why twilight-proxy is not attached to Geyser ("" once attached). */
     private volatile String geyserProblem = "not attached yet";
     private final Sessions.Attacher attacher;
@@ -75,6 +79,7 @@ public final class ProxyCore implements TwilightProxyApi {
     private volatile boolean reportedCopies;
     private volatile List<String> mappingsCopies = List.of();
     private volatile boolean reportedLocale;
+    private volatile int reportedOptionDifferences;
     /** Login servers found in login plugins' configuration files (lower case -> file). */
     private volatile Map<String, String> detectedLogin = Map.of();
     private volatile java.util.Set<String> reportedSkippedLogin = java.util.Set.of();
@@ -103,11 +108,14 @@ public final class ProxyCore implements TwilightProxyApi {
         this.platform = platform;
         this.owner = owner;
         this.attacher = attacher != null ? attacher : core -> geyserAttach(owner, core);
+        this.realGeyser = attacher == null;
         this.store = new PackStore(platform);
         this.transfers = new AutoTransfers(platform, store);
         store.onChange(pack -> {
             prewarm(pack);
             queueItemMappings();
+            ProxyRuntime running = runtime;
+            if (running != null) running.packsChanged();
         });
     }
 
@@ -232,6 +240,25 @@ public final class ProxyCore implements TwilightProxyApi {
         platform.async(() -> platform.serverNames().forEach(server -> store.pack(server).ifPresent(this::prewarm)));
         if (loginLimitSetting != null) checkLoginLimit(loginLimitSetting, loginLimitMillis);
         writeItemMappings();
+        startRuntime();
+    }
+
+    /** Twilight's runtime on the proxy's Geyser; settings in {@code bedrock} take effect on restart. */
+    private void startRuntime() {
+        ProxyConfig current = config;
+        if (!realGeyser || runtime != null || current == null) return;
+        try {
+            runtime = ProxyRuntime.start(owner, current, platform, this::sessionPack, store::currentPacks);
+        } catch (RuntimeException | LinkageError failure) {
+            platform.warn("Twilight's text layout and loading protection are unavailable for this Geyser build: "
+                    + Sessions.describe(failure), failure);
+        }
+    }
+
+    /** The pack file a Bedrock session (by XUID) loaded, while that version is kept. */
+    Optional<Path> sessionPack(String xuid) {
+        String hex = loaded.get(xuid);
+        return hex == null || hex.isEmpty() ? Optional.empty() : store.versionPath(hex);
     }
 
     // --- Item mappings for the proxy's Geyser ------------------------------------------------
@@ -421,6 +448,11 @@ public final class ProxyCore implements TwilightProxyApi {
             if (merge.conflicts().size() > 20) platform.warn("  ... and " + (merge.conflicts().size() - 20) + " more", null);
         }
         reportedConflicts = conflicts;
+        if (merge.optionDifferences() > 0 && merge.optionDifferences() != reportedOptionDifferences) {
+            platform.info(merge.optionDifferences() + " Java item selector(s) are the same Bedrock item on several servers with"
+                    + " other display options (held like a tool, icon); the first server's options are used.");
+        }
+        reportedOptionDifferences = merge.optionDifferences();
         if (merge.count() > 0 && !reportedLocale && !localeReadsMappings(Locale.getDefault())) {
             reportedLocale = true;
             platform.warn("This Java runs with the " + Locale.getDefault() + " locale, in which Geyser cannot read item mappings"
@@ -528,6 +560,8 @@ public final class ProxyCore implements TwilightProxyApi {
 
     public void disable() {
         enabled = false;
+        ProxyRuntime running = runtime;
+        if (running != null) running.close();
         TwilightProxyApi.Holder.set(null);
         var check = updates;
         if (check != null) check.close();

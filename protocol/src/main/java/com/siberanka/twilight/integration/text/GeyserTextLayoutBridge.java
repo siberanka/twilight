@@ -53,21 +53,67 @@ import java.util.zip.ZipFile;
  * Java everywhere; other packets reach Geyser unchanged.
  *
  * <p>Geyser fills its translator registry during start-up and may reload packs, so the
- * bridge attaches after Geyser's initialize and reload events and reads the table of the
- * pack Geyser then serves. Packet fields are read and replaced by name, because Geyser
- * relocates Adventure on some platforms; components are handled by {@link AdventureTextLayout}.
+ * bridge attaches after Geyser's initialize and reload events. The table comes from a
+ * {@link LayoutSource}: the pack a server's own Geyser serves, or on a proxy the pack each
+ * Bedrock session loaded for its server. Packet fields are read and replaced by name, because
+ * Geyser relocates Adventure on some platforms; components are handled by {@link AdventureTextLayout}.
  */
 public final class GeyserTextLayoutBridge implements AutoCloseable {
-    private final Path servedPack;
+    /** The layout table and pack translation keys of one pack. */
+    public record Layout(TextLayoutTable table, Set<String> packKeys) {}
+
+    /** Where the layout of a Bedrock session's pack comes from. */
+    public interface LayoutSource {
+        /** Reads again what may have changed; called when Geyser initialises or reloads. */
+        void refresh() throws IOException;
+
+        /** The layout of the pack this session loaded, or null when it has none. */
+        Layout layout(GeyserSession session);
+
+        /** For the log: "for 12 Bedrock packet types (15 font entries)". */
+        String describe();
+    }
+
+    /** The one pack a server's own Geyser serves. */
+    public static LayoutSource servedPack(Path pack) {
+        return new LayoutSource() {
+            private volatile Layout layout;
+
+            @Override public void refresh() throws IOException {
+                TextLayoutTable table = readTable(pack);
+                Set<String> keys = new java.util.HashSet<>();
+                GeyserLanguageBridge.read(pack).values().forEach(strings -> keys.addAll(strings.keySet()));
+                layout = table == null ? null : new Layout(table, Set.copyOf(keys));
+            }
+
+            @Override public Layout layout(GeyserSession session) {
+                return layout;
+            }
+
+            @Override public String describe() {
+                Layout current = layout;
+                return current == null ? "idle: the served pack has no layout table" : current.table().entryCount() + " font entries";
+            }
+        };
+    }
+
+    /** The layout of a pack file, for sources that cache it per pack. */
+    public static Layout readLayout(Path pack) throws IOException {
+        TextLayoutTable table = readTable(pack);
+        if (table == null) return null;
+        Set<String> keys = new java.util.HashSet<>();
+        GeyserLanguageBridge.read(pack).values().forEach(strings -> keys.addAll(strings.keySet()));
+        return new Layout(table, Set.copyOf(keys));
+    }
+
+    private final LayoutSource source;
     private final Logger logger;
     private final EventRegistrar registrar;
     private final Map<Class<? extends Packet>, Surface<?>> surfaces = new LinkedHashMap<>();
     private final Set<String> loggedFailures = ConcurrentHashMap.newKeySet();
-    private volatile TextLayoutTable table;
-    private volatile Set<String> packKeys = Set.of();
 
-    private GeyserTextLayoutBridge(Object owner, Path servedPack, Logger logger, boolean allSurfaces) {
-        this.servedPack = servedPack;
+    private GeyserTextLayoutBridge(Object owner, LayoutSource source, Logger logger, boolean allSurfaces) {
+        this.source = source;
         this.logger = logger;
         this.registrar = EventRegistrar.of(owner);
         surface(ClientboundOpenScreenPacket.class, this::openScreen);
@@ -93,7 +139,12 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
      * @param allSurfaces also lay out chat, titles, boss bars, scoreboards and entity names, not only containers
      */
     public static GeyserTextLayoutBridge create(Object owner, Path servedPack, Logger logger, boolean allSurfaces) {
-        GeyserTextLayoutBridge bridge = new GeyserTextLayoutBridge(owner, servedPack, logger, allSurfaces);
+        return create(owner, servedPack(servedPack), logger, allSurfaces);
+    }
+
+    /** As {@link #create(Object, Path, Logger, boolean)}, with the layout of each session from {@code source}. */
+    public static GeyserTextLayoutBridge create(Object owner, LayoutSource source, Logger logger, boolean allSurfaces) {
+        GeyserTextLayoutBridge bridge = new GeyserTextLayoutBridge(owner, source, logger, allSurfaces);
         com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostInitializeEvent.class, event -> bridge.attach());
         com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostReloadEvent.class, event -> bridge.attach());
         if (Registries.JAVA_PACKET_TRANSLATORS.get().get(ClientboundOpenScreenPacket.class) != null) bridge.attach();
@@ -106,12 +157,8 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
 
     private synchronized void attach() {
         try {
-            table = readTable(servedPack);
-            Set<String> keys = new java.util.HashSet<>();
-            GeyserLanguageBridge.read(servedPack).values().forEach(strings -> keys.addAll(strings.keySet()));
-            packKeys = Set.copyOf(keys);
+            source.refresh();
         } catch (IOException | RuntimeException failure) {
-            table = null;
             logger.log(Level.SEVERE, "Could not read the text layout of the served Twilight pack", failure);
         }
         var translators = Registries.JAVA_PACKET_TRANSLATORS.get();
@@ -128,9 +175,8 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
             }
         }
         if (!missing.isEmpty()) logger.warning("Geyser has no translator for " + missing + "; their text keeps Bedrock's layout.");
-        logger.info(table == null ? "Java text layout idle: the served pack has no layout table."
-                : "Java text layout active for " + (surfaces.size() - missing.size()) + " Bedrock packet types ("
-                + table.entryCount() + " font entries).");
+        logger.info("Java text layout active for " + (surfaces.size() - missing.size()) + " Bedrock packet types ("
+                + source.describe() + ").");
     }
 
     /**
@@ -138,7 +184,8 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
      * fallback order (Geyser's language maps carry them, see {@link GeyserLanguageBridge}); null when none.
      */
     private java.util.function.Function<String, String> translations(GeyserSession session) {
-        Set<String> keys = packKeys;
+        Layout layout = source.layout(session);
+        Set<String> keys = layout == null ? Set.of() : layout.packKeys();
         if (keys.isEmpty()) return null;
         String locale = session.locale() == null ? "en_us" : session.locale();
         return key -> keys.contains(key) ? org.geysermc.geyser.text.MinecraftLocale.getLocaleString(key, locale) : null;
@@ -209,7 +256,9 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
     private TextSurfaces.Options hud(GeyserSession session, String surface) {
         // The action bar label is centred vertically: half of every added line moves it up.
         int lines = TextLayoutTable.ACTIONBAR_LAYERS.equals(surface) ? 2 : 1;
-        return new TextSurfaces.Options(translations(session), false, layers(session, table, surface, ""), lines, true);
+        Layout layout = source.layout(session);
+        return new TextSurfaces.Options(translations(session), false,
+                layers(session, layout == null ? null : layout.table(), surface, ""), lines, true);
     }
 
     /**
@@ -274,7 +323,7 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
     }
 
     @Override public synchronized void close() {
-        GeyserApi.api().eventBus().unregisterAll(registrar);
+        com.siberanka.twilight.geyser.GeyserEvents.unregisterAll(registrar);
         var translators = Registries.JAVA_PACKET_TRANSLATORS.get();
         for (Surface<?> surface : surfaces.values()) {
             if (surface.original != null) translators.replace(surface.type, surface, surface.original);
@@ -315,7 +364,13 @@ public final class GeyserTextLayoutBridge implements AutoCloseable {
         @SuppressWarnings("unchecked")
         @Override public void translate(GeyserSession session, P packet) {
             P forwarded = packet;
-            TextLayoutTable current = table;
+            Layout layout = null;
+            try {
+                layout = source.layout(session);
+            } catch (RuntimeException failure) {
+                logOnce(LayoutSource.class, failure);
+            }
+            TextLayoutTable current = layout == null ? null : layout.table();
             if (current != null) {
                 try {
                     forwarded = rewrite.apply(session, packet, current);

@@ -48,7 +48,12 @@ final class ItemMappings {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     /** Merged mappings, the selectors two servers map differently, and the entries that were dropped. */
-    record Merge(JsonObject mappings, int count, List<String> conflicts, int invalid) {
+    /**
+     * {@code conflicts}: selectors two servers map to different Bedrock items (one server shows a wrong item);
+     * {@code optionDifferences}: selectors with the same Bedrock item but other options (held like a tool, icon),
+     * where the first server's options are used.
+     */
+    record Merge(JsonObject mappings, int count, List<String> conflicts, int invalid, int optionDifferences) {
         byte[] bytes() {
             return (GSON.toJson(mappings) + "\n").getBytes(StandardCharsets.UTF_8);
         }
@@ -79,7 +84,7 @@ final class ItemMappings {
         Map<String, Seen> selectors = new HashMap<>();
         Map<String, String> identifiers = new HashMap<>();
         List<String> conflicts = new ArrayList<>();
-        int count = 0, invalid = 0;
+        int count = 0, invalid = 0, optionDifferences = 0;
         for (var server : new TreeMap<>(servers).entrySet()) {
             JsonObject root = server.getValue();
             if (!root.has("format_version") || !root.get("format_version").isJsonPrimitive()
@@ -102,7 +107,9 @@ final class ItemMappings {
                     String identifier = mapping.get("bedrock_identifier").getAsString();
                     Seen seen = selectors.get(selector);
                     if (seen != null) {
-                        if (!seen.mapping().equals(mapping)) {
+                        if (seen.mapping().get("bedrock_identifier").getAsString().equals(identifier)) {
+                            if (!seen.mapping().equals(mapping)) optionDifferences++;
+                        } else {
                             conflicts.add(describe(item.getKey(), mapping) + ": " + seen.server() + " -> "
                                     + seen.mapping().get("bedrock_identifier").getAsString() + ", " + server.getKey() + " -> "
                                     + identifier + " (kept " + seen.server() + ")");
@@ -131,7 +138,7 @@ final class ItemMappings {
         JsonObject itemsJson = new JsonObject();
         items.forEach(itemsJson::add);
         merged.add("items", itemsJson);
-        return new Merge(merged, count, List.copyOf(conflicts), invalid);
+        return new Merge(merged, count, List.copyOf(conflicts), invalid, optionDifferences);
     }
 
     private record Seen(String server, JsonObject mapping) {}

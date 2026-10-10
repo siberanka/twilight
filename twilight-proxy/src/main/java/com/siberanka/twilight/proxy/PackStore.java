@@ -85,6 +85,18 @@ final class PackStore {
         }
     }
 
+    /** The immutable copy of the pack version {@code hex}, if this store still has it. */
+    Optional<Path> versionPath(String hex) {
+        if (hex == null || !hex.matches("[0-9a-f]{64}")) return Optional.empty();
+        Path file = versions.resolve(hex + ".mcpack");
+        return Files.isRegularFile(file) ? Optional.of(file) : Optional.empty();
+    }
+
+    /** Every server's current pack file. */
+    java.util.Collection<Path> currentPacks() {
+        return current.values().stream().map(PackFiles.Pack::path).distinct().toList();
+    }
+
     Optional<PackFiles.Pack> pack(String server) {
         return Optional.ofNullable(current.get(server.toLowerCase(Locale.ROOT)));
     }

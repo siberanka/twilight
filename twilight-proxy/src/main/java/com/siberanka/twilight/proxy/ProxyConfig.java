@@ -21,7 +21,8 @@ record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, bo
                    long maxPackBytes, int downloadTimeoutSeconds, int urlRefreshMinutes,
                    int transferTimeoutSeconds, java.util.Set<String> loginServers,
                    com.siberanka.twilight.host.HostSettings host, boolean updateCheck, boolean updateNotify,
-                   LocalSettings local, boolean retireStaleFiles, boolean restartWhenEmpty) {
+                   LocalSettings local, boolean retireStaleFiles, boolean restartWhenEmpty,
+                   boolean textLayout, boolean translations, int loadingProtectionSeconds) {
     /** {@code local-backends}: read the exports of backends on this machine from their folders. */
     record LocalSettings(boolean enabled, java.util.List<Path> search, Map<String, Path> servers) {
         static final LocalSettings OFF = new LocalSettings(false, java.util.List.of(), Map.of());
@@ -89,7 +90,17 @@ record ProxyConfig(PackSource defaultSource, Map<String, PackSource> servers, bo
                 updateSetting(root.get("update-check"), "notify-players"),
                 localSettings(root.get("local-backends")),
                 itemSetting(root.get("item-mappings"), "retire-stale-files"),
-                restartSetting(root.get("item-mappings")));
+                restartSetting(root.get("item-mappings")),
+                bedrockSwitch(root.get("bedrock"), "text-layout"),
+                bedrockSwitch(root.get("bedrock"), "translations"),
+                root.get("bedrock") == null ? 300 : integer(map(root.get("bedrock"), "bedrock")
+                        .getOrDefault("loading-protection-seconds", "300"), "bedrock.loading-protection-seconds", 0, 1800));
+    }
+
+    /** A switch in the {@code bedrock} section; on when missing. */
+    private static boolean bedrockSwitch(Object section, String key) {
+        if (section == null) return true;
+        return bool(map(section, "bedrock").getOrDefault(key, "true"), "bedrock." + key);
     }
 
     /** The {@code local-backends} section; missing means {@code mode: auto} without extra folders. */

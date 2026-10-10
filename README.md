@@ -167,7 +167,9 @@ Floodgate and Velocity modern forwarding ([login plugin test](docs/PROXY_AUTH_20
 Custom items work on a proxy without copying files: twilight-proxy merges every backend's Geyser item
 mappings into the proxy's Geyser, where the same Java item is the same Bedrock item on every backend
 and each server's pack decides its look ([field report](docs/FIELD_REPORT_2026-10-09.md),
-[wiki](WIKI.md#item-mappings-on-a-proxy)).
+[wiki](WIKI.md#item-mappings-on-a-proxy)). twilight-proxy also runs Twilight's text layout, translations and
+loading protection in the proxy's Geyser, with each player's pack
+([wiki](WIKI.md#bedrock-runtime-on-the-proxy)).
 
 ## Pack hosting
 
@@ -399,7 +401,9 @@ LeaderOS Auth Plus, BungeeGuard, Floodgate ve Velocity modern yönlendirmesiyle 
 Özel eşyalar proxy'de dosya kopyalamadan çalışır: twilight-proxy her arka ucun Geyser eşya eşlemelerini
 proxy'deki Geyser'da birleştirir; aynı Java eşyası her arka uçta aynı Bedrock eşyasıdır ve görünüşüne her
 sunucunun paketi karar verir ([saha raporu](docs/FIELD_REPORT_2026-10-09.md),
-[wiki](WIKI.md#proxyde-eşya-eşlemeleri)).
+[wiki](WIKI.md#proxyde-eşya-eşlemeleri)). twilight-proxy ayrıca Twilight'ın yazı yerleşimini, çevirilerini ve
+yükleme korumasını proxy'deki Geyser'da, her oyuncunun paketiyle çalıştırır
+([wiki](WIKI.md#proxyde-bedrock-çalışma-zamanı)).
 
 #### Paket sunucusu
 

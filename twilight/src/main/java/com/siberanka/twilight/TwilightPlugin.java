@@ -70,6 +70,7 @@ public final class TwilightPlugin extends JavaPlugin {
     private com.siberanka.twilight.integration.proxy.ProxyPackChannel proxyChannel;
     private com.siberanka.twilight.integration.text.GeyserLanguageBridge languageBridge;
     private com.siberanka.twilight.integration.pack.GeyserPackHosting packHosting;
+    private com.siberanka.twilight.geyser.LoadingGuard loadingGuard;
     private volatile com.siberanka.twilight.update.UpdateCheck updates;
     private volatile boolean notifyUpdatePlayers = true;
 
@@ -140,6 +141,12 @@ public final class TwilightPlugin extends JavaPlugin {
                 }
             }
             startPackHost();
+            try {
+                loadingGuard = com.siberanka.twilight.geyser.LoadingGuard.start(this,
+                        getConfig().getInt("geyser.loading-protection-seconds", 300), getLogger()::info);
+            } catch (Exception | LinkageError failure) {
+                getLogger().log(Level.WARNING, "Loading protection is unavailable for this Geyser build.", failure);
+            }
             if (config.javaTextLayout()) {
                 try {
                     textBridge = com.siberanka.twilight.integration.text.GeyserTextLayoutBridge.create(this,
@@ -192,6 +199,7 @@ public final class TwilightPlugin extends JavaPlugin {
             catch (Exception failure) { getLogger().log(Level.WARNING, "Could not close translations", failure); }
         }
         if (proxyChannel != null) proxyChannel.close();
+        if (loadingGuard != null) loadingGuard.close();
         if (packHosting != null) packHosting.close();
         if (riderNames != null) {
             try { riderNames.close(); }
@@ -283,7 +291,9 @@ public final class TwilightPlugin extends JavaPlugin {
                     try {
                         build = new BedrockPackCompiler(getDataFolder().toPath(), config, minecraftVersion)
                                 .withServerBiomes(world.biomes(), world.current())
-                                .withNameplatePlugin(world.nameplates()).build(sources, liveItems);
+                                .withNameplatePlugin(world.nameplates()).withItemDisplays(itemDisplayModels())
+                                .withMaxGlyphCell(getConfig().getInt("ui.max-glyph-cell", 512))
+                                .build(sources, liveItems);
                     } catch (ConversionException rejected) {
                         if (!firstPack) throw rejected;
                         operationLog.warn("first-pack", rejected.problems());
@@ -292,7 +302,9 @@ public final class TwilightPlugin extends JavaPlugin {
                                 + "stay strict. Details: " + operationLog.path());
                         build = new BedrockPackCompiler(getDataFolder().toPath(), config.withStrict(false), minecraftVersion)
                                 .withServerBiomes(world.biomes(), world.current())
-                                .withNameplatePlugin(world.nameplates()).build(sources, liveItems);
+                                .withNameplatePlugin(world.nameplates()).withItemDisplays(itemDisplayModels())
+                                .withMaxGlyphCell(getConfig().getInt("ui.max-glyph-cell", 512))
+                                .build(sources, liveItems);
                     }
                 }
                 if (build != null) operationLog.info("build-result", build);
@@ -396,6 +408,17 @@ public final class TwilightPlugin extends JavaPlugin {
         return "Geyser is not on this server (normal when it runs on the proxy): builds are exported to " + export
                 + (proxyChannel != null ? " and shared with twilight-proxy." : "; pack sharing with twilight-proxy is off"
                 + " (no proxy.secret, Velocity forwarding secret or BungeeGuard token found).");
+    }
+
+    /**
+     * {@code geyser.item-display-models}: auto puts them in the pack only when Geyser runs on this server, where
+     * Twilight's display bridge uses them; a proxy's Geyser does not.
+     */
+    private boolean itemDisplayModels() {
+        String setting = getConfig().getString("geyser.item-display-models", "auto").strip().toLowerCase(java.util.Locale.ROOT);
+        if (setting.equals("on") || setting.equals("true")) return true;
+        if (setting.equals("off") || setting.equals("false")) return false;
+        return getServer().getPluginManager().getPlugin("Geyser-Spigot") != null && localGeyser();
     }
 
     private boolean localGeyser() {

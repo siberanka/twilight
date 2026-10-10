@@ -120,6 +120,8 @@ tasks.register<JavaExec>("auditServerBuilds") {
     providers.gradleProperty("twilight.audit.minecraft-version").orNull?.let {
         systemProperty("twilight.audit.minecraftVersion", it)
     }
+    providers.gradleProperty("twilight.audit.item-displays").orNull?.let { systemProperty("twilight.audit.itemDisplays", it) }
+    providers.gradleProperty("twilight.audit.max-glyph-cell").orNull?.let { systemProperty("twilight.audit.maxGlyphCell", it) }
     doFirst {
         val parsed = roots.orNull?.split(',')?.filter { it.isNotBlank() }
             ?: throw GradleException("Pass -Ptwilight.audit.roots=<server-root>,<server-root>")

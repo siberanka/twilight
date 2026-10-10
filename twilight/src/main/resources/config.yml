@@ -57,6 +57,14 @@ geyser:
   #   when-empty - also restart once nobody is online (spigot.yml settings.restart-script; without
   #                one the server stops, so use it only where the host starts it again)
   restart-for-item-changes: notify
+  # Keep a Bedrock player connected while its client is still loading the resource packs after joining
+  # (large packs take minutes on phones): Java keep-alives are answered for it meanwhile, as Geyser does
+  # without forward-player-ping. Seconds, 0-1800; 0 only logs loading times. Takes effect on restart.
+  loading-protection-seconds: 300
+  # Bedrock models for custom items shown in Java item displays (furniture, model bones): a copy of every
+  # 3D item in one entity that the client builds while loading. auto: only when Geyser runs on this server
+  # (Twilight's display bridge uses them; a proxy's Geyser does not); on; off. Changing it needs a rebuild.
+  item-display-models: auto
 
 ui:
   # Desktop chest screens use Java's container layout: the title is unwrapped,
@@ -98,6 +106,11 @@ ui:
   # names of datapack and plugin content, and overrides such as a hidden
   # inventory label or an image as the ender chest title. Requires Geyser.
   java-translations: true
+  # The largest glyph cell in pixels (512, 256, 128 or 64). A glyph page is 16 cells wide, so one glyph
+  # that needs 512 makes its page 8192x8192 (256 MiB in the client), which phones load slowly or not
+  # at all; the build lists such pages. With 256, glyphs Java draws far above or below the line are
+  # moved vertically to fit instead. Changing it requires a rebuild.
+  max-glyph-cell: 512
 
 world:
   # Geyser shows biomes it does not know (datapack biomes such as Terralith or

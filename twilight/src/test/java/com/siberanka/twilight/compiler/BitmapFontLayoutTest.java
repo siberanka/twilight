@@ -126,6 +126,32 @@ class BitmapFontLayoutTest {
         assertEquals(0,page.getRGB(0,27));
     }
 
+    /**
+     * A menu image Java draws mostly below the line needs a 512-pixel cell, which makes its whole page 8192x8192
+     * (256 MiB in the client). The build names such pages; with a 256-pixel cap the image moves up to fit instead.
+     */
+    @Test
+    void capsGlyphCellsByMovingImagesDrawnFarFromTheLine() throws Exception {
+        add(0xE000,200,200,10,0,200);
+        add(0xE001,16,8,7,0,16);
+        var full=compile(512);
+        assertEquals(8192,full.page("E0").getWidth());
+        assertTrue(full.result.notices().stream().anyMatch(n->n.contains("8192x8192")&&n.contains("glyph_E0")),
+                full.result.notices().toString());
+        var capped=compile(256);
+        assertTrue(capped.result.problems().isEmpty(),capped.result.problems().toString());
+        assertEquals(2,capped.result.glyphs());
+        assertEquals(4096,capped.page("E0").getWidth());
+        assertTrue(capped.result.notices().stream().anyMatch(n->n.contains("moved vertically")&&n.contains("ascent 10 -> ")),
+                capped.result.notices().toString());
+        // The whole image is still drawn, inside its own 256-pixel cell.
+        BufferedImage page=capped.page("E0");
+        int inked=0;
+        for(int y=0;y<256;y++) if(page.getRGB(100,y)>>>24!=0) inked++;
+        assertEquals(200,inked);
+        assertThrows(IllegalArgumentException.class,()->compile(300));
+    }
+
     private void add(int codePoint,int sourceSize,int height,int ascent,int visibleStart,int visibleEnd) throws Exception {
         BufferedImage image=new BufferedImage(sourceSize,sourceSize,BufferedImage.TYPE_INT_ARGB);
         for(int y=visibleStart;y<visibleEnd;y++) for(int x=0;x<sourceSize;x++) image.setRGB(x,y,0xFFFF0000);
@@ -142,12 +168,16 @@ class BitmapFontLayoutTest {
     }
 
     private Output compile() throws Exception {
+        return compile(512);
+    }
+
+    private Output compile(int maxCell) throws Exception {
         Path path=root.resolve("assets/minecraft/font/default.json");Files.createDirectories(path.getParent());
         JsonObject font=new JsonObject();font.add("providers",providers);Files.writeString(path,font.toString());
         var config=new TwilightConfig(false,true,false,false,40,100,10_000_000,1000,false,false,List.of(),"auto",false,false,3);
         try(var index=ResourceIndex.build(List.of(new ContentSource("test",ContentSource.Kind.RESOURCE_PACK,root,1)),config)) {
             Map<String,byte[]> files=new LinkedHashMap<>();
-            return new Output(new BitmapFontCompiler(index,null).compile(files),files);
+            return new Output(new BitmapFontCompiler(index,null).maxCell(maxCell).compile(files),files);
         }
     }
     private record Output(BitmapFontCompiler.Result result,Map<String,byte[]> files) {

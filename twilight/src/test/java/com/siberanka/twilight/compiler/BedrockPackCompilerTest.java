@@ -188,6 +188,41 @@ class BedrockPackCompilerTest {
         }
     }
 
+    /**
+     * A pack for a proxy's Geyser leaves out the item-display entity (a copy of every 3D item that the client
+     * builds while loading); every JSON file is written without indentation.
+     */
+    @Test
+    void leavesOutItemDisplayModelsWhenNoDisplayBridgeUsesThemAndMinifiesJson() throws Exception {
+        Path source = root.resolve("display-source");
+        write(source, "assets/minecraft/models/item/paper.json", """
+                {"parent":"minecraft:item/generated","overrides":[
+                  {"predicate":{"custom_model_data":5},"model":"demo:item/gem"}]}
+                """);
+        write(source, "assets/demo/models/item/gem.json", cube("demo:item/gem"));
+        png(source.resolve("assets/demo/textures/item/gem.png"), Color.CYAN);
+        ContentSource pack = new ContentSource("test", ContentSource.Kind.RESOURCE_PACK, source, 1);
+        BuildResult withDisplays = new BedrockPackCompiler(root.resolve("data-displays"), config()).build(List.of(pack), List.of());
+        BuildResult proxy = new BedrockPackCompiler(root.resolve("data-proxy"), config()).withItemDisplays(false)
+                .build(List.of(pack), List.of());
+        assertEquals(1, proxy.converted());
+        assertEquals(1, proxy.threeDimensional());
+        try (ZipFile zip = new ZipFile(withDisplays.outputDirectory().resolve("pack.zip").toFile())) {
+            assertNotNull(zip.getEntry("entity/twilight_display.entity.json"));
+        }
+        try (ZipFile zip = new ZipFile(proxy.outputDirectory().resolve("pack.zip").toFile())) {
+            assertNull(zip.getEntry("entity/twilight_display.entity.json"));
+            assertNull(zip.getEntry("twilight/display-index.json"));
+            assertTrue(zip.stream().noneMatch(entry -> entry.getName().contains("display.")), "no display geometry or animation");
+            assertEquals(1, zip.stream().filter(entry -> entry.getName().startsWith("attachables/")).count(), "held items keep their model");
+            for (ZipEntry entry : zip.stream().filter(entry -> entry.getName().endsWith(".json")).toList()) {
+                String text = new String(zip.getInputStream(entry).readAllBytes(), StandardCharsets.UTF_8);
+                if (!entry.getName().equals("manifest.json")) assertFalse(text.contains("\n  "), entry.getName() + " is indented");
+                JsonParser.parseString(text);
+            }
+        }
+    }
+
     private static JsonObject mappings(BuildResult result) throws Exception {
         return JsonParser.parseString(Files.readString(result.outputDirectory()
                 .resolve("custom_mappings/geyser_item_mappings.json"))).getAsJsonObject();

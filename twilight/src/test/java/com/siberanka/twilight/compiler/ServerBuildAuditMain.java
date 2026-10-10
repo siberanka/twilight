@@ -57,8 +57,11 @@ public final class ServerBuildAuditMain {
                 // One data directory: the shared vanilla cache is reused, each build replaces the previous output.
                 Path data = dataRoot;
                 long started = System.nanoTime();
-                BuildResult build = version.isEmpty() ? new BedrockPackCompiler(data, config).build(sources, List.of())
-                        : new BedrockPackCompiler(data, config, version).build(sources, List.of());
+                // -Dtwilight.audit.itemDisplays=false builds the pack a proxy's Geyser gets (no display models).
+                boolean displays = Boolean.parseBoolean(System.getProperty("twilight.audit.itemDisplays", "true"));
+                int maxCell = Integer.getInteger("twilight.audit.maxGlyphCell", 512);
+                BuildResult build = (version.isEmpty() ? new BedrockPackCompiler(data, config) : new BedrockPackCompiler(data, config, version))
+                        .withItemDisplays(displays).withMaxGlyphCell(maxCell).build(sources, List.of());
                 result.addProperty("seconds", Math.round((System.nanoTime() - started) / 1e7) / 100.0);
                 result.addProperty("candidates", build.candidates());
                 result.addProperty("converted", build.converted());

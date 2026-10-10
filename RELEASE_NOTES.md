@@ -1,6 +1,37 @@
-# Twilight 1.0.0-pre.18 - prerelease
+# Twilight 1.0.0-pre.19 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+This prerelease fixes two reports from a network with Geyser on the proxy
+([field report](docs/FIELD_REPORT_2026-10-10.md)).
+
+- **Packs load much faster where Geyser is not on the server.** Packs carried a second copy of every 3D
+  item for item displays, which only a server's own Geyser uses. Every client still built it while
+  loading. Backends of a proxy network now leave it out (`geyser.item-display-models: auto`), and pack
+  JSON is compact. Survival's loading after joining fell from 156 s to under 10 s in a desktop client.
+- **Players are no longer dropped while the packs load.** On the backend and on the proxy, Java
+  keep-alives are answered for a client that is still loading, for up to 5 minutes
+  (`loading-protection-seconds`). Each load of 10 s or more is logged.
+- **Images in text on proxy networks.** twilight-proxy runs Twilight's text layout and translations in
+  the proxy's Geyser. BoxPVP's ItemsAdder prefix (on U+A840, a character Bedrock draws with its own font)
+  showed as a plain Unicode character because this ran only in a backend's Geyser.
+- **Glyph pages.** `ui.max-glyph-cell: 256` keeps glyph pages at 4096x4096 for phones with little memory,
+  and the build names pages of 8192x8192.
+
+Nothing has to be done by hand: the first build after the start makes the new pack, and configuration
+files without the new keys use the defaults. Item mappings do not change, so Geyser needs no restart.
+Enabling the [pack host](WIKI.md#pack-hosting) on the proxy is recommended for large packs.
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 247 tests
+across 42 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.0-pre.18 - prerelease
 
 This prerelease removes the manual steps an update needed, on proxy networks and single servers.
 
@@ -21,8 +52,6 @@ across 42 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.0-pre.17 - prerelease
 
@@ -484,7 +513,40 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.0-pre.18 - ön sürüm
+### Twilight 1.0.0-pre.19 - ön sürüm
+
+Bu ön sürüm, Geyser'ın proxy'de çalıştığı bir ağdan gelen iki bildirimi düzeltir
+([saha raporu](docs/FIELD_REPORT_2026-10-10.md)).
+
+- **Geyser'ın sunucuda olmadığı yerlerde paketler çok daha hızlı yüklenir.** Paketler, eşya görüntüleri için
+  her 3B eşyanın ikinci bir kopyasını taşıyordu; bunu yalnızca sunucunun kendi Geyser'ı kullanır. Yine de her
+  istemci yüklerken bunu kuruyordu. Proxy'li ağın arka uçları artık bunu dışarıda bırakır
+  (`geyser.item-display-models: auto`) ve paket JSON'u sıkışıktır. Survival'ın katıldıktan sonraki yüklemesi
+  masaüstü istemcide 156 saniyeden 10 saniyenin altına indi.
+- **Oyuncular artık paketler yüklenirken atılmaz.** Arka uçta ve proxy'de, hâlâ yükleyen bir istemcinin Java
+  keep-alive'ları 5 dakikaya kadar onun yerine yanıtlanır (`loading-protection-seconds`). 10 saniye veya daha
+  uzun süren her yükleme günlüğe yazılır.
+- **Proxy'li ağlarda yazıdaki görseller.** twilight-proxy, Twilight'ın yazı yerleşimini ve çevirilerini
+  proxy'deki Geyser'da çalıştırır. BoxPVP'nin ItemsAdder öneki (U+A840 üzerinde, Bedrock'un kendi fontuyla
+  çizdiği bir karakter) bu iş yalnızca arka ucun Geyser'ında çalıştığı için düz bir Unicode karakteri olarak
+  görünüyordu.
+- **Glif sayfaları.** `ui.max-glyph-cell: 256`, belleği az olan telefonlar için glif sayfalarını 4096x4096'da
+  tutar; derleme 8192x8192 sayfaları adlarıyla bildirir.
+
+Elle yapılacak bir şey yok: açılıştan sonraki ilk derleme yeni paketi üretir; yeni anahtarları olmayan
+yapılandırma dosyaları varsayılanları kullanır. Eşya eşlemeleri değişmez, bu yüzden Geyser'ın yeniden
+başlatılması gerekmez. Büyük paketler için proxy'de [paket sunucusunu](WIKI.md#paket-sunucusu) açmanız önerilir.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 42 paketteki 247
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.0-pre.18 - ön sürüm
 
 Bu ön sürüm, proxy'li ağlarda ve tek sunucularda bir güncellemenin gerektirdiği elle yapılan adımları kaldırır.
 
@@ -505,8 +567,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.0-pre.17 - ön sürüm
 

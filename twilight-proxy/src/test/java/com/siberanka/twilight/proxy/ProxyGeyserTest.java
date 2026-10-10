@@ -160,6 +160,17 @@ class ProxyGeyserTest {
     }
 
     @Test
+    void sameBedrockItemWithOtherOptionsIsNotAConflict() {
+        JsonObject lobby = mappings(legacy("minecraft:paper", 7, "twilight:minecraft_paper_7_aaaaaaaaaaaa"));
+        JsonObject held = legacy("minecraft:paper", 7, "twilight:minecraft_paper_7_aaaaaaaaaaaa");
+        held.getAsJsonObject("bedrock_options").addProperty("display_handheld", true);
+        ItemMappings.Merge merge = ItemMappings.merge(Map.of("lobby", lobby, "survival", mappings(held)));
+        assertEquals(1, merge.count());
+        assertEquals(List.of(), merge.conflicts());
+        assertEquals(1, merge.optionDifferences());
+    }
+
+    @Test
     void keepsOnlyWellFormedTwilightMappings() {
         JsonObject extra = legacy("minecraft:paper", 1, "twilight:ok_000000000000");
         extra.addProperty("unexpected", "dropped");

@@ -82,6 +82,19 @@ local-backends:
 # server:
 #   survival: ../survival
 
+# Twilight's runtime for Bedrock players on this proxy's Geyser (what a backend's own Geyser would run).
+bedrock:
+  # Lay out Java text with the server's fonts: custom glyphs (chat prefixes, menu titles, HUD images),
+  # glyphs Twilight moved to other characters, named fonts and spacing. Without it such text shows the
+  # plain characters.
+  text-layout: true
+  # Show the server packs' translations (item and menu names from datapacks and plugins).
+  translations: true
+  # Keep a Bedrock player connected while its client is still loading the resource packs after joining
+  # (large packs take minutes on phones): Java keep-alives are answered for it meanwhile, as Geyser does
+  # without forward-player-ping. Seconds, 0-1800; 0 only logs loading times.
+  loading-protection-seconds: 300
+
 # Geyser item mappings of every server, written to the proxy's Geyser (custom_mappings/twilight-proxy_item_mappings.json).
 item-mappings:
   # Move other Twilight item mappings and Twilight packs out of the proxy's Geyser (copied by hand, written by an

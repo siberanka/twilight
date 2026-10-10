@@ -4,6 +4,27 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.0-pre.19 - 2026-10-10
+
+Fixes for two reports from a proxy network ([field report](docs/FIELD_REPORT_2026-10-10.md)).
+
+- Leave item display models out of packs for servers without Geyser (`geyser.item-display-models: auto`).
+  They were a second copy of every 3D item (Survival: one entity with 3,413 variants) that every client
+  built while loading, although only the display bridge of a server's own Geyser uses them. Survival's
+  loading time after joining fell from 156 s to under 10 s. Pack JSON is written without indentation.
+- Loading protection on the backend (`geyser.loading-protection-seconds`) and on the proxy
+  (`bedrock.loading-protection-seconds`), 300 s by default: until the client is in game, Java keep-alives
+  and pings are answered for it, so a client that loads packs for minutes is no longer dropped ("read
+  timed out"). Loads of 10 s or more are logged.
+- twilight-proxy runs Twilight's text layout and translations in the proxy's Geyser, with the pack each
+  player loaded. Images on characters Twilight moves for Bedrock (BoxPVP's ItemsAdder prefix on U+A840)
+  showed as plain Unicode characters on proxy networks.
+- `ui.max-glyph-cell` caps glyph pages (256: 4096x4096 instead of 8192x8192), and the build names pages of
+  8192x8192 pixels.
+- The same Bedrock item with other display options on two servers is logged as information, not as a
+  conflict.
+- 247 tests pass (217 Twilight, 30 proxy).
+
 ## 1.0.0-pre.18 - 2026-10-09
 
 - Move stale Twilight files out of Geyser automatically, before Geyser loads them: item mappings
@@ -439,6 +460,28 @@ Fixes from a field report on a proxy network; each point was reproduced locally 
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.0-pre.19 - 2026-10-10
+
+Proxy'li bir ağdan gelen iki bildirimin düzeltmeleri ([saha raporu](docs/FIELD_REPORT_2026-10-10.md)).
+
+- Geyser'ı olmayan sunucuların paketlerinde eşya görüntüsü modelleri yer almaz (`geyser.item-display-models:
+  auto`). Bunlar her 3B eşyanın ikinci bir kopyasıydı (Survival: 3.413 varyantlı tek bir varlık) ve her
+  istemci yüklerken bunları kuruyordu; oysa yalnızca sunucunun kendi Geyser'ındaki görüntü köprüsü onları
+  kullanır. Survival'ın katıldıktan sonraki yükleme süresi 156 saniyeden 10 saniyenin altına indi. Paket
+  JSON'u girintisiz yazılır.
+- Arka uçta (`geyser.loading-protection-seconds`) ve proxy'de (`bedrock.loading-protection-seconds`) yükleme
+  koruması, varsayılan 300 saniye: istemci oyuna girene kadar Java keep-alive'ları ve ping'leri onun yerine
+  yanıtlanır; paketleri dakikalarca yükleyen bir istemci artık atılmaz ("read timed out"). 10 saniye veya
+  daha uzun yüklemeler günlüğe yazılır.
+- twilight-proxy, Twilight'ın yazı yerleşimini ve çevirilerini proxy'deki Geyser'da, her oyuncunun yüklediği
+  paketle çalıştırır. Twilight'ın Bedrock için taşıdığı karakterlerdeki görseller (BoxPVP'nin U+A840
+  üzerindeki ItemsAdder öneki) proxy'li ağlarda düz Unicode karakterleri olarak görünüyordu.
+- `ui.max-glyph-cell` glif sayfalarını sınırlar (256: 8192x8192 yerine 4096x4096) ve derleme 8192x8192
+  piksellik sayfaları adlarıyla bildirir.
+- İki sunucuda başka görüntü seçenekleriyle aynı Bedrock eşyası çakışma olarak değil, bilgi olarak günlüğe
+  yazılır.
+- 247 test geçti (217 Twilight, 30 proxy).
 
 #### 1.0.0-pre.18 - 2026-10-09
 

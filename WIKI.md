@@ -164,6 +164,8 @@ change behaviour.
 | `send-pack-to-bedrock` | `true` | Let Geyser send the pack; `false` when a proxy or another plugin sends `export/Twilight.mcpack` |
 | `retire-stale-files` | `true` | Move Twilight files this server does not own (older versions, copies, sync tools) out of the local Geyser to `plugins/Twilight/retired/`, at start before Geyser loads them and after every deployment |
 | `restart-for-item-changes` | `notify` | Geyser registers custom items only at start. `notify`: tell the console and players with `twilight.admin`; `when-empty`: also restart once nobody is online (`spigot.yml` `settings.restart-script`; without one the server stops) |
+| `loading-protection-seconds` | `300` | Keep a Bedrock player connected while its client is still loading the resource packs after joining: Java keep-alives and pings are answered for it until the client is in game, at most this long (0-1800; 0 only logs loading times). Loads of 10 s or more are logged. Needs Geyser on this server; on a proxy network twilight-proxy does the same |
+| `item-display-models` | `auto` | Bedrock models for custom items in Java item displays (furniture, model bones): a second copy of every 3D item that each client builds while loading. `auto`: only when Geyser runs on this server, where the display bridge uses them; `on`; `off`. Changing it needs a rebuild |
 
 ### `ui`
 
@@ -176,6 +178,7 @@ change behaviour.
 | `java-text-layers` | `true` | Text and images drawn back over earlier ones get one label per layer (chest titles, action bar, boss bars) |
 | `nametag-background` | `auto` | Bedrock's name tag box: `auto` (hidden when CustomNameplates' name tags are on), `hidden`, `bedrock` |
 | `java-translations` | `true` | Use the resource packs' translations for Bedrock players |
+| `max-glyph-cell` | `512` | Largest glyph cell in pixels (512, 256, 128, 64). A page is 16 cells wide: one glyph that needs 512 makes its page 8192x8192 (256 MiB in the client), which the build names. With 256, glyphs Java draws far above or below the line are moved vertically to fit. Needs a rebuild |
 
 ### `world`
 
@@ -243,6 +246,10 @@ pack-host:               # see "Pack hosting"
 update-check:            # see "Updates"
   enabled: true
   notify-players: true
+bedrock:                 # see "Bedrock runtime on the proxy"
+  text-layout: true
+  translations: true
+  loading-protection-seconds: 300
 ```
 
 | Key | Meaning |
@@ -261,6 +268,9 @@ update-check:            # see "Updates"
 | `pack-host.*` | Serve the packs from the proxy over HTTP; see [pack host](#pack-hosting) |
 | `update-check.enabled` | Look for a newer release shortly after start and every six hours ([updates](#updates)) |
 | `update-check.notify-players` | Tell players with `twilight.proxy.update` or `twilight.proxy.admin` when they join and when a version is found |
+| `bedrock.text-layout` | Lay out Java text with each server's fonts in the proxy's Geyser ([Bedrock runtime](#bedrock-runtime-on-the-proxy)) |
+| `bedrock.translations` | Show the server packs' translations to Bedrock players |
+| `bedrock.loading-protection-seconds` | Keep a Bedrock player connected while its client loads the resource packs, at most this long (0-1800, default 300) |
 
 Every pack is checked before use: it must be a ZIP below the size limit with `manifest.json` at its
 root and no entry that could escape a folder. A pack that fails the check, a failed download or an
@@ -333,6 +343,30 @@ When two folders use the same port (backup copies), the most recently active one
 names both; set it under `server` to be sure. Only that one file in such a folder is read, symbolic
 links are refused, and the pack is checked like every other. Backends on other machines keep using
 plugin messages.
+
+### Bedrock runtime on the proxy
+
+On a single server, Twilight changes text in that server's Geyser before Bedrock gets it. On a network,
+Geyser runs on the proxy, so twilight-proxy does the same there, with the pack each player loaded:
+
+- **Text layout** (`bedrock.text-layout`): custom font images (chat prefixes, menu titles, HUD images),
+  named fonts, spaces and negative spaces. It also covers images on characters outside the private-use
+  area, such as ItemsAdder images on U+A840. Bedrock draws those characters with its own font, so the
+  pack draws the image on another character and every message is changed to use it. Without this
+  runtime, such a prefix shows as a plain Unicode character.
+- **Translations** (`bedrock.translations`): item and menu names from datapacks and plugins.
+- **Loading protection** (`bedrock.loading-protection-seconds`): until the client reports that it is in
+  game, the proxy answers Java keep-alives and pings for it. Large packs take minutes on phones, and with
+  Geyser's `forward-player-ping: true` the proxy would otherwise drop the player ("read timed out").
+  Loads of 10 s or more are logged:
+  - "&lt;player&gt; finished loading its resource packs after N s; the connection was kept alive for it
+    meanwhile."
+  - "&lt;player&gt; left while its client was still loading the resource packs, after N s: &lt;reason&gt;"
+
+Each player's layout follows the pack it loaded and changes when a reconnect loads another pack. Backends
+of a proxy network build their packs without item display models (`geyser.item-display-models: auto`),
+which cut Survival's loading time from 156 s to under 10 s
+([field report](docs/FIELD_REPORT_2026-10-10.md)).
 
 ### Sources
 
@@ -750,6 +784,9 @@ the receiver's clock; messages larger than 30128 bytes are dropped unread.
 | "Server not found" after a server change | The client could not reach the transfer address: check the log line "has not come back ... after the transfer to <address>", `transfer-address`/`transfer-port`, and that UDP protection and anti-bot plugins allow a quick reconnect |
 | After the pack download the player is on the login server again | Expected without login sessions; after logging in it is sent on to the server it chose. Enable sessions in the login plugin to skip the second login |
 | Large packs take minutes | Geyser sends about 1.2 MiB/s; enable `pack-host` |
+| Bedrock players are dropped while the packs load ("read timed out", "Timed out") | Update to 1.0.0-pre.19: the next build leaves out item display models where Geyser is not on the server, and the loading protection keeps the player for up to 5 minutes (`loading-protection-seconds`). The log says how long each load took |
+| Images in chat or menus show as Unicode characters on a proxy network | Before 1.0.0-pre.19, the text runtime ran only in a backend's Geyser. Update twilight-proxy and keep `bedrock.text-layout: true` |
+| "glyph pages of 8192x8192 pixels ..." notice | One glyph needs a 512-pixel cell. Phones load such pages slowly; `ui.max-glyph-cell: 256` |
 | "joined X, not the server its pack was chosen for" | The proxy picked another first server than twilight-proxy expected (last server, forced host): set `initial-server`, or BungeeCord `force_default_server: true` |
 | Custom biomes look like vanilla ones | More than 25 distinct looks, or `world.bedrock-biome-matching: false` |
 | Packs still download slowly with `pack-host` on | No "first download" line: the port is closed or unreachable; `http://<address>:<port>/` must answer an empty 404 from outside |
@@ -937,6 +974,8 @@ değiştirmek için düzenlenmesi gerekir.
 | `send-pack-to-bedrock` | `true` | Paketi Geyser'ın göndermesine izin verir; bir proxy veya başka bir eklenti `export/Twilight.mcpack` dosyasını gönderiyorsa `false` |
 | `retire-stale-files` | `true` | Bu sunucunun sahip olmadığı Twilight dosyalarını (eski sürümler, kopyalar, eşitleme araçları) açılışta Geyser onları yüklemeden önce ve her dağıtımdan sonra yerel Geyser'dan `plugins/Twilight/retired/` klasörüne taşır |
 | `restart-for-item-changes` | `notify` | Geyser özel eşyaları yalnızca açılışta kaydeder. `notify`: konsola ve `twilight.admin` iznine sahip oyunculara bildirir; `when-empty`: ayrıca kimse çevrimiçi değilken yeniden başlatır (`spigot.yml` `settings.restart-script`; yoksa sunucu durur) |
+| `loading-protection-seconds` | `300` | Bir Bedrock oyuncusunu, istemcisi katıldıktan sonra kaynak paketlerini yüklerken bağlı tutar: istemci oyuna girene kadar, en fazla bu süre boyunca Java keep-alive'ları ve ping'leri onun yerine yanıtlanır (0-1800; 0 yalnızca yükleme sürelerini günlüğe yazar). 10 saniye veya daha uzun yüklemeler günlüğe yazılır. Bu sunucuda Geyser gerekir; proxy'li ağda aynı işi twilight-proxy yapar |
+| `item-display-models` | `auto` | Java eşya görüntülerindeki (mobilyalar, model kemikleri) özel eşyalar için Bedrock modelleri: her istemcinin yüklerken kurduğu, her 3B eşyanın ikinci bir kopyası. `auto`: yalnızca Geyser bu sunucuda çalışıyorsa, görüntü köprüsü onları orada kullanır; `on`; `off`. Değiştirmek yeniden derleme gerektirir |
 
 ##### `ui`
 
@@ -949,6 +988,7 @@ değiştirmek için düzenlenmesi gerekir.
 | `java-text-layers` | `true` | Öncekilerin üzerine geri çizilen yazı ve görseller katman başına bir etiket alır (sandık başlıkları, aksiyon çubuğu, boss çubukları) |
 | `nametag-background` | `auto` | Bedrock'un ad etiketi kutusu: `auto` (CustomNameplates'in ad etiketleri açıkken gizli), `hidden`, `bedrock` |
 | `java-translations` | `true` | Bedrock oyuncuları için kaynak paketlerinin çevirilerini kullanır |
+| `max-glyph-cell` | `512` | Piksel olarak en büyük glif hücresi (512, 256, 128, 64). Bir sayfa 16 hücre genişliğindedir: 512 gerektiren tek bir glif sayfasını 8192x8192 yapar (istemcide 256 MiB); derleme bu sayfaları adlarıyla bildirir. 256 ile Java'nın satırın çok üstüne veya altına çizdiği glifler sığmaları için dikeyde kaydırılır. Yeniden derleme gerektirir |
 
 ##### `world`
 
@@ -1017,6 +1057,10 @@ pack-host:               # "Paket sunucusu" bölümüne bakın
 update-check:            # "Güncellemeler" bölümüne bakın
   enabled: true
   notify-players: true
+bedrock:                 # "Proxy'de Bedrock çalışma zamanı" bölümüne bakın
+  text-layout: true
+  translations: true
+  loading-protection-seconds: 300
 ```
 
 | Anahtar | Anlamı |
@@ -1035,6 +1079,9 @@ update-check:            # "Güncellemeler" bölümüne bakın
 | `pack-host.*` | Paketleri proxy'den HTTP ile sunar; [paket sunucusu](#paket-sunucusu) bölümüne bakın |
 | `update-check.enabled` | Açılıştan kısa süre sonra ve her altı saatte bir daha yeni bir sürüm arar ([güncellemeler](#güncellemeler)) |
 | `update-check.notify-players` | `twilight.proxy.update` veya `twilight.proxy.admin` iznine sahip oyunculara katıldıklarında ve bir sürüm bulunduğunda bildirir |
+| `bedrock.text-layout` | Java yazısını proxy'deki Geyser'da her sunucunun fontlarıyla yerleştirir ([Bedrock çalışma zamanı](#proxyde-bedrock-çalışma-zamanı)) |
+| `bedrock.translations` | Sunucu paketlerinin çevirilerini Bedrock oyuncularına gösterir |
+| `bedrock.loading-protection-seconds` | Bir Bedrock oyuncusunu istemcisi kaynak paketlerini yüklerken en fazla bu süre bağlı tutar (0-1800, varsayılan 300) |
 
 Her paket kullanılmadan önce denetlenir: boyut sınırının altında, kökünde `manifest.json` bulunan ve hiçbir
 girdisi klasör dışına çıkamayan bir ZIP olmalıdır. Denetimi geçemeyen bir paket, başarısız bir indirme veya
@@ -1108,6 +1155,31 @@ local-backends:
 emin olmak için `server` altında ayarlayın. Böyle bir klasörde yalnızca o tek dosya okunur, sembolik bağlantılar
 reddedilir ve paket diğerleri gibi denetlenir. Başka makinelerdeki arka uçlar eklenti mesajlarını kullanmaya
 devam eder.
+
+##### Proxy'de Bedrock çalışma zamanı
+
+Tek bir sunucuda Twilight, yazıyı Bedrock'a ulaşmadan önce o sunucunun Geyser'ında değiştirir. Bir ağda
+Geyser proxy'de çalıştığı için twilight-proxy aynı işi orada, her oyuncunun yüklediği paketle yapar:
+
+- **Yazı yerleşimi** (`bedrock.text-layout`): özel font görselleri (sohbet önekleri, menü başlıkları, HUD
+  görselleri), adlandırılmış fontlar, boşluklar ve negatif boşluklar. Özel kullanım alanı dışındaki
+  karakterlerdeki görselleri de kapsar; örneğin U+A840 üzerindeki ItemsAdder görselleri. Bedrock bu
+  karakterleri kendi fontuyla çizer; bu yüzden paket görseli başka bir karaktere çizer ve her mesaj o
+  karakteri kullanacak şekilde değiştirilir. Bu çalışma zamanı olmadan böyle bir önek düz bir Unicode
+  karakteri olarak görünür.
+- **Çeviriler** (`bedrock.translations`): veri paketlerinden ve eklentilerden gelen eşya ve menü adları.
+- **Yükleme koruması** (`bedrock.loading-protection-seconds`): istemci oyunda olduğunu bildirene kadar proxy
+  Java keep-alive'larını ve ping'lerini onun yerine yanıtlar. Büyük paketler telefonlarda dakikalar sürer ve
+  Geyser'da `forward-player-ping: true` ile proxy aksi hâlde oyuncuyu atar ("read timed out"). 10 saniye veya
+  daha uzun yüklemeler günlüğe yazılır:
+  - "&lt;oyuncu&gt; finished loading its resource packs after N s; the connection was kept alive for it
+    meanwhile."
+  - "&lt;oyuncu&gt; left while its client was still loading the resource packs, after N s: &lt;neden&gt;"
+
+Her oyuncunun yerleşimi yüklediği paketi izler ve bir yeniden bağlanma başka bir paket yüklediğinde değişir.
+Proxy'li bir ağın arka uçları paketlerini eşya görüntüsü modelleri olmadan derler
+(`geyser.item-display-models: auto`); bu, Survival'ın yükleme süresini 156 saniyeden 10 saniyenin altına
+indirdi ([saha raporu](docs/FIELD_REPORT_2026-10-10.md)).
 
 ##### Kaynaklar
 
@@ -1527,6 +1599,9 @@ içinde olmalıdır; 30128 bayttan büyük mesajlar okunmadan atılır.
 | Sunucu değişikliğinden sonra "Sunucu bulunamadı" | İstemci aktarım adresine ulaşamadı: günlükteki "has not come back ... after the transfer to <adres>" satırını, `transfer-address`/`transfer-port` değerlerini ve UDP korumasıyla anti-bot eklentilerinin hızlı yeniden bağlanmaya izin verdiğini denetleyin |
 | Paket indirildikten sonra oyuncu yine giriş sunucusunda | Giriş oturumları olmadan beklenir; giriş yaptıktan sonra seçtiği sunucuya gönderilir. İkinci girişi atlamak için giriş eklentisinde oturumları açın |
 | Büyük paketler dakikalar sürüyor | Geyser yaklaşık 1,2 MiB/s gönderir; `pack-host`u açın |
+| Bedrock oyuncuları paketler yüklenirken atılıyor ("read timed out", "Timed out") | 1.0.0-pre.19'a güncelleyin: sonraki derleme, Geyser'ın sunucuda olmadığı yerlerde eşya görüntüsü modellerini çıkarır ve yükleme koruması oyuncuyu 5 dakikaya kadar tutar (`loading-protection-seconds`). Günlük her yüklemenin ne kadar sürdüğünü yazar |
+| Proxy'li ağda sohbetteki veya menülerdeki görseller Unicode karakteri olarak görünüyor | 1.0.0-pre.19'dan önce yazı çalışma zamanı yalnızca arka ucun Geyser'ında çalışıyordu. twilight-proxy'yi güncelleyin ve `bedrock.text-layout: true` bırakın |
+| "glyph pages of 8192x8192 pixels ..." bildirimi | Bir glif 512 piksellik hücre gerektiriyor. Telefonlar bu sayfaları yavaş yükler; `ui.max-glyph-cell: 256` |
 | "joined X, not the server its pack was chosen for" | Proxy, twilight-proxy'nin beklediğinden başka bir ilk sunucu seçti (son sunucu, zorunlu sunucu): `initial-server` ayarlayın veya BungeeCord'da `force_default_server: true` |
 | Özel biyomlar vanilla gibi görünüyor | 25'ten fazla farklı görünüm veya `world.bedrock-biome-matching: false` |
 | `pack-host` açıkken paketler hâlâ yavaş iniyor | "first download" satırı yok: port kapalı veya erişilemiyor; `http://<adres>:<port>/` dışarıdan boş bir 404 döndürmeli |

@@ -89,6 +89,22 @@ final class BitmapFontCompiler {
         this(resources, vanillaAssets, vanillaOverride, textLayout, false);
     }
 
+    /** The largest glyph cell; a page is 16 cells wide (512: 8192x8192 pixels, 256 MiB in the client). */
+    private int maxCell = MAX_CELL_SIZE;
+
+    /**
+     * Caps glyph cells (and so glyph pages) at {@code size} pixels. A glyph that needs a larger cell only because
+     * Java draws it far above or below the text line is moved vertically to fit; one wider than the cell is left
+     * out as before.
+     */
+    BitmapFontCompiler maxCell(int size) {
+        if (size != 64 && size != 128 && size != 256 && size != MAX_CELL_SIZE) {
+            throw new IllegalArgumentException("ui.max-glyph-cell must be 64, 128, 256 or 512");
+        }
+        this.maxCell = size;
+        return this;
+    }
+
     /** @param shadedCopies give laid-out glyphs copies darkened like Java's uncoloured container titles */
     BitmapFontCompiler(ResourceIndex resources, VanillaAssetCache vanillaAssets, boolean vanillaOverride,
                        boolean textLayout, boolean shadedCopies) {
@@ -132,6 +148,10 @@ final class BitmapFontCompiler {
         Map<Integer, int[]> ink = new HashMap<>();
         for (Map.Entry<Integer, List<Glyph>> page : pages.entrySet()) {
             BufferedImage image = compose(page.getValue());
+            if (image.getWidth() >= 8192) {
+                notice("glyph pages of 8192x8192 pixels take 256 MiB each in the client and load slowly on phones;"
+                        + " ui.max-glyph-cell: 256 makes them 4096x4096", "glyph_%02X".formatted(page.getKey()));
+            }
             packFiles.put("font/glyph_%02X.png".formatted(page.getKey()), TextureSet.png(image));
             if (layoutActive) measureInk(image, page.getValue(), ink);
         }
@@ -369,7 +389,7 @@ final class BitmapFontCompiler {
         }
         double displayWidth = cellWidth * (declaredHeight / (double) cellHeight);
         boolean offScreen = 7 - declaredAscent > OFF_SCREEN || 7 - declaredAscent + declaredHeight < -OFF_SCREEN;
-        if (displayWidth > MAX_CELL_SIZE || offScreen) {
+        if (displayWidth > maxCell || offScreen) {
             // Bedrock cannot draw these. Java's transparent or off-screen ones only advance the pen.
             boolean visible = false;
             for (int row = 0; row < rows.size(); row++) {
@@ -411,7 +431,17 @@ final class BitmapFontCompiler {
                 }
                 Glyph glyph = new Glyph(codePoint, image, column * cellWidth, row * cellHeight,
                         cellWidth, cellHeight, declaredHeight, declaredAscent, MIN_CELL_SIZE, advance);
-                int requiredCellSize = minimumCellSize(glyph, displayWidth);
+                int requiredCellSize = minimumCellSize(glyph, displayWidth, maxCell);
+                if (requiredCellSize == 0 && maxCell < MAX_CELL_SIZE) {
+                    Glyph moved = moveIntoCell(glyph, maxCell);
+                    int movedCell = moved == null ? 0 : minimumCellSize(moved, displayWidth, maxCell);
+                    if (movedCell != 0) {
+                        notice("glyphs drawn far above or below the line were moved vertically to fit ui.max-glyph-cell",
+                                font + " -> " + textureIdentifier + " (ascent " + declaredAscent + " -> " + moved.declaredAscent() + ")");
+                        target.put(codePoint, moved.withCellSize(movedCell));
+                        continue;
+                    }
+                }
                 if (requiredCellSize == 0) {
                     problem("bitmap glyph baselines require a Bedrock layout adapter", providerKey,
                             font + " -> " + textureIdentifier + " (height=" + declaredHeight
@@ -827,8 +857,18 @@ final class BitmapFontCompiler {
         if (last >= 0 && last + 1 < cellSize) page.setRGB(cellX + last + 1, cellY + cellSize / 2, 0x01FFFFFF);
     }
 
-    private static int minimumCellSize(Glyph glyph, double displayWidth) {
-        for (int size = MIN_CELL_SIZE; size <= MAX_CELL_SIZE; size *= 2) {
+    /** The glyph with the ascent closest to its own that fits a {@code cell}-pixel cell, or null. */
+    private static Glyph moveIntoCell(Glyph glyph, int cell) {
+        int highest = cell / 2 + 3;
+        int lowest = highest - (cell - glyph.declaredHeight());
+        if (lowest > highest) return null;
+        int ascent = Math.max(lowest, Math.min(highest, glyph.declaredAscent()));
+        return new Glyph(glyph.codePoint(), glyph.image(), glyph.x(), glyph.y(), glyph.width(), glyph.height(),
+                glyph.declaredHeight(), ascent, glyph.cellSize(), glyph.javaAdvance(), glyph.trailingMarker());
+    }
+
+    private static int minimumCellSize(Glyph glyph, double displayWidth, int maxCell) {
+        for (int size = MIN_CELL_SIZE; size <= maxCell; size *= 2) {
             if (displayWidth <= size && fitsBaseline(glyph, size)) return size;
         }
         return 0;

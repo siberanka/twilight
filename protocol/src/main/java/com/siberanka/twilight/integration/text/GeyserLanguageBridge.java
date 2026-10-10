@@ -42,7 +42,7 @@ import java.util.zip.ZipFile;
 public final class GeyserLanguageBridge implements AutoCloseable {
     private static final String PREFIX = "twilight/lang/";
 
-    private final Path servedPack;
+    private final java.util.function.Supplier<java.util.Collection<Path>> packs;
     private final Logger logger;
     private final EventRegistrar registrar;
     private final Wrapper wrapper = new Wrapper();
@@ -51,28 +51,47 @@ public final class GeyserLanguageBridge implements AutoCloseable {
     private volatile PacketTranslator<? extends Packet> original;
     private volatile boolean failureLogged;
 
-    private GeyserLanguageBridge(Object owner, Path servedPack, Logger logger) {
-        this.servedPack = servedPack;
+    private GeyserLanguageBridge(Object owner, java.util.function.Supplier<java.util.Collection<Path>> packs, Logger logger) {
+        this.packs = packs;
         this.logger = logger;
         this.registrar = EventRegistrar.of(owner);
     }
 
     public static GeyserLanguageBridge create(Object owner, Path servedPack, Logger logger) {
-        GeyserLanguageBridge bridge = new GeyserLanguageBridge(owner, servedPack, logger);
+        return create(owner, () -> java.util.List.of(servedPack), logger);
+    }
+
+    /**
+     * The strings of several packs (on a proxy, every server's), merged; for a key that two packs translate
+     * differently the first pack wins. Call {@link #refresh()} when the packs change.
+     */
+    public static GeyserLanguageBridge create(Object owner, java.util.function.Supplier<java.util.Collection<Path>> packs, Logger logger) {
+        GeyserLanguageBridge bridge = new GeyserLanguageBridge(owner, packs, logger);
         com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostInitializeEvent.class, event -> bridge.attach());
         com.siberanka.twilight.geyser.GeyserEvents.subscribe(bridge.registrar, GeyserPostReloadEvent.class, event -> bridge.attach());
         if (Registries.JAVA_PACKET_TRANSLATORS.get().get(ClientboundLoginPacket.class) != null) bridge.attach();
         return bridge;
     }
 
-    private synchronized void attach() {
-        try {
-            overlays = read(servedPack);
-        } catch (IOException | RuntimeException failure) {
-            overlays = Map.of();
-            logger.log(Level.WARNING, "Could not read the translations of the served Twilight pack", failure);
+    /** Reads the packs' strings again; sessions that enter the game afterwards get them. */
+    public synchronized void refresh() {
+        Map<String, Map<String, String>> merged = new HashMap<>();
+        for (Path pack : packs.get()) {
+            try {
+                for (var locale : read(pack).entrySet()) {
+                    Map<String, String> strings = merged.computeIfAbsent(locale.getKey(), ignored -> new HashMap<>());
+                    locale.getValue().forEach(strings::putIfAbsent);
+                }
+            } catch (IOException | RuntimeException failure) {
+                logger.log(Level.WARNING, "Could not read the translations of the Twilight pack " + pack.getFileName(), failure);
+            }
         }
+        overlays = Map.copyOf(merged);
         synchronized (applied) { applied.clear(); }
+    }
+
+    private synchronized void attach() {
+        refresh();
         var translators = Registries.JAVA_PACKET_TRANSLATORS.get();
         PacketTranslator<? extends Packet> current = translators.get(ClientboundLoginPacket.class);
         if (current == null) {
@@ -127,7 +146,7 @@ public final class GeyserLanguageBridge implements AutoCloseable {
     }
 
     @Override public synchronized void close() {
-        GeyserApi.api().eventBus().unregisterAll(registrar);
+        com.siberanka.twilight.geyser.GeyserEvents.unregisterAll(registrar);
         if (original != null) Registries.JAVA_PACKET_TRANSLATORS.get().replace(ClientboundLoginPacket.class, wrapper, original);
     }
 
