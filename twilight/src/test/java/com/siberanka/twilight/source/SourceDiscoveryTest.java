@@ -256,6 +256,52 @@ class SourceDiscoveryTest {
         assertEquals("https://example.invalid/#fragment", values.get("url"));
     }
 
+    /** Folders the provider merges into its pack are read while it has not generated one yet. */
+    @Test
+    void readsTheFoldersTheProviderMergesWhenItHasNoGeneratedPack() throws Exception {
+        Path provider = Files.createDirectories(root.resolve("plugins/ItemsAdder"));
+        Files.writeString(provider.resolve("config.yml"), """
+                resource-pack:
+                  zip:
+                    merge_other_plugins_resourcepacks_folders:
+                      - ModelEngine/resource pack # bones
+                      - "MyNpcs/pack"
+                      - ../outside
+                      - Missing/pack
+                """);
+        Files.createDirectories(root.resolve("plugins/ModelEngine/resource pack/assets/modelengine"));
+        Files.createDirectories(root.resolve("plugins/MyNpcs/pack"));
+        Files.writeString(root.resolve("plugins/MyNpcs/pack/pack.mcmeta"), "{}");
+        Files.createDirectories(root.resolve("outside/assets"));
+        TwilightConfig config = new TwilightConfig(false, true, true, true, 40, 100, 10_000_000, 1000,
+                true, true, List.of(), "auto", false, false, 3);
+
+        List<ContentSource> sources = new SourceDiscovery(root, config).discover(Set.of());
+        assertTrue(sources.stream().anyMatch(source -> source.path().endsWith("resource pack")), sources.toString());
+        assertTrue(sources.stream().anyMatch(source -> source.path().endsWith(Path.of("MyNpcs", "pack"))), sources.toString());
+        assertTrue(sources.stream().noneMatch(source -> source.path().endsWith("outside")), sources.toString());
+
+        Files.createDirectories(provider.resolve("output"));
+        Files.write(provider.resolve("output/generated.zip"), zipWith("pack.mcmeta", "{}"));
+        sources = new SourceDiscovery(root, config).discover(Set.of());
+        assertTrue(sources.stream().noneMatch(source -> source.path().endsWith(Path.of("MyNpcs", "pack"))),
+                "the generated pack already holds the merged folders");
+    }
+
+    @Test
+    void readsBlockAndFlowYamlLists() {
+        List<String> keys = List.of("merge-external-folders", "merge-external-zip-files");
+        assertEquals(List.of("a/pack", "b.zip", "c"), SourceDiscovery.yamlList(List.of(
+                "resource-pack:",
+                "  merge-external-folders:",
+                "    - 'a/pack'",
+                "    # comment",
+                "    - ../escape",
+                "  merge-external-zip-files: [b.zip, \"c\"]",
+                "  other:",
+                "    - ignored"), keys));
+    }
+
     private static byte[] zipWith(String name, String content) throws Exception {
         java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
         try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(bytes)) {

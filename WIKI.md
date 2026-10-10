@@ -76,9 +76,13 @@ Geyser instead of Geyser's slower in-game transfer, with the [pack host](#pack-h
    pack a provider sends to Java players outranks its working folders, which fill gaps; a provider
    whose settings do not send its pack, or whose plugin is not installed, only fills gaps. World
    datapacks and `sources.additional` are added. Each provider can be limited with
-   `sources.providers`.
+   `sources.providers`. While ItemsAdder or CraftEngine has not generated its pack yet, the folders
+   and ZIPs it is set to merge into it (`merge_other_plugins_resourcepacks_folders`,
+   `merge-external-folders`, `merge-external-zip-files`) are read too; inside `plugins/` only.
 2. **Runtime items.** Recipe results, online inventories and the providers' item registries are read
-   through public APIs, so items that exist only at runtime are converted too.
+   through public APIs, so items that exist only at runtime are converted too. When ModelEngine's
+   registry cannot be read, its bone items come from the pack it generates. Without item display
+   models (Geyser on a proxy), ModelEngine and BetterModel bones are left out: only displays show them.
 3. **Compilation.** Item models, textures, fonts, sounds, translations, biome looks and UI files are
    converted. Content that Java itself shows broken (a missing texture or model, a screen-sized
    overlay glyph) is converted the way Java shows it and reported as a notice. Content that cannot be
@@ -308,7 +312,9 @@ download links), keeps only well-formed Twilight entries, merges them and writes
 when it starts:
 
 - At proxy start the file is written before Geyser reads it: from the current builds of backends on
-  the same machine ([local backends](#local-backends)), otherwise from the packs of the last run.
+  the same machine ([local backends](#local-backends)), otherwise from the packs of the last run. On
+  BungeeCord forks that start Geyser before enabling other plugins (FlameCord) this happens in the
+  plugin load phase, with the server list read from the proxy's `config.yml`.
 - When a server's items change later, the console and players with `twilight.proxy.admin` (when they
   join) are told to restart the proxy; until then those items show as their base item for Bedrock
   players. With `item-mappings.restart: when-empty` the proxy stops by itself a minute later once
@@ -922,8 +928,14 @@ yavaş oyun içi aktarımı yerine Geyser'ı çalıştıran sunucudan HTTP ile i
    Java oyuncularına gönderdiği paket, boşlukları dolduran çalışma klasörlerinin önüne geçer; ayarları
    paketini göndermeyen veya eklentisi kurulu olmayan bir sağlayıcı yalnızca boşlukları doldurur. Dünya
    datapack'leri ve `sources.additional` eklenir. Her sağlayıcı `sources.providers` ile sınırlanabilir.
+   ItemsAdder veya CraftEngine paketini henüz üretmediyse, pakete birleştirmek üzere ayarlandığı klasörler
+   ve ZIP'ler (`merge_other_plugins_resourcepacks_folders`, `merge-external-folders`,
+   `merge-external-zip-files`) da okunur; yalnızca `plugins/` içindekiler.
 2. **Çalışma zamanı eşyaları.** Tarif sonuçları, çevrim içi envanterler ve sağlayıcıların eşya kayıtları
    genel API'ler üzerinden okunur; böylece yalnızca çalışma zamanında var olan eşyalar da dönüştürülür.
+   ModelEngine'in kaydı okunamadığında kemik eşyaları ürettiği paketten gelir. Eşya görüntüsü modelleri
+   olmadan (Geyser proxy'de) ModelEngine ve BetterModel kemikleri dışarıda bırakılır: onları yalnızca
+   görüntüler gösterir.
 3. **Derleme.** Eşya modelleri, dokular, fontlar, sesler, çeviriler, biyom görünümleri ve arayüz dosyaları
    dönüştürülür. Java'nın kendisinin bozuk gösterdiği içerik (eksik bir doku veya model, ekran boyutunda bir
    kaplama glifi) Java'nın gösterdiği şekilde dönüştürülür ve bildirim olarak raporlanır. Güvenle temsil
@@ -1155,7 +1167,9 @@ klasörüne `custom_mappings/twilight-proxy_item_mappings.json` yazar. Geyser bu
 bir kez okur:
 
 - Proxy açılırken dosya, Geyser okumadan önce yazılır: aynı makinedeki arka uçların güncel derlemelerinden
-  ([yerel arka uçlar](#yerel-arka-uçlar)), yoksa son çalıştırmanın paketlerinden.
+  ([yerel arka uçlar](#yerel-arka-uçlar)), yoksa son çalıştırmanın paketlerinden. Geyser'ı diğer
+  eklentileri etkinleştirmeden önce başlatan BungeeCord türevlerinde (FlameCord) bu, eklenti yükleme
+  aşamasında olur; sunucu listesi proxy'nin `config.yml` dosyasından okunur.
 - Bir sunucunun eşyaları sonradan değişince konsola ve `twilight.proxy.admin` iznine sahip oyunculara
   (katıldıklarında) proxy'yi yeniden başlatmaları söylenir; o zamana kadar bu eşyalar Bedrock oyuncularına temel
   eşyaları olarak görünür. `item-mappings.restart: when-empty` ile proxy, kimse çevrimiçi değilken bir dakika

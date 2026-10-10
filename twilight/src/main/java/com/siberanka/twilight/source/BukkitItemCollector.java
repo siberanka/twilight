@@ -49,26 +49,48 @@ public final class BukkitItemCollector {
     private static void collectModelEngine(Map<String, CustomItemDescriptor> output, Set<String> issues) {
         Plugin provider = Bukkit.getPluginManager().getPlugin("ModelEngine");
         if (provider == null || !provider.isEnabled()) return;
+        int before = output.size();
+        String registryFailure = null;
         try {
-            Class<?> api = Class.forName("com.ticxo.modelengine.api.ModelEngineAPI", false, provider.getClass().getClassLoader());
-            Object instance = api.getMethod("getAPI").invoke(null);
-            Object registry = api.getMethod("getModelRegistry").invoke(instance);
-            Object values = registry.getClass().getMethod("getValues").invoke(registry);
-            if (!(values instanceof Iterable<?> models)) throw new IllegalStateException("Unsupported model registry");
-            for (Object model : models) {
-                Object flatMap = model.getClass().getMethod("getFlatMap").invoke(model);
-                if (!(flatMap instanceof Map<?, ?> bones)) throw new IllegalStateException("Unsupported bone registry");
-                for (Object bone : bones.values()) {
-                    if (!Boolean.TRUE.equals(bone.getClass().getMethod("isRenderer").invoke(bone))) continue;
-                    Object modelData = bone.getClass().getMethod("getModelData").invoke(bone);
-                    if (modelData == null) continue;
-                    Object stacks = modelData.getClass().getMethod("createItemStack").invoke(modelData);
-                    if (!(stacks instanceof Iterable<?> items)) throw new IllegalStateException("Unsupported bone item collection");
-                    for (Object stack : items) add("ModelEngine", stack, output);
-                }
-            }
+            collectModelEngineRegistry(provider, output);
         } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
-            issue(issues, "ModelEngine model registry could not be read: " + describe(failure));
+            registryFailure = describe(failure);
+        }
+        if (output.size() > before) return;
+        // The registry gave nothing (another API version, models still loading): the bone items are read from the
+        // resource pack ModelEngine generated, so its models still reach Bedrock.
+        try {
+            for (CustomItemDescriptor bone : ModelEngineFiles.descriptors(provider.getDataFolder().toPath())) {
+                String key = bone.baseItem() + '|' + bone.itemModel().orElse("") + '|';
+                output.putIfAbsent(key, bone);
+            }
+        } catch (java.io.IOException | RuntimeException failure) {
+            issue(issues, "ModelEngine's generated item definitions could not be read: " + describe(failure));
+            return;
+        }
+        if (registryFailure != null && output.size() == before) {
+            issue(issues, "ModelEngine model registry could not be read: " + registryFailure);
+        }
+    }
+
+    private static void collectModelEngineRegistry(Plugin provider, Map<String, CustomItemDescriptor> output)
+            throws ReflectiveOperationException {
+        Class<?> api = Class.forName("com.ticxo.modelengine.api.ModelEngineAPI", false, provider.getClass().getClassLoader());
+        Object instance = api.getMethod("getAPI").invoke(null);
+        Object registry = api.getMethod("getModelRegistry").invoke(instance);
+        Object values = registry.getClass().getMethod("getValues").invoke(registry);
+        if (!(values instanceof Iterable<?> models)) throw new IllegalStateException("Unsupported model registry");
+        for (Object model : models) {
+            Object flatMap = model.getClass().getMethod("getFlatMap").invoke(model);
+            if (!(flatMap instanceof Map<?, ?> bones)) throw new IllegalStateException("Unsupported bone registry");
+            for (Object bone : bones.values()) {
+                if (!Boolean.TRUE.equals(bone.getClass().getMethod("isRenderer").invoke(bone))) continue;
+                Object modelData = bone.getClass().getMethod("getModelData").invoke(bone);
+                if (modelData == null) continue;
+                Object stacks = modelData.getClass().getMethod("createItemStack").invoke(modelData);
+                if (!(stacks instanceof Iterable<?> items)) throw new IllegalStateException("Unsupported bone item collection");
+                for (Object stack : items) add("ModelEngine", stack, output);
+            }
         }
     }
 

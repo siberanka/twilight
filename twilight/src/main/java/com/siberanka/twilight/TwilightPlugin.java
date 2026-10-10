@@ -278,7 +278,7 @@ public final class TwilightPlugin extends JavaPlugin {
         Set<Path> runtimeWorlds = Bukkit.getWorlds().stream().map(World::getWorldFolder).map(java.io.File::toPath)
                 .collect(Collectors.toUnmodifiableSet());
         BukkitItemCollector.CollectionResult runtimeCollection = BukkitItemCollector.collect();
-        List<CustomItemDescriptor> liveItems = runtimeCollection.items();
+        List<CustomItemDescriptor> liveItems = modelBones(runtimeCollection.items(), itemDisplayModels());
         String minecraftVersion = Bukkit.getMinecraftVersion();
         operationLog.info("runtime-items", liveItems.size());
         for (String issue : runtimeCollection.issues()) operationLog.warn("provider-api", issue);
@@ -444,9 +444,15 @@ public final class TwilightPlugin extends JavaPlugin {
     }
 
     /**
-     * {@code geyser.item-display-models}: auto puts them in the pack only when Geyser runs on this server, where
-     * Twilight's display bridge uses them; a proxy's Geyser does not.
+     * ModelEngine's and BetterModel's bone items are only ever shown by item displays, which Bedrock draws through
+     * the display models; without them (Geyser on a proxy) the bones would only make the pack larger.
      */
+    static List<CustomItemDescriptor> modelBones(List<CustomItemDescriptor> items, boolean displays) {
+        if (displays) return items;
+        return items.stream().filter(item -> !item.provider().equals("ModelEngine") && !item.provider().equals("BetterModel"))
+                .toList();
+    }
+
     /**
      * {@code ui.pocket-container-layout}: {@code java} (default) gives chest screens on Bedrock's pocket UI profile
      * (phones, tablets) the Java layout of desktop screens; {@code bedrock} keeps Bedrock's two-column screens.
@@ -459,6 +465,10 @@ public final class TwilightPlugin extends JavaPlugin {
         return !setting.equals("bedrock");
     }
 
+    /**
+     * {@code geyser.item-display-models}: auto puts them in the pack only when Geyser runs on this server, where
+     * Twilight's display bridge uses them; a proxy's Geyser does not.
+     */
     private boolean itemDisplayModels() {
         String setting = getConfig().getString("geyser.item-display-models", "auto").strip().toLowerCase(java.util.Locale.ROOT);
         if (setting.equals("on") || setting.equals("true")) return true;

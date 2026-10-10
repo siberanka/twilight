@@ -267,14 +267,102 @@ public final class ProxyCore implements TwilightProxyApi {
      */
     public static void registerBlocksEarly(Object owner, Path dataDirectory, java.util.function.Consumer<String> info,
                                            java.util.function.BiConsumer<String, Throwable> warn) {
+        registerBlocksEarly(owner, dataDirectory, java.util.List.of(), info, warn);
+    }
+
+    /**
+     * Prepares the proxy's Geyser from the plugin load phase, before Geyser reads its folders: moves stale Twilight
+     * files out, writes the merged item mappings of the servers' cached packs, and subscribes to custom blocks.
+     * BungeeCord forks such as FlameCord start Geyser before twilight-proxy enables, so this is the last moment.
+     *
+     * @param servers the proxy's server names (their {@code auto} and file packs are merged, as the core does)
+     */
+    public static void registerBlocksEarly(Object owner, Path dataDirectory, java.util.Collection<String> servers,
+                                           java.util.function.Consumer<String> info,
+                                           java.util.function.BiConsumer<String, Throwable> warn) {
+        ProxyConfig settings = null;
         try {
             Path configFile = dataDirectory.resolve("config.yml");
-            if (Files.isRegularFile(configFile) && !ProxyConfig.load(configFile).customBlocks()) return;
+            if (Files.isRegularFile(configFile)) settings = ProxyConfig.load(configFile);
             if (org.geysermc.geyser.api.GeyserApi.api() == null) return;
+        } catch (IOException | RuntimeException | LinkageError unavailable) {
+            // Geyser is not loaded yet (or is hidden): the core prepares it when it attaches, as on Velocity.
+            return;
+        }
+        if (settings != null && !servers.isEmpty()) prepareMappingsEarly(dataDirectory, settings, servers, info, warn);
+        if (settings != null && !settings.customBlocks()) return;
+        try {
             earlyPacks = () -> cachedPacks(dataDirectory);
             earlyBlocks = com.siberanka.twilight.geyser.CustomBlocks.start(owner, () -> earlyPacks.get(), info, warn);
-        } catch (IOException | RuntimeException | LinkageError unavailable) {
-            // Geyser is not loaded yet (or is hidden): the core subscribes when it attaches, as on Velocity.
+        } catch (RuntimeException | LinkageError unavailable) {
+            // The core subscribes when it attaches.
+        }
+    }
+
+    /**
+     * The server names in a BungeeCord {@code config.yml} (the keys under the top-level {@code servers:}), read
+     * before the proxy has loaded its configuration; empty when the file cannot be read.
+     */
+    public static java.util.List<String> bungeeServerNames(Path configFile) {
+        java.util.List<String> names = new java.util.ArrayList<>();
+        try {
+            if (!Files.isRegularFile(configFile)) return names;
+            boolean inServers = false;
+            int indent = -1;
+            for (String line : Files.readAllLines(configFile)) {
+                if (line.isBlank() || line.stripLeading().startsWith("#")) continue;
+                int leading = line.length() - line.stripLeading().length();
+                if (leading == 0) {
+                    inServers = line.startsWith("servers:");
+                    indent = -1;
+                    continue;
+                }
+                if (!inServers) continue;
+                if (indent < 0) indent = leading;
+                if (leading != indent) continue;
+                String key = line.strip();
+                int colon = key.indexOf(':');
+                if (colon <= 0) continue;
+                key = key.substring(0, colon).replace("'", "").replace("\"", "").strip();
+                if (key.matches("[A-Za-z0-9._-]{1,64}")) names.add(key);
+            }
+        } catch (IOException | RuntimeException unreadable) {
+            names.clear();
+        }
+        return names;
+    }
+
+    /** Stale Twilight files out of Geyser and the merged item mappings in, before Geyser reads custom_mappings. */
+    private static void prepareMappingsEarly(Path dataDirectory, ProxyConfig settings, java.util.Collection<String> servers,
+                                             java.util.function.Consumer<String> info,
+                                             java.util.function.BiConsumer<String, Throwable> warn) {
+        try {
+            var api = org.geysermc.geyser.api.GeyserApi.api();
+            Path folder = api.configDirectory();
+            if (settings.retireStaleFiles()) {
+                var retired = com.siberanka.twilight.geyser.StaleFiles.retire(folder, api.packDirectory(),
+                        java.util.Set.of("custom_mappings/" + ItemMappings.FILE), dataDirectory.resolve("retired"));
+                for (var file : retired) warn.accept("Moved " + file.file() + " out of Geyser before it started: a Twilight"
+                        + " file twilight-proxy does not own (copied by hand, an older sync tool or an older Twilight).", null);
+            }
+            Map<String, com.google.gson.JsonObject> packs = new java.util.TreeMap<>();
+            for (String server : servers) {
+                ProxyConfig.PackSource source = settings.source(server);
+                Path pack;
+                if (source instanceof ProxyConfig.PackSource.Auto) pack = dataDirectory.resolve("cache").resolve(PackFiles.safeName(server) + ".mcpack");
+                else if (source instanceof ProxyConfig.PackSource.File file) pack = dataDirectory.resolve("packs").resolve(file.name());
+                else continue;
+                if (!Files.isRegularFile(pack)) continue;
+                ItemMappings.read(pack).ifPresent(mappings -> packs.put(server, mappings));
+            }
+            if (packs.isEmpty()) return;
+            ItemMappings.Merge merge = ItemMappings.merge(packs);
+            if (ItemMappings.write(folder.resolve("custom_mappings"), merge)) {
+                info.accept("Wrote item mappings for Geyser before it started: " + merge.count() + " item(s) from "
+                        + String.join(", ", packs.keySet()) + ".");
+            }
+        } catch (IOException | RuntimeException | LinkageError failure) {
+            warn.accept("Could not prepare Geyser's item mappings before it started: " + failure.getMessage(), null);
         }
     }
 

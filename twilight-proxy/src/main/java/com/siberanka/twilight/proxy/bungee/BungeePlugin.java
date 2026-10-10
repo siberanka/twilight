@@ -44,8 +44,15 @@ public final class BungeePlugin extends Plugin implements Listener {
      */
     @Override
     public void onLoad() {
-        ProxyCore.registerBlocksEarly(this, getDataFolder().toPath(), getLogger()::info,
-                (message, failure) -> getLogger().log(Level.WARNING, message, failure));
+        try {
+            // The proxy has not read its own configuration yet: the server names come from its config.yml.
+            java.nio.file.Path proxyRoot = getDataFolder().toPath().toAbsolutePath().getParent().getParent();
+            ProxyCore.registerBlocksEarly(this, getDataFolder().toPath(),
+                    ProxyCore.bungeeServerNames(proxyRoot.resolve("config.yml")), getLogger()::info,
+                    (message, failure) -> getLogger().log(Level.WARNING, message, failure));
+        } catch (RuntimeException | LinkageError failure) {
+            getLogger().log(Level.WARNING, "Could not prepare Geyser before it started; it is prepared when twilight-proxy enables.", failure);
+        }
     }
 
     @Override

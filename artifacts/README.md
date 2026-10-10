@@ -1,4 +1,4 @@
-# Twilight 1.0.1-pre.4 prerelease build
+# Twilight 1.0.1-pre.5 prerelease build
 
 > Türkçe: [aşağıda](#türkçe)
 
@@ -8,7 +8,7 @@
 
 Built locally by siberanka using Java 25.0.2 and Gradle 9.6.0, with
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`.
-258 tests across 44 suites passed. No hosted CI was used.
+263 tests across 45 suites passed. No hosted CI was used.
 
 The corresponding source is in this commit under `twilight/`, `twilight-proxy/` and `protocol/`, with build files
 at the repository root. Licensed under [LGPL-3.0-or-later](../LICENSE.LESSER);
@@ -17,7 +17,8 @@ the accompanying [GPL text](../LICENSE) is also provided.
 Read the [release notes](../RELEASE_NOTES.md), the [wiki](../WIKI.md) and the
 [stacked images, nameplates and exact biomes](../docs/LAYERS_BIOMES_2026-10-04.md)
 report before deployment, and the [beta status and compatibility](../README.md#beta-status-and-compatibility)
-summary. 1.0.1-pre.4 registers custom blocks on FlameCord and other BungeeCord forks that start Geyser early.
+summary. 1.0.1-pre.5 prepares item mappings on FlameCord before Geyser starts and makes automatic discovery
+more complete (ModelEngine fallback, provider merge folders). 1.0.1-pre.4 registers custom blocks on FlameCord and other BungeeCord forks that start Geyser early.
 1.0.1-pre.3 converts content plugins' custom blocks (ores and blocks on note blocks, mushroom blocks and
 tripwire) and shows their items in 3D; restart once after updating. 1.0.1-pre.2 gives phones and tablets (Bedrock's pocket UI profile) Java's chest layout, so menu art
 no longer sits behind the slots there. 1.0.1-pre.1 fixes the loading protection of 1.0.0-pre.19 and 1.0.0-beta.1, which made Paper drop
@@ -79,7 +80,7 @@ item, glyph and menu results.
 
 ## Türkçe
 
-### Twilight 1.0.1-pre.4 ön sürüm derlemesi
+### Twilight 1.0.1-pre.5 ön sürüm derlemesi
 
 [Twilight.jar indir](Twilight.jar?raw=true) | [SHA-256](Twilight.jar.sha256) (arka uç sunucuları)
 
@@ -87,7 +88,7 @@ item, glyph and menu results.
 
 siberanka tarafından Java 25.0.2 ve Gradle 9.6.0 ile yerel olarak
 `:twilight:build :twilight-proxy:build --offline --no-daemon --no-configuration-cache`
-komutuyla derlendi. 44 paketteki 258 test geçti. Barındırılan CI kullanılmadı.
+komutuyla derlendi. 45 paketteki 263 test geçti. Barındırılan CI kullanılmadı.
 
 İlgili kaynak kod bu commit içinde `twilight/`, `twilight-proxy/` ve `protocol/` altında, derleme
 dosyaları depo kökündedir. [LGPL-3.0-or-later](../LICENSE.LESSER) ile lisanslanmıştır;
@@ -96,6 +97,8 @@ eşlik eden [GPL metni](../LICENSE) de sağlanır.
 Dağıtımdan önce [sürüm notlarını](../RELEASE_NOTES.md), [wiki'yi](../WIKI.md) ve
 [üst üste görseller, isim plakaları ve birebir biyomlar](../docs/LAYERS_BIOMES_2026-10-04.md)
 raporunu ve [beta durumu ve uyumluluk](../README.md#beta-durumu-ve-uyumluluk) özetini okuyun.
+1.0.1-pre.5 FlameCord'da eşya eşlemelerini Geyser başlamadan önce hazırlar ve otomatik keşfi daha eksiksiz yapar
+(ModelEngine yedeği, sağlayıcıların birleştirme klasörleri).
 1.0.1-pre.4 özel blokları FlameCord'da ve Geyser'ı erken başlatan diğer BungeeCord türevlerinde kaydeder.
 1.0.1-pre.3 içerik eklentilerinin özel bloklarını (nota bloğu, mantar bloğu ve tuzak teli üzerindeki madenler ve
 bloklar) dönüştürür ve eşyalarını 3B gösterir; güncellemeden sonra bir kez yeniden başlatın. 1.0.1-pre.2 telefon ve tabletlere (Bedrock'un pocket arayüz profili) Java'nın sandık yerleşimini verir; menü

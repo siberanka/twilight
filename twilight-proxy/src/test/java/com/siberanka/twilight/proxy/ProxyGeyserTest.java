@@ -176,6 +176,28 @@ class ProxyGeyserTest {
         assertEquals(List.of(), ProxyCore.cachedPacks(root.resolve("missing")));
     }
 
+    /** BungeeCord has not read its config when plugins load; twilight-proxy reads the server names itself. */
+    @Test
+    void readsBungeeServerNamesBeforeTheProxyDoes() throws Exception {
+        Path config = root.resolve("config.yml");
+        java.nio.file.Files.writeString(config, """
+                listeners:
+                - query_port: 25577
+                  priorities:
+                  - lobby
+                servers:
+                  # the hub
+                  lobby:
+                    motd: '&1Lobby'
+                    address: 127.0.0.1:25583
+                  'survival':
+                    address: 127.0.0.1:25582
+                timeout: 30000
+                """);
+        assertEquals(List.of("lobby", "survival"), ProxyCore.bungeeServerNames(config));
+        assertEquals(List.of(), ProxyCore.bungeeServerNames(root.resolve("missing.yml")));
+    }
+
     @Test
     void sameBedrockItemWithOtherOptionsIsNotAConflict() {
         JsonObject lobby = mappings(legacy("minecraft:paper", 7, "twilight:minecraft_paper_7_aaaaaaaaaaaa"));

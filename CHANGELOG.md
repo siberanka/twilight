@@ -4,6 +4,23 @@
 
 All notable changes in Twilight are documented here.
 
+## 1.0.1-pre.5 - 2026-10-10
+
+- twilight-proxy on FlameCord and other BungeeCord forks: the item mappings (and the retirement of stale Twilight
+  files) are now prepared in the plugin load phase, before Geyser starts and reads them. Before, Geyser read
+  the file of the previous run: items that changed while the proxy was down needed a second restart, and stale
+  Twilight files were moved away only after Geyser had loaded them. The server list is read from the proxy's
+  `config.yml`, which the proxy has not loaded yet at that point.
+- ModelEngine: when its model registry cannot be read through its API (a changed API between ModelEngine
+  versions, models still loading), the bone items are read from the resource pack ModelEngine generates
+  (`resource pack/assets/modelengine/items`, base item from its `Item-Model` setting).
+- Builds without item display models (Geyser on the proxy) leave out ModelEngine's and BetterModel's bone items:
+  only item displays show them, so they only made the pack larger.
+- Auto discovery: when ItemsAdder or CraftEngine has not generated its pack yet, the folders and ZIPs it is set
+  to merge (`merge_other_plugins_resourcepacks_folders`, `merge-external-folders`, `merge-external-zip-files`)
+  are read as well, so their assets are not missing. Once the generated pack exists it already holds them.
+- 263 tests pass (231 Twilight, 32 proxy).
+
 ## 1.0.1-pre.4 - 2026-10-10
 
 - twilight-proxy on FlameCord and other BungeeCord forks: Geyser defined its custom blocks before the plugin
@@ -522,6 +539,24 @@ Fixes from a field report on a proxy network; each point was reproduced locally 
 ### Değişiklik günlüğü
 
 Twilight'taki tüm önemli değişiklikler burada belgelenir.
+
+#### 1.0.1-pre.5 - 2026-10-10
+
+- FlameCord ve diğer BungeeCord türevlerinde twilight-proxy: eşya eşlemeleri (ve eski Twilight dosyalarının
+  emekliye ayrılması) artık eklenti yükleme aşamasında, Geyser başlayıp onları okumadan önce hazırlanır.
+  Önceden Geyser önceki çalışmanın dosyasını okuyordu: proxy kapalıyken değişen eşyalar ikinci bir yeniden
+  başlatma gerektiriyor, eski Twilight dosyaları ise ancak Geyser onları yükledikten sonra kaldırılıyordu. Sunucu
+  listesi, proxy'nin o anda henüz yüklemediği `config.yml` dosyasından okunur.
+- ModelEngine: model kaydı API'si üzerinden okunamadığında (ModelEngine sürümleri arasında değişen API, hâlâ
+  yüklenen modeller) kemik eşyaları ModelEngine'in ürettiği kaynak paketinden okunur
+  (`resource pack/assets/modelengine/items`, temel eşya `Item-Model` ayarından).
+- Eşya görüntüsü modelleri olmayan derlemeler (Geyser proxy'de) ModelEngine'in ve BetterModel'in kemik
+  eşyalarını dışarıda bırakır: onları yalnızca eşya görüntüleri gösterir, bu yüzden yalnızca paketi
+  büyütüyorlardı.
+- Otomatik keşif: ItemsAdder veya CraftEngine paketini henüz üretmediyse, birleştirmek üzere ayarlandığı klasörler
+  ve ZIP'ler (`merge_other_plugins_resourcepacks_folders`, `merge-external-folders`, `merge-external-zip-files`)
+  da okunur; böylece onların varlıkları eksik kalmaz. Üretilmiş paket oluşunca bunları zaten içerir.
+- 263 test geçti (231 Twilight, 32 proxy).
 
 #### 1.0.1-pre.4 - 2026-10-10
 

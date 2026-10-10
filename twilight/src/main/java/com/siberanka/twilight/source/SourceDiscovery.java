@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 public final class SourceDiscovery {
@@ -53,6 +54,7 @@ public final class SourceDiscovery {
                         if (provider.equals("itemsadder") && !mode.equals("contents")) {
                             discoverRenamedItemsAdderOutput(pluginDirectory, found, seen);
                         }
+                        if (!mode.equals("generated")) discoverMergedPacks(provider, pluginDirectory, plugins, found, seen);
                     }
                 }
             }
@@ -180,6 +182,88 @@ public final class SourceDiscovery {
                 }
             }
         }
+    }
+
+    /** The keys under which pack-building providers list other plugins' packs they merge into their own. */
+    static final Map<String, List<String>> MERGE_KEYS = Map.of(
+            "itemsadder", List.of("merge_other_plugins_resourcepacks_folders"),
+            "craftengine", List.of("merge-external-folders", "merge-external-zip-files"));
+
+    /**
+     * The other plugins' packs a provider merges into the pack it builds (ItemsAdder's
+     * {@code merge_other_plugins_resourcepacks_folders}, CraftEngine's {@code merge-external-folders} and
+     * {@code merge-external-zip-files}), paths relative to {@code plugins/}. When the provider's generated pack exists
+     * it already holds them, merged the way Java players receive them (fonts, sounds and atlases combined into one
+     * pack), so they are read only while the provider has not generated its pack yet.
+     */
+    private void discoverMergedPacks(String provider, Path directory, Path plugins, List<ContentSource> found,
+                                     Set<Path> seen) {
+        List<String> keys = MERGE_KEYS.get(provider);
+        Path config = directory.resolve("config.yml");
+        if (keys == null || !Files.isRegularFile(config)) return;
+        boolean generated = found.stream().anyMatch(source -> source.provider().equals(provider)
+                && source.kind() == ContentSource.Kind.RESOURCE_PACK && Files.isRegularFile(source.path()));
+        if (generated) return;
+        List<String> lines;
+        try {
+            lines = Files.readAllLines(config);
+        } catch (IOException | RuntimeException unreadable) {
+            return;
+        }
+        Path root;
+        try {
+            root = plugins.toRealPath();
+        } catch (IOException unreadable) {
+            return;
+        }
+        for (String entry : yamlList(lines, keys)) {
+            try {
+                Path path = plugins.resolve(entry).normalize();
+                if (!path.startsWith(plugins) || !Files.exists(path) || Files.isSymbolicLink(path)) continue;
+                if (!path.toRealPath().startsWith(root)) continue;
+                boolean archive = Files.isRegularFile(path) && path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".zip");
+                boolean pack = Files.isDirectory(path)
+                        && (Files.isRegularFile(path.resolve("pack.mcmeta")) || Files.isDirectory(path.resolve("assets")));
+                if (archive || pack) add(provider, ContentSource.Kind.RESOURCE_PACK, path, providerPriority(provider) + 70, found, seen);
+            } catch (IOException | RuntimeException invalid) {
+                // An entry that is not a usable path is skipped, as the provider skips it.
+            }
+        }
+    }
+
+    /** The items of the first YAML block list under any of the keys, at any depth. */
+    static List<String> yamlList(List<String> lines, List<String> keys) {
+        List<String> values = new ArrayList<>();
+        for (int index = 0; index < lines.size(); index++) {
+            String line = lines.get(index);
+            String trimmed = line.strip();
+            int colon = trimmed.indexOf(':');
+            if (colon <= 0 || !keys.contains(trimmed.substring(0, colon).strip())) continue;
+            int indent = line.length() - line.stripLeading().length();
+            String rest = trimmed.substring(colon + 1).strip();
+            if (rest.startsWith("[") && rest.endsWith("]")) {
+                for (String part : rest.substring(1, rest.length() - 1).split(",")) addListValue(values, part);
+                continue;
+            }
+            for (int next = index + 1; next < lines.size(); next++) {
+                String item = lines.get(next);
+                if (item.isBlank() || item.stripLeading().startsWith("#")) continue;
+                int itemIndent = item.length() - item.stripLeading().length();
+                if (!item.stripLeading().startsWith("- ") || itemIndent < indent) break;
+                addListValue(values, item.stripLeading().substring(2));
+            }
+        }
+        return values;
+    }
+
+    private static void addListValue(List<String> values, String raw) {
+        String value = raw.strip();
+        int comment = value.indexOf(" #");
+        if (comment >= 0) value = value.substring(0, comment).strip();
+        if (value.length() >= 2 && (value.startsWith("'") && value.endsWith("'") || value.startsWith("\"") && value.endsWith("\""))) {
+            value = value.substring(1, value.length() - 1);
+        }
+        if (!value.isEmpty() && !value.contains("..")) values.add(value.replace('\\', '/'));
     }
 
     private void addIfPack(String provider, ContentSource.Kind kind, Path path, int priority,

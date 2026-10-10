@@ -1,6 +1,29 @@
-# Twilight 1.0.1-pre.4 - prerelease
+# Twilight 1.0.1-pre.5 - prerelease
 
 > Türkçe: [aşağıda](#türkçe)
+
+**Item mappings on FlameCord at the first restart.** On FlameCord and other BungeeCord forks, twilight-proxy now
+writes Geyser's item mappings and moves stale Twilight files away in the plugin load phase, before Geyser reads
+them. Items that changed while the proxy was down no longer need a second restart. Update twilight-proxy and
+restart the proxy.
+
+**More complete automatic discovery.**
+- ModelEngine's bone items are read from the resource pack it generates when its API cannot be read.
+- On proxy networks (no item display models) the bone items of ModelEngine and BetterModel are left out of the
+  pack: only item displays show them.
+- When ItemsAdder or CraftEngine has not generated its pack yet, the folders and ZIPs it is set to merge are read
+  too.
+
+The [JARs and SHA-256 files](artifacts/) were built locally under siberanka using Java 25; 263 tests
+across 45 suites passed. No hosted CI was run.
+
+Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
+for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
+Geyser 2.11.3; other Geyser core versions require validation.
+
+The notes below describe previous prereleases.
+
+## Twilight 1.0.1-pre.4 - prerelease
 
 **Custom blocks on FlameCord.** On FlameCord (and other BungeeCord forks that start Geyser early), Geyser defined
 its custom blocks before twilight-proxy enabled, so 1.0.1-pre.3's blocks were never registered: ores stayed note
@@ -17,8 +40,6 @@ across 44 suites passed. No hosted CI was run.
 Runtime requirements: Java 21+, Paper/Folia/Spigot 1.21.4+, Geyser with custom content enabled;
 for twilight-proxy, Velocity or BungeeCord with Geyser on the proxy. The runtime bridges target
 Geyser 2.11.3; other Geyser core versions require validation.
-
-The notes below describe previous prereleases.
 
 ## Twilight 1.0.1-pre.3 - prerelease
 
@@ -627,7 +648,30 @@ See the [measured comparison](docs/FONT_METRICS_2026-10-01.md) for the precise s
 
 ## Türkçe
 
-### Twilight 1.0.1-pre.4 - ön sürüm
+### Twilight 1.0.1-pre.5 - ön sürüm
+
+**FlameCord'da ilk yeniden başlatmada eşya eşlemeleri.** FlameCord ve diğer BungeeCord türevlerinde twilight-proxy
+artık Geyser'ın eşya eşlemelerini yazar ve eski Twilight dosyalarını kaldırır; bunu eklenti yükleme aşamasında,
+Geyser onları okumadan önce yapar. Proxy kapalıyken değişen eşyalar artık ikinci bir yeniden başlatma
+gerektirmez. twilight-proxy'yi güncelleyip proxy'yi yeniden başlatın.
+
+**Daha eksiksiz otomatik keşif.**
+- ModelEngine'in kemik eşyaları, API'si okunamadığında ürettiği kaynak paketinden okunur.
+- Proxy ağlarında (eşya görüntüsü modelleri yok) ModelEngine ve BetterModel kemik eşyaları paketin dışında
+  bırakılır: onları yalnızca eşya görüntüleri gösterir.
+- ItemsAdder veya CraftEngine paketini henüz üretmediyse, birleştirmek üzere ayarlandığı klasörler ve ZIP'ler de
+  okunur.
+
+[JAR'lar ve SHA-256 dosyaları](artifacts/) siberanka adına Java 25 ile yerelde derlendi; 45 paketteki 263
+test geçti. Barındırılan CI çalıştırılmadı.
+
+Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
+için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
+diğer Geyser çekirdek sürümleri doğrulama gerektirir.
+
+Aşağıdaki notlar önceki ön sürümleri anlatır.
+
+#### Twilight 1.0.1-pre.4 - ön sürüm
 
 **FlameCord'da özel bloklar.** FlameCord'da (ve Geyser'ı erken başlatan diğer BungeeCord türevlerinde) Geyser özel
 blokları twilight-proxy etkinleşmeden önce tanımlıyordu; bu yüzden 1.0.1-pre.3'ün blokları hiç kaydedilmedi:
@@ -644,8 +688,6 @@ test geçti. Barındırılan CI çalıştırılmadı.
 Çalışma zamanı gereksinimleri: Java 21+, Paper/Folia/Spigot 1.21.4+, özel içeriği açık Geyser; twilight-proxy
 için proxy'de Geyser bulunan Velocity veya BungeeCord. Çalışma zamanı köprüleri Geyser 2.11.3'ü hedefler;
 diğer Geyser çekirdek sürümleri doğrulama gerektirir.
-
-Aşağıdaki notlar önceki ön sürümleri anlatır.
 
 #### Twilight 1.0.1-pre.3 - ön sürüm
 
